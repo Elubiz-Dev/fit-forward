@@ -64,7 +64,7 @@ export default function ScanModal() {
     }
   };
 
-  // ─── Photo capture handler ──────────────────────────────────────────────────
+  // ─── Photo capture handler ohh sii ──────────────────────────────────────────────────
   const handleTakePhoto = async () => {
     if (loading || !cameraRef.current) return;
     setLoading(true);
