@@ -16,6 +16,7 @@ function NavigationGuard() {
   const segments = useSegments();
 
   useEffect(() => {
+    // Wait until auth state is fully resolved
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -23,16 +24,21 @@ function NavigationGuard() {
     const inTabs = segments[0] === '(tabs)';
 
     if (!session) {
-      // Not logged in → go to auth
-      if (!inAuthGroup) router.replace('/(auth)/welcome');
-    } else if (session && profile && !profile.onboardingDone) {
-      // Logged in but onboarding not done
-      if (!inOnboarding) router.replace('/onboarding');
-    } else if (session && profile?.onboardingDone) {
-      // Fully onboarded → tabs
-      if (inAuthGroup || inOnboarding) router.replace('/(tabs)/dashboard');
+      if (!inAuthGroup) {
+        router.replace('/(auth)/welcome');
+      }
+    } else if (!profile || !profile.onboardingDone || !profile.id) {
+      // Session exists but profile is invalid or incomplete
+      if (!inOnboarding) {
+        router.replace('/onboarding');
+      }
+    } else {
+      const allSegments = segments as string[];
+      if (inAuthGroup || inOnboarding || allSegments.length === 0) {
+        router.replace('/(tabs)/dashboard');
+      }
     }
-  }, [session, profile, isLoading]);
+  }, [session, profile, isLoading, segments]);
 
   return null;
 }
@@ -41,62 +47,63 @@ export default function RootLayout() {
   const { setSession, setLoading, setProfile } = useAuthStore();
 
   useEffect(() => {
-    const handleSession = async (session: any) => {
-      setSession(session);
-      if (session?.user) {
-        try {
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+    const fetchProfile = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-          if (data && !error) {
-            setProfile({
-              id:             data.id,
-              email:          data.email,
-              name:           data.name,
-              avatarUrl:      data.avatar_url,
-              sex:            data.sex,
-              age:            data.age,
-              weight:         data.weight,
-              height:         data.height,
-              activityLevel:  data.activity_level,
-              goal:           data.goal,
-              tdee:           data.tdee,
-              targetCalories: data.target_calories,
-              macros:         data.macros,
-              restrictions:   data.restrictions,
-              preferences:    data.preferences,
-              isPro:          data.is_pro,
-              onboardingDone: data.onboarding_done,
-            });
-          }
-        } catch (err) {
-          console.warn('Failed to fetch profile', err);
+        if (data && !error) {
+          setProfile({
+            id:             data.id,
+            email:          data.email,
+            name:           data.name,
+            avatarUrl:      data.avatar_url,
+            sex:            data.sex,
+            age:            data.age,
+            weight:         data.weight,
+            height:         data.height,
+            activityLevel:  data.activity_level,
+            goal:           data.goal,
+            tdee:           data.tdee,
+            targetCalories: data.target_calories,
+            macros:         data.macros,
+            restrictions:   data.restrictions,
+            preferences:    data.preferences,
+            isPro:          data.is_pro,
+            onboardingDone: data.onboarding_done,
+          });
+        } else {
+          setProfile(null);
         }
-      } else {
+      } catch (err) {
+        console.warn('[Auth] Profile fetch error:', err);
         setProfile(null);
       }
     };
 
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        await handleSession(session);
-      } catch (err: any) {
-        console.warn('[Auth] Failed to restore session:', err?.message);
-        setSession(null);
-      } finally {
-        setLoading(false);
-        SplashScreen.hideAsync();
+    const handleAuthStateChange = async (newSession: any) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        await fetchProfile(newSession.user.id);
+      } else {
+        setProfile(null);
       }
+      
+      // Only hide splash/set loading false once we have tried to get the profile
+      setLoading(false);
+      SplashScreen.hideAsync();
     };
 
-    initAuth();
+    // Initialize auth
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthStateChange(session);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
+      handleAuthStateChange(session);
     });
 
     return () => subscription.unsubscribe();
@@ -135,3 +142,8 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
 });
+
+// Notes:
+// - The NavigationGuard component ensures users are always on the correct flow based on their auth and onboarding status.
+// - The RootLayout initializes auth state from Supabase and listens for changes, updating the global store accordingly.
+// - Splash screen is shown until we determine the user's session and profile, preventing any flicker of the wrong screens.

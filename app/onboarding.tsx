@@ -257,57 +257,65 @@ export default function OnboardingScreen() {
   };
 
   const handleComplete = async () => {
-    const d = data as OnboardingData;
-    const { tdee } = calculateTDEE({
-      weight: d.weight, height: d.height,
-      age: d.age, sex: d.sex, activityLevel: d.activityLevel,
-    });
-    const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, d.goal);
-
-    const profileData = {
-      id:             profile?.id ?? '',
-      name:           profile?.name ?? '',
-      email:          profile?.email ?? '',
-      sex:            d.sex,
-      age:            d.age,
-      weight:         d.weight,
-      height:         d.height,
-      activityLevel:  d.activityLevel,
-      goal:           d.goal,
-      tdee,
-      targetCalories,
-      macros:         { protein, carbs, fat },
-      restrictions:   d.restrictions,
-      isPro:          false,
-      onboardingDone: true,
-    };
-
     setSaving(true);
     try {
+      const d = data as OnboardingData;
+      const { tdee } = calculateTDEE({
+        weight: d.weight, height: d.height,
+        age: d.age, sex: d.sex, activityLevel: d.activityLevel,
+      });
+      const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, d.goal);
+
       const { data: authData } = await supabase.auth.getUser();
-      if (authData.user) {
-        await supabase.from('users').upsert({
-          id:               authData.user.id,
-          email:            authData.user.email,
-          name:             authData.user.user_metadata?.full_name ?? '',
-          sex:              profileData.sex,
-          age:              profileData.age,
-          weight:           profileData.weight,
-          height:           profileData.height,
-          activity_level:   profileData.activityLevel,
-          goal:             profileData.goal,
-          tdee:             profileData.tdee,
-          target_calories:  profileData.targetCalories,
-          macros:           profileData.macros,
-          restrictions:     profileData.restrictions,
-          is_pro:           profileData.isPro,
-          onboarding_done:  profileData.onboardingDone,
-          updated_at:       new Date().toISOString(),
-        });
+      if (!authData.user) {
+        Alert.alert('Error', 'User session not found. Please log in again.');
+        router.replace('/(auth)/welcome');
+        return;
       }
+
+      const profileData = {
+        id:             authData.user.id,
+        name:           authData.user.user_metadata?.full_name ?? '',
+        email:          authData.user.email ?? '',
+        sex:            d.sex,
+        age:            d.age,
+        weight:         d.weight,
+        height:         d.height,
+        activityLevel:  d.activityLevel,
+        goal:           d.goal,
+        tdee,
+        targetCalories,
+        macros:         { protein, carbs, fat },
+        restrictions:   d.restrictions,
+        isPro:          false,
+        onboardingDone: true,
+      };
+
+      const { error: upsertError } = await supabase.from('users').upsert({
+        id:               profileData.id,
+        email:            profileData.email,
+        name:             profileData.name,
+        sex:              profileData.sex,
+        age:              profileData.age,
+        weight:           profileData.weight,
+        height:           profileData.height,
+        activity_level:   profileData.activityLevel,
+        goal:             profileData.goal,
+        tdee:             profileData.tdee,
+        target_calories:  profileData.targetCalories,
+        macros:           profileData.macros,
+        restrictions:     profileData.restrictions,
+        is_pro:           profileData.isPro,
+        onboarding_done:  profileData.onboardingDone,
+        updated_at:       new Date().toISOString(),
+      });
+
+      if (upsertError) throw upsertError;
+
       setProfile(profileData);
       router.replace('/(tabs)/dashboard');
-    } catch {
+    } catch (err) {
+      console.error('[Onboarding] Error:', err);
       Alert.alert('Error', 'Failed to save your profile. Please try again.');
     } finally {
       setSaving(false);

@@ -21,23 +21,16 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
       setLoading(false);
       Alert.alert('Login failed', error.message);
       return;
     }
-
-    const { data: profileData } = await supabase.from('users').select('onboarding_done').eq('id', data.user.id).single();
     
-    setLoading(false);
-
-    if (profileData?.onboarding_done) {
-      router.replace('/(tabs)/dashboard');
-    } else {
-      router.replace('/onboarding');
-    }
+    // Redirection is now handled automatically by NavigationGuard in _layout.tsx
+    // once onAuthStateChange triggers and profile is fetched.
   };
 
   return (

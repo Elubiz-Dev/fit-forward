@@ -9,8 +9,10 @@ import { Colors } from '../constants';
  * No UI of its own; just a guard.
  */
 export default function Index() {
-  const { session, profile, isLoading } = useAuthStore();
+  const { isLoading } = useAuthStore();
 
+  // Navigation is now handled by NavigationGuard in _layout.tsx
+  // This screen only shows while isLoading is true (if Splash Screen was already hidden)
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
@@ -19,7 +21,5 @@ export default function Index() {
     );
   }
 
-  if (!session) return <Redirect href="/(auth)/welcome" />;
-  if (!profile?.onboardingDone) return <Redirect href="/onboarding" />;
-  return <Redirect href="/(tabs)/dashboard" />;
+  return null;
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -130,7 +131,20 @@ export default function ProfileScreen() {
 
   const updateProfileField = async (field: string, value: any) => {
     if (!profile) return;
-    const newProfile = { ...profile, [field]: value };
+
+    // Use store ID or fallback to auth user ID to avoid "invalid uuid" errors
+    let userId = profile.id;
+    if (!userId || userId === '') {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id ?? '';
+    }
+
+    if (!userId) {
+      Alert.alert('Error', 'User ID not found. Please log in again.');
+      return;
+    }
+
+    const newProfile = { ...profile, [field]: value, id: userId };
 
     if (['weight', 'height', 'age', 'sex', 'activityLevel', 'goal'].includes(field)) {
       const { tdee } = calculateTDEE({
@@ -149,6 +163,7 @@ export default function ProfileScreen() {
     try {
       const { error } = await supabase.from('users').update({
         name:             newProfile.name,
+        avatar_url:       newProfile.avatarUrl,
         weight:           newProfile.weight,
         height:           newProfile.height,
         age:              newProfile.age,
@@ -158,18 +173,75 @@ export default function ProfileScreen() {
         tdee:             newProfile.tdee,
         target_calories:  newProfile.targetCalories,
         macros:           newProfile.macros,
-      }).eq('id', profile.id);
+        restrictions:     newProfile.restrictions,
+      }).eq('id', userId);
 
       if (error) throw error;
       setProfile(newProfile);
     } catch (err) {
+      console.error('Update profile error:', err);
       Alert.alert('Error', 'Failed to update profile');
     }
   };
 
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0].uri) {
+        const uri = result.assets[0].uri;
+        const fileExt = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+        
+        let userId = profile?.id;
+        if (!userId || userId === '') {
+          const { data: { user } } = await supabase.auth.getUser();
+          userId = user?.id ?? '';
+        }
+        
+        if (!userId) throw new Error('User not authenticated');
+
+        const fileName = `${userId}/${Date.now()}.${fileExt}`;
+        const filePath = fileName;
+
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, blob, {
+            contentType: `image/${fileExt}`,
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        await updateProfileField('avatarUrl', publicUrl);
+      }
+    } catch (err) {
+      console.error('Pick image error:', err);
+      Alert.alert('Error', 'Failed to upload profile picture');
+    }
+  };
+
   const handleSaveEdit = (val: string) => {
-    if (!val.trim()) return;
+    if (!val.trim() && editModal.field !== 'restrictions') return;
     const field = editModal.field;
+    
+    if (field === 'restrictions') {
+      const list = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      updateProfileField('restrictions', list);
+      return;
+    }
+
     const numericFields = ['weight', 'height', 'age'];
     const parsed = numericFields.includes(field) ? parseFloat(val) : val;
     if (numericFields.includes(field) && isNaN(parsed as number)) return;
@@ -246,10 +318,21 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <LinearGradient colors={['#1E2332', '#161A24']} style={s.header}>
-          <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatar}>
-            <Text style={s.avatarText}>{profile?.name?.[0]?.toUpperCase() ?? '?'}</Text>
-          </LinearGradient>
-          <Text style={s.name}>{profile?.name ?? 'User'}</Text>
+          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatar}>
+              {profile?.avatarUrl ? (
+                <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage} />
+              ) : (
+                <Text style={s.avatarText}>{profile?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+              )}
+              <View style={s.editBadge}>
+                <Text style={{ fontSize: 10 }}>📸</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => openEdit('name', 'Update Name', 'Enter your name')}>
+            <Text style={s.name}>{profile?.name ?? 'User'} ✎</Text>
+          </TouchableOpacity>
           <Text style={s.email}>{profile?.email ?? ''}</Text>
           {profile?.isPro ? (
             <LinearGradient colors={['#F59E0B', '#D97706']} style={s.proBadge}>
@@ -307,7 +390,7 @@ export default function ProfileScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Account & App</Text>
           <MenuRow icon="👤" label="Edit Name"           onPress={() => openEdit('name', 'Update Name', 'Enter your name')} />
-          <MenuRow icon="🍽️" label="Dietary Preferences" onPress={handleNotImplemented} />
+          <MenuRow icon="🍽️" label="Dietary Preferences" value={profile?.restrictions?.join(', ') || 'None'} onPress={() => openEdit('restrictions', 'Dietary Restrictions', 'e.g. Vegan, Nut-free (comma separated)', 'default')} />
           <MenuRow icon="🔔" label="Notifications"       onPress={handleNotImplemented} />
           <MenuRow icon="🌙" label="Appearance"          value="Dark" onPress={handleNotImplemented} />
         </View>
@@ -336,7 +419,9 @@ function MeasureStat({ label, value }: { label: string; value: string }) {
 const s = StyleSheet.create({
   safe:        { flex: 1, backgroundColor: Colors.background },
   header:      { alignItems: 'center', padding: Spacing['2xl'], paddingTop: Spacing.lg, marginBottom: Spacing.base },
-  avatar:      { width: 84, height: 84, borderRadius: 42, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  avatar:      { width: 84, height: 84, borderRadius: 42, justifyContent: 'center', alignItems: 'center', marginBottom: 14, position: 'relative' },
+  avatarImage: { width: 84, height: 84, borderRadius: 42 },
+  editBadge:   { position: 'absolute', bottom: 0, right: 0, backgroundColor: Colors.surface, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#1E2332' },
   avatarText:  { fontSize: 36, fontWeight: '800', color: '#fff' },
   name:        { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4 },
   email:       { fontSize: 13, color: Colors.textSecondary, marginBottom: 16 },

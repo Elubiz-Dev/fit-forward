@@ -25,7 +25,7 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name } },
@@ -36,8 +36,9 @@ export default function RegisterScreen() {
       Alert.alert('Registration failed', error.message);
       return;
     }
-
-    router.replace('/onboarding');
+    
+    // NavigationGuard will detect the new session and redirect to /onboarding
+    // because the profile record in 'users' table won't exist yet.
   };
 
   return (
