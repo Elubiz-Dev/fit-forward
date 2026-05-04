@@ -3,10 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "strictNullChecks": true,
-    "target": "es2021",
-    "module": "esnext",
+    "target": "ESNext",
+    "module": "ESNext",
     "jsx": "react-jsx",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "skipLibCheck": true
   },
   "include": [
     "**/*.ts",
