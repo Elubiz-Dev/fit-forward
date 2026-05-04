@@ -112,7 +112,8 @@
     "nutritionist": "Nutricionista",
     "trainer": "Entrenador",
     "planner": "Planificador",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "coach": "Coach"
   },
   "dashboard": {
     "greetingMorning": "Buen día",

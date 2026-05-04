@@ -157,6 +157,11 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
     throw new Error('Image data is missing or empty.');
   }
 
+  const langNames: Record<string, string> = {
+    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
+  };
+  const targetLang = langNames[language] || 'English';
+
   const prompt = `Analyze this food image and estimate the nutritional content.
 IMPORTANT: Return ONLY a valid JSON object. Do not include markdown blocks or extra text.
 Structure:
@@ -168,7 +173,7 @@ Structure:
   "confidence": "high",
   "notes": "brief note about the estimation"
 }
-IMPORTANT: The "notes" field MUST be in ${language === 'es' ? 'Spanish' : language === 'fr' ? 'French' : language === 'pt' ? 'Portuguese' : language === 'it' ? 'Italian' : language === 'de' ? 'German' : language === 'ru' ? 'Russian' : 'English'}.`;
+IMPORTANT: The "name" and "notes" fields MUST be in ${targetLang}.`;
 
   try {
     const data = await fetchGroq({
