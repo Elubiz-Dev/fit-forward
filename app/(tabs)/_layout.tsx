@@ -26,7 +26,7 @@ export default function TabsLayout() {
   const pathname = usePathname();
   const { width } = Dimensions.get('window');
 
-  const tabs = ['/tracker', '/dashboard', '/planner', '/coach'];
+  const tabs = ['/tracker', '/dashboard', '/coach', '/planner'];
   const currentIndex = tabs.findIndex(t => pathname.includes(t));
 
   const stateRef = useRef({ currentIndex, isPro });
@@ -94,6 +94,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="coach/index"
+        options={{
+          title: t('tabs.coach', 'Coach'),
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={MessageCircle} label={t('tabs.coach', 'Coach')} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="planner/index"
         options={{
           title: t('tabs.planner', 'Planner'),
@@ -108,15 +117,6 @@ export default function TabsLayout() {
               router.push('/modals/paywall');
             }
           },
-        }}
-      />
-      <Tabs.Screen
-        name="coach/index"
-        options={{
-          title: t('tabs.coach', 'Coach'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={MessageCircle} label={t('tabs.coach', 'Coach')} focused={focused} />
-          ),
         }}
       />
       <Tabs.Screen
