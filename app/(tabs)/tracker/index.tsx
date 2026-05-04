@@ -67,7 +67,7 @@ export default function TrackerScreen() {
   const { t } = useTranslation();
   const colors = useTheme();
   const { language } = useSettingsStore();
-  const { profile } = useAuthStore();
+  const { profile, setProfile } = useAuthStore();
   const { 
     todayLogs, fetchLogs, selectedDate, setDate, streakDays, 
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
@@ -98,10 +98,39 @@ export default function TrackerScreen() {
 
   const { calories, protein, carbs, fat, sugar, fiber, sodium, iron, saturatedFat, transFat } = totals();
 
-  const grouped = MEALS.reduce((acc, m) => {
+  const allMeals = useMemo(() => {
+    const meals = [...MEALS] as string[];
+    const extra = profile?.extraSnacks || 0;
+    for (let i = 1; i <= extra; i++) {
+      meals.push(`snack${i + 1}`);
+    }
+    return meals;
+  }, [profile?.extraSnacks]);
+
+  const grouped = allMeals.reduce((acc, m) => {
     acc[m] = todayLogs.filter((l) => l.meal === m);
     return acc;
-  }, {} as Record<Meal, typeof todayLogs>);
+  }, {} as Record<string, typeof todayLogs>);
+
+  const handleAddExtraSnack = async () => {
+    if (!profile) return;
+    const newCount = (profile.extraSnacks || 0) + 1;
+    const newProfile = { ...profile, extraSnacks: newCount };
+    setProfile(newProfile);
+    if (profile.id) {
+      await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
+    }
+  };
+
+  const handleRemoveExtraSnack = async () => {
+    if (!profile) return;
+    const newCount = Math.max(0, (profile.extraSnacks || 0) - 1);
+    const newProfile = { ...profile, extraSnacks: newCount };
+    setProfile(newProfile);
+    if (profile.id) {
+      await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
+    }
+  };
 
   const handleAddMeal = (meal: Meal) => {
     router.push({ pathname: '/modals/scan', params: { initialMeal: meal, date: selectedDate } } as any);
@@ -116,7 +145,7 @@ export default function TrackerScreen() {
       arr.push({
         label: d.toLocaleDateString(language, { weekday: 'narrow' }).toUpperCase(),
         dayNum: d.getDate(),
-        full: d.toLocaleDateString('en-CA'),
+        full: d.toISOString().split('T')[0],
       });
     }
     return arr;
@@ -125,28 +154,16 @@ export default function TrackerScreen() {
   const pct = Math.min(calories / Math.max(target, 1), 1);
   const strokeDashoffset = ARC_CIRCUMFERENCE - pct * ARC_CIRCUMFERENCE;
 
-  const getDefaultNeat = (level: string) => {
-    switch (level) {
-      case 'sedentary': return 'seated';
-      case 'light': return 'standing_sometimes';
-      case 'moderate': return 'standing_mostly';
-      case 'active': return 'moving';
-      default: return 'standing_sometimes';
-    }
+  const ACTIVITY_TO_EXERCISE: Record<string, string> = {
+    'sedentary':   'none',
+    'light':       '1-2',
+    'moderate':    '3-4',
+    'active':      '5-6',
+    'very_active': 'daily',
   };
 
-  const getDefaultExercise = (level: string) => {
-    switch (level) {
-      case 'sedentary': return 'none';
-      case 'light': return '1-2';
-      case 'moderate': return '3-4';
-      case 'active': return '5-6';
-      default: return '3-4';
-    }
-  };
-
-  const currentNeat = dailyNeat[selectedDate] || getDefaultNeat(profile?.activityLevel || 'light');
-  const currentExercise = dailyExercise[selectedDate] || getDefaultExercise(profile?.activityLevel || 'light');
+  const currentNeat = dailyNeat[selectedDate] || profile?.lifestyle || 'standing_sometimes';
+  const currentExercise = dailyExercise[selectedDate] || ACTIVITY_TO_EXERCISE[profile?.activityLevel || 'moderate'] || '3-4';
 
   const baseline = (NEAT_CALORIES[currentNeat] || 0) + (EXERCISE_CALORIES[currentExercise] || 0);
   
@@ -185,10 +202,10 @@ export default function TrackerScreen() {
           )}
         </TouchableOpacity>
         <View style={s.headerCenter}>
-          <Text style={s.streakText}>🔥 {streakDays}</Text>
+          <Text style={[s.streakText, { color: colors.textPrimary }]}>🔥 {streakDays}</Text>
           <TouchableOpacity onPress={() => router.push('/modals/calendar' as any)}>
-            <Text style={s.dateText}>
-              🗓️ {selectedDate === new Date().toLocaleDateString('en-CA') ? t('tracker.today') : new Date(selectedDate + 'T12:00:00').toLocaleDateString(t('common.locale'), { month: 'short', day: 'numeric' })} ▾
+            <Text style={[s.dateText, { color: colors.textPrimary }]}>
+              🗓️ {selectedDate === new Date().toISOString().split('T')[0] ? t('tracker.today') : new Date(selectedDate + 'T12:00:00').toLocaleDateString(t('common.locale'), { month: 'short', day: 'numeric' })} ▾
             </Text>
           </TouchableOpacity>
         </View>
@@ -213,21 +230,7 @@ export default function TrackerScreen() {
           ))}
         </View>
 
-        {/* Empty Plan Banner */}
-        {todayLogs.length === 0 && (
-          <View style={[s.emptyBanner, { backgroundColor: '#7C5CFC15' }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.emptyBannerTitle}>{t('tracker.planEmptyTitle')}</Text>
-              <TouchableOpacity 
-                style={[s.planificarBtn, { backgroundColor: colors.primary }]}
-                onPress={() => profile?.isPro ? Alert.alert(t('tabs.planner'), t('common.comingSoon')) : router.push('/modals/paywall' as any)}
-              >
-                <Text style={s.planificarText}>{t('tracker.planEmptySub')} {profile?.isPro ? '' : '🔒'}</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={{ fontSize: 60, opacity: 0.8 }}>🥣</Text>
-          </View>
-        )}
+
 
         {/* Widgets Carousel */}
         <ScrollView 
@@ -242,7 +245,7 @@ export default function TrackerScreen() {
           }}
         >
           {/* Main Calorie Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, width: Dimensions.get('window').width - 32 }]}>
+          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: Dimensions.get('window').width - 32 }]}>
             <View style={s.arcWrap}>
               <Svg width={RING_SIZE} height={RING_SIZE / 2 + 20}>
                 <Path
@@ -278,7 +281,7 @@ export default function TrackerScreen() {
           </View>
 
           {/* Other Nutrients Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, width: Dimensions.get('window').width - 32 }]}>
+          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: Dimensions.get('window').width - 32 }]}>
             <View style={s.cardHeader}>
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.otherNutrients')}</Text>
             </View>
@@ -289,7 +292,7 @@ export default function TrackerScreen() {
               { label: t('tracker.sodium'), val: `${Math.round(sodium)} mg` },
               { label: t('tracker.iron'), val: `${Math.round(iron)} mg` },
             ].map((nut) => (
-              <View key={nut.label} style={s.nutrientRow}>
+              <View key={nut.label} style={[s.nutrientRow, { borderBottomColor: colors.border }]}>
                 <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>🔹 {nut.label}</Text>
                 {profile?.isPro ? (
                    <Text style={{ color: colors.textMuted }}>{nut.val}</Text>
@@ -315,13 +318,23 @@ export default function TrackerScreen() {
         </View>
 
         {/* Meals */}
-        {MEALS.map((m) => {
-          const mealLogs = grouped[m];
+        {allMeals.map((m) => {
+          const mealLogs = grouped[m] || [];
           const mealCals = Math.round(mealLogs.reduce((s, l) => s + (l.calories || 0), 0));
+          const isExtraSnack = m.startsWith('snack') && m !== 'snack';
+          const snackNumber = isExtraSnack ? m.replace('snack', '') : '';
+          
           return (
             <View key={m} style={[s.mealCard, { backgroundColor: colors.surface }]}>
               <View style={s.cardHeader}>
-                <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t(`tracker.${m}`, m)}</Text>
+                <Text style={[s.cardTitle, { color: colors.textPrimary }]}>
+                  {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
+                </Text>
+                {isExtraSnack && m === `snack${(profile?.extraSnacks || 0) + 1}` && (
+                  <TouchableOpacity onPress={handleRemoveExtraSnack}>
+                    <Text style={{ color: colors.error, fontSize: 13 }}>{t('common.remove', 'Remove')}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <Text style={[s.mealSub, { color: colors.textSecondary }]}>🔥 {mealCals} kcal</Text>
               
@@ -345,12 +358,19 @@ export default function TrackerScreen() {
                 </TouchableOpacity>
               ))}
 
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => handleAddMeal(m)}>
+              <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => handleAddMeal(m as Meal)}>
                 <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
               </TouchableOpacity>
             </View>
           );
         })}
+
+        <TouchableOpacity 
+          style={[s.mealCard, { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border, alignItems: 'center', paddingVertical: 20 }]} 
+          onPress={handleAddExtraSnack}
+        >
+          <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>+ {t('tracker.addSnack', 'Add Snack')}</Text>
+        </TouchableOpacity>
 
         {/* Water */}
         {isFetching && <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />}
@@ -374,7 +394,7 @@ export default function TrackerScreen() {
         </View>
 
         {/* Activity Section */}
-        <View style={[s.card, { backgroundColor: colors.surface }]}>
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.activity')}</Text>
           </View>
@@ -383,7 +403,7 @@ export default function TrackerScreen() {
             <Text style={[s.activityTotal, { color: colors.textPrimary }]}>{totalBurned} kcal</Text>
           </View>
           
-          <TouchableOpacity style={s.nutrientRow} onPress={() => router.push('/modals/select-activity-level' as any)}>
+          <TouchableOpacity style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => router.push('/modals/select-activity-level' as any)}>
             <View style={s.nutrientRowLeft}>
               <Text style={{ fontSize: 24 }}>🔥</Text>
               <View>
@@ -393,11 +413,11 @@ export default function TrackerScreen() {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{EXERCISE_CALORIES[currentExercise] || 0} {t('tracker.kcal')}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('tracker.weeklyAverage')}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('dashboard.weeklyAvg')}</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.nutrientRow} onPress={() => router.push('/modals/select-neat' as any)}>
+          <TouchableOpacity style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => router.push('/modals/select-neat' as any)}>
             <View style={s.nutrientRowLeft}>
               <Text style={{ fontSize: 24 }}>🏃</Text>
               <View>
@@ -409,7 +429,7 @@ export default function TrackerScreen() {
           </TouchableOpacity>
 
           {dayActivities.map(act => (
-            <TouchableOpacity key={act.id} style={s.nutrientRow} onPress={() => handleActivityPress(act)}>
+            <TouchableOpacity key={act.id} style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => handleActivityPress(act)}>
               <View style={s.nutrientRowLeft}>
                 <Text style={{ fontSize: 24 }}>{act.icon}</Text>
                 <View>
@@ -427,7 +447,7 @@ export default function TrackerScreen() {
         </View>
 
         {/* Steps Section */}
-        <View style={[s.card, { backgroundColor: colors.surface }]}>
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.steps')}</Text>
             <TouchableOpacity onPress={() => setSteps(0)}>
@@ -467,8 +487,8 @@ const s = StyleSheet.create({
   avatarPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   avatarText:    { color: '#000', fontWeight: 'bold' },
   headerCenter:  { flexDirection: 'row', gap: 16 },
-  streakText:    { fontSize: 16, fontWeight: '600', color: '#fff' },
-  dateText:      { fontSize: 16, fontWeight: '600', color: '#fff' },
+  streakText:    { fontSize: 16, fontWeight: '600' },
+  dateText:      { fontSize: 16, fontWeight: '600' },
   
   scrollContent: { padding: 16, paddingBottom: 100, gap: 16 },
 
@@ -485,15 +505,7 @@ const s = StyleSheet.create({
   dotsRow:       { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: -8 },
   dotIndicator:  { width: 8, height: 8, borderRadius: 4 },
 
-  premiumBanner: { backgroundColor: '#4A1D24', borderRadius: Radius.lg, padding: 14, alignItems: 'center' },
-  premiumText:   { color: '#FFB4B4', fontWeight: 'bold', fontSize: 14 },
-
-  emptyBanner:   { borderRadius: Radius.lg, padding: 20, flexDirection: 'row', alignItems: 'center' },
-  emptyBannerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-  planificarBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: Radius.full, alignSelf: 'flex-start' },
-  planificarText:{ color: '#000', fontWeight: 'bold' },
-
-  card:          { borderRadius: Radius.xl, padding: 20, borderWidth: 1, borderColor: '#2C2C2E' },
+  card:          { borderRadius: Radius.xl, padding: 20, borderWidth: 1 },
   arcWrap:       { alignItems: 'center', marginTop: 10, height: 120 },
   arcTextWrap:   { position: 'absolute', top: 50, alignItems: 'center' },
   arcVal:        { fontSize: 24, fontWeight: '800' },
@@ -505,7 +517,7 @@ const s = StyleSheet.create({
 
   cardHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   cardTitle:     { fontSize: 18, fontWeight: '700' },
-  nutrientRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
+  nutrientRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1 },
   nutrientLabel: { fontSize: 15 },
 
   mealCard:      { borderRadius: Radius.xl, padding: 20 },
@@ -526,7 +538,7 @@ const s = StyleSheet.create({
   activityTotal: { fontSize: 20, fontWeight: 'bold' },
   nutrientRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   
-  syncBtn: { backgroundColor: '#2C2C2E', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.md },
+  syncBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.md, borderWidth: 1 },
   syncText: { fontSize: 12, fontWeight: '600' },
   stepsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
   stepsVal: { fontSize: 24, fontWeight: 'bold' },

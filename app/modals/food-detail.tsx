@@ -127,7 +127,7 @@ export default function FoodDetailModal() {
           fat,
           grams:     g,
           meal,
-          logged_at: date || new Date().toLocaleDateString('en-CA'),
+          logged_at: date || new Date().toISOString().split('T')[0],
           sugar,
           fiber,
           sodium,
@@ -137,9 +137,9 @@ export default function FoodDetailModal() {
         }).select().single();
 
         if (data && !error) {
-          // Replace the temporary ID with the real one from Supabase
+          // Await fetchLogs so the UI reflects the new log before navigating back
           const { fetchLogs, selectedDate } = useNutritionStore.getState();
-          fetchLogs(profile.id, selectedDate);
+          await fetchLogs(profile.id, selectedDate);
         }
       }
     }

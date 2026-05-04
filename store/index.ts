@@ -26,19 +26,21 @@ export interface UserProfile {
   tdee:            number;
   targetCalories:  number;
   macros:          { protein: number; carbs: number; fat: number };
-  restrictions?:   string[];
+  availableFoods?:  string[];
   preferences?:    string[];
   isPro:           boolean;
   role:            'user' | 'admin' | 'super_admin';
   onboardingDone:  boolean;
   widgetsOrder?:   string[];
+  lifestyle?:      'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
+  extraSnacks?:    number;
 }
 
 export interface FoodLog {
   id:         string;
   foodItem:   FoodItem;
   grams:      number;
-  meal:       'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal:       string;
   loggedAt:   string;  // ISO date string
   calories:   number;
   protein:    number;
@@ -135,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
       setSession: (session) => set({ session }),
       setProfile: (profile) => set({ profile }),
       setLoading: (isLoading) => set({ isLoading }),
-      clearAuth:  () => set({ session: null, profile: null }),
+      clearAuth:  () => set({ session: null, profile: null, isLoading: false }),
     }),
     {
       name: 'ff-auth',
@@ -148,7 +150,6 @@ export const useAuthStore = create<AuthState>()(
 // ─── Nutrition / tracker store ────────────────────────────────────────────────
 interface NutritionState {
   todayLogs:    FoodLog[];
-  waterIntake:  number;      // ml
   selectedDate: string;
   streakDays:   number;
   activityCals:  number;
@@ -198,8 +199,7 @@ export const useNutritionStore = create<NutritionState>()(
   persist(
     (set, get) => ({
       todayLogs:    [],
-      waterIntake:  0,
-      selectedDate: new Date().toLocaleDateString('en-CA'),
+      selectedDate: new Date().toISOString().split('T')[0],
       streakDays:   0,
       activityCals: 0,
       activityLogs: [],
@@ -212,10 +212,10 @@ export const useNutritionStore = create<NutritionState>()(
       dailyNeat:    {},
       dailyExercise:{},
       aiUsageCount: 0,
-      lastAiUsageDate: new Date().toLocaleDateString('en-CA'),
+      lastAiUsageDate: new Date().toISOString().split('T')[0],
 
       checkAndResetAiLimit: () => {
-        const today = new Date().toLocaleDateString('en-CA');
+        const today = new Date().toISOString().split('T')[0];
         if (get().lastAiUsageDate !== today) {
           set({ aiUsageCount: 0, lastAiUsageDate: today });
         }
@@ -238,12 +238,12 @@ export const useNutritionStore = create<NutritionState>()(
         let checkDate = new Date(); 
         
         while (true) {
-          const dateStr = checkDate.toLocaleDateString('en-CA');
+          const dateStr = checkDate.toISOString().split('T')[0];
           if (newActiveDays[dateStr]) {
             streak++;
             checkDate.setDate(checkDate.getDate() - 1);
           } else {
-            const todayStr = new Date().toLocaleDateString('en-CA');
+            const todayStr = new Date().toISOString().split('T')[0];
             if (dateStr === todayStr) {
                checkDate.setDate(checkDate.getDate() - 1);
                continue;
@@ -265,28 +265,32 @@ export const useNutritionStore = create<NutritionState>()(
       })),
       setLogs:   (logs) => set({ todayLogs: logs }),
       setWater:  (ml) => {
-        set((s) => ({ dailyWater: { ...s.dailyWater, [s.selectedDate]: ml } }));
-        if (ml > 0) get().updateActivity(get().selectedDate);
+        const safeml = Math.max(0, ml);
+        set((s) => ({ dailyWater: { ...s.dailyWater, [s.selectedDate]: safeml } }));
+        if (safeml > 0) get().updateActivity(get().selectedDate);
       },
       addWater:  (ml) => {
         const date = get().selectedDate;
         set((s) => ({ 
-          dailyWater: { ...s.dailyWater, [date]: (s.dailyWater[date] || 0) + ml } 
+          dailyWater: { ...s.dailyWater, [date]: Math.max(0, (s.dailyWater[date] || 0) + ml) } 
         }));
-        get().updateActivity(date);
+        const newVal = get().dailyWater[date] || 0;
+        if (newVal > 0) get().updateActivity(date);
       },
       setDate:   (date) => set({ selectedDate: date }),
       setStreak: (streakDays) => set({ streakDays }),
       setSteps:  (steps) => {
-        set((s) => ({ dailySteps: { ...s.dailySteps, [s.selectedDate]: steps } }));
-        if (steps > 0) get().updateActivity(get().selectedDate);
+        const safeSteps = Math.max(0, steps);
+        set((s) => ({ dailySteps: { ...s.dailySteps, [s.selectedDate]: safeSteps } }));
+        if (safeSteps > 0) get().updateActivity(get().selectedDate);
       },
       addSteps:  (steps) => {
         const date = get().selectedDate;
         set((s) => ({ 
           dailySteps: { ...s.dailySteps, [date]: Math.max(0, (s.dailySteps[date] || 0) + steps) } 
         }));
-        if (steps > 0) get().updateActivity(date);
+        const newVal = get().dailySteps[date] || 0;
+        if (newVal > 0) get().updateActivity(date);
       },
       setSleep:  (hours) => {
         set((s) => ({ dailySleep: { ...s.dailySleep, [s.selectedDate]: hours } }));
@@ -333,15 +337,13 @@ export const useNutritionStore = create<NutritionState>()(
       },
 
       fetchLogs: async (userId, date) => {
-        const start = `${date}T00:00:00Z`;
-        const end   = `${date}T23:59:59Z`;
+        // logged_at is DATE type — compare directly, not with timestamps
         const { supabase } = await import('../services/supabase');
         const { data, error } = await supabase
           .from('food_logs')
           .select('*')
           .eq('user_id', userId)
-          .gte('logged_at', start)
-          .lte('logged_at', end);
+          .eq('logged_at', date);
 
       if (data && !error) {
         const formattedLogs = data.map((d: any) => ({
@@ -380,7 +382,6 @@ export const useNutritionStore = create<NutritionState>()(
       },
       reset: () => set({
         todayLogs: [],
-        waterIntake: 0,
         streakDays: 0,
         dailyWater: {},
         dailySteps: {},
@@ -391,6 +392,8 @@ export const useNutritionStore = create<NutritionState>()(
         activityLogs: [],
         favoriteFoods: [],
         aiUsageCount: 0,
+        activeDays: {},
+        plannedDays: 0,
       }),
     }),
     {

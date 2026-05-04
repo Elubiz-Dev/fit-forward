@@ -316,7 +316,7 @@ export default function NutritionistScreen() {
         tdee:           profile.tdee           ?? 2000,
         targetCalories: profile.targetCalories ?? 2000,
         macros:         profile.macros         ?? { protein: 150, carbs: 200, fat: 67 },
-        restrictions:   profile.restrictions,
+        availableFoods: profile.availableFoods,
       }, language, coachType);
 
       const reply = await sendCoachMessage(history, text, systemPrompt, currentImg ?? undefined);

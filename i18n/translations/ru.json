@@ -12,7 +12,10 @@
     "or": "or",
     "back": "Back",
     "remove": "Remove",
-    "locale": "en-US"
+    "locale": "en-US",
+    "done": "Готово",
+    "continue": "Продолжить",
+    "previous": "Пред."
   },
   "tabs": {
     "dashboard": "Панель",
@@ -92,7 +95,12 @@
     "cm": "cm",
     "kg": "kg",
     "dietarySub": "e.g. Vegan, Nut-free",
-    "none": "None"
+    "none": "None",
+    "bodyMeasurements": "Измерения тела",
+    "progressPhoto": "Фото прогресса",
+    "recentHistory": "Недавняя история",
+    "saveMeasurementsFailed": "Не удалось сохранить измерения.",
+    "photoAttached": "Фото прикреплено!"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -445,7 +453,37 @@
       "salt": "Соль",
       "soySauce": "Соевый соус",
       "hotSauce": "Острый соус",
-      "protein_powder": "Протеиновый порошок"
+      "protein_powder": "Протеиновый порошок",
+      "turkey": "Индейка",
+      "pork": "Свинина",
+      "shrimp": "Креветки",
+      "seitan": "Сейтан",
+      "sweet_potato": "Батат",
+      "quinoa": "Киноа",
+      "beans": "Бобы",
+      "lentils": "Чечевица",
+      "corn": "Кукуруза",
+      "tortilla": "Тортилья",
+      "almonds": "Миндаль",
+      "peanut_butter": "Арахисовая паста",
+      "olive_oil": "Оливковое масло",
+      "yogurt": "Йогурт",
+      "chia_seeds": "Семена чиа",
+      "coconut_oil": "Кокосовое масло",
+      "mango": "Манго",
+      "pineapple": "Ананас",
+      "pear": "Груша",
+      "kiwi": "Киви",
+      "lettuce": "Салат",
+      "cucumber": "Огурец",
+      "bell_pepper": "Болгарский перец",
+      "zucchini": "Цуккини",
+      "pepper": "Перец",
+      "soy_sauce": "Соевый соус",
+      "hot_sauce": "Острый соус",
+      "garlic": "Чеснок",
+      "mustard": "Горчица",
+      "lemon_juice": "Лимонный сок"
     },
     "foodsTitle": "Любимая Еда",
     "foodsSub": "Выберите продукты, которые вам больше всего нравятся.",
@@ -455,9 +493,11 @@
     "fruits": "Фрукты",
     "veggies": "Овощи",
     "condiments": "Приправы",
-    "chooseAtLeast": "Пожалуйста, выберите хотя бы 3 продукта.",
+    "chooseAtLeast": "Выберите как минимум {{count}}",
     "selectAll": "Выбрать Все",
-    "deselectAll": "Отменить Все"
+    "deselectAll": "Отменить Все",
+    "validationFoodMin": "Выберите как минимум {{min}} для {{category}}",
+    "proBtn": "Перейти на Pro"
   },
   "scan": {
     "title": "Scan Food",
@@ -490,7 +530,14 @@
     "limitReached": "AI Limit Reached",
     "limitReachedSub": "You have reached the daily limit of 15 AI registrations. Upgrade to Pro for unlimited use!",
     "aiLimitNote": "{{count}} AI registrations left today",
-    "recording": "Recording..."
+    "recording": "Recording...",
+    "text": "Текст",
+    "barcodeHint": "Наведите камеру на штрих-код",
+    "noFoodsFound": "Продукты не обнаружены. Попробуйте уточнить.",
+    "lookupFailed": "Не удалось найти штрих-код.",
+    "noVoiceDetected": "Голос не распознан. Говорите четче.",
+    "audioFileError": "Аппаратная ошибка: аудиофайл не создан.",
+    "audioProcessError": "Ошибка обработки звука: {{error}}"
   },
   "foodDetail": {
     "per": "Per",

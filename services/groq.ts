@@ -51,7 +51,7 @@ export function buildCoachSystemPrompt(userProfile: {
   tdee: number;
   targetCalories: number;
   macros: { protein: number; carbs: number; fat: number };
-  restrictions?: string[];
+  availableFoods?: string[];
 }, language: string = 'en', coachType: 'nutritionist' | 'trainer' = 'nutritionist') {
   const langNames: Record<string, string> = {
     en: 'English',
@@ -90,7 +90,7 @@ User profile:
 - TDEE: ${userProfile.tdee} kcal/day
 - Daily calorie target: ${userProfile.targetCalories} kcal
 - Macro targets: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
-${userProfile.restrictions?.length ? `- Dietary restrictions: ${userProfile.restrictions.join(', ')}` : ''}
+${userProfile.availableFoods?.length ? `- Dietary restrictions: ${userProfile.availableFoods.join(', ')}` : ''}
 
 Guidelines:
 1. Act exclusively as a nutritionist and dietitian. Focus on food, calories, macros, recipes, digestion, and dietary habits.
@@ -210,7 +210,7 @@ export async function generateMealPlan(userProfile: {
   targetCalories: number;
   macros: { protein: number; carbs: number; fat: number };
   goal: string;
-  restrictions?: string[];
+  availableFoods?: string[];
   preferences?: string[];
 }, language: string = 'en'): Promise<Record<string, { meal: string; name: string; calories: number; protein: number; carbs: number; fat: number }[]>> {
   const langNames: Record<string, string> = {
@@ -222,7 +222,7 @@ export async function generateMealPlan(userProfile: {
 - Daily calories: ${userProfile.targetCalories} kcal
 - Macros: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
 - Goal: ${userProfile.goal}
-${userProfile.restrictions?.length ? `- Restrictions: ${userProfile.restrictions.join(', ')}` : ''}
+${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
 ${userProfile.preferences?.length ? `- Preferences: ${userProfile.preferences.join(', ')}` : ''}
 
 IMPORTANT: All meal names, descriptions, and instructions MUST be in ${targetLang}.

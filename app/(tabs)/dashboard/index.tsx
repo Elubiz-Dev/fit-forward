@@ -22,7 +22,7 @@ const RADIUS        = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 // ─── Calorie/Score Ring ─────────────────────────────────────────────────────────
-function ScoreRing({ consumed, target }: { consumed: number; target: number }) {
+function ScoreRing({ consumed, target, dateLabel }: { consumed: number; target: number; dateLabel: string }) {
   const { t } = useTranslation();
   const colors = useTheme();
   const pct = Math.min(consumed / Math.max(target, 1), 1);
@@ -30,7 +30,7 @@ function ScoreRing({ consumed, target }: { consumed: number; target: number }) {
 
   return (
     <View style={ring.container}>
-      <Text style={[ring.topLabel, { color: colors.textSecondary }]}>{t('tracker.today', 'Hoy')}</Text>
+      <Text style={[ring.topLabel, { color: colors.textSecondary }]}>{dateLabel}</Text>
       <View style={{ height: 16 }} />
       <Svg width={RING_SIZE} height={RING_SIZE}>
         <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
@@ -133,13 +133,12 @@ export default function DashboardScreen() {
   const name = profile?.name?.split(' ')[0] ?? t('dashboard.fallbackName');
 
   useEffect(() => {
-    async function loadTodayData() {
+    async function loadSelectedData() {
       if (!profile?.id) return;
-      const today = new Date().toLocaleDateString('en-CA');
-      await fetchLogs(profile.id, today);
+      await fetchLogs(profile.id, selectedDate);
     }
-    loadTodayData();
-  }, [profile?.id]);
+    loadSelectedData();
+  }, [profile?.id, selectedDate]);
 
   const initialWeight = profile?.startingWeight || profile?.weight || 0;
   const currentWeight = latest()?.weight || profile?.weight || 0;
@@ -159,6 +158,20 @@ export default function DashboardScreen() {
     // Maintain: 100% as long as they are within 1.5kg of target
     const diff = Math.abs(currentWeight - targetWeight);
     progressPct = diff <= 1.5 ? 100 : Math.max(0, 100 - (diff * 10));
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  let dateLabel = t('tracker.today', 'Hoy');
+  if (selectedDate === todayStr) {
+    dateLabel = t('tracker.today', 'Hoy');
+  } else {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    if (selectedDate === yest.toISOString().split('T')[0]) {
+      dateLabel = t('tracker.yesterday', 'Ayer');
+    } else {
+      dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' });
+    }
   }
 
   const [isEditing, setIsEditing] = useState(false);
@@ -299,7 +312,9 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={[s.date, { color: colors.textSecondary }]}>{new Date().toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+            <Text style={[s.date, { color: colors.textSecondary }]}>
+              {new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
           </View>
           <TouchableOpacity style={s.avatar} onPress={() => router.push('/(tabs)/profile')}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatarGrad}>
@@ -317,7 +332,7 @@ export default function DashboardScreen() {
           <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.scoreTitle')}</Text>
         </View>
         <View style={[s.cardFull, { backgroundColor: colors.surface }]}>
-          <ScoreRing consumed={calories} target={target} />
+          <ScoreRing consumed={calories} target={target} dateLabel={dateLabel} />
         </View>
 
         {/* Phase Card */}

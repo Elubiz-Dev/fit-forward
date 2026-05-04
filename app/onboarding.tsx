@@ -38,7 +38,7 @@ interface OnboardingData {
   dietType:     'recommended' | 'high_protein' | 'low_carb' | 'keto' | 'low_fat';
   targetWeight: number;
   velocity:     'slow' | 'moderate' | 'fast';
-  restrictions: string[];
+  availableFoods: string[];
 }
 
 // ─── Step 1: Goal ─────────────────────────────────────────────────────────────
@@ -291,14 +291,18 @@ const FOOD_CATEGORIES = [
   {
     id: 'proteins',
     title: 'proteins',
-    min: 2,
+    min: 3,
     items: [
       { id: 'chicken', label: 'chicken', emoji: '🍗' },
       { id: 'beef', label: 'beef', emoji: '🥩' },
       { id: 'fish', label: 'fish', emoji: '🐟' },
+      { id: 'turkey', label: 'turkey', emoji: '🦃' },
+      { id: 'pork', label: 'pork', emoji: '🥩' },
       { id: 'eggs', label: 'eggs', emoji: '🥚' },
       { id: 'tofu', label: 'tofu', emoji: '🧊' },
       { id: 'protein_powder', label: 'protein_powder', emoji: '🥛' },
+      { id: 'shrimp', label: 'shrimp', emoji: '🦐' },
+      { id: 'seitan', label: 'seitan', emoji: '🌾' },
     ]
   },
   {
@@ -308,20 +312,31 @@ const FOOD_CATEGORIES = [
     items: [
       { id: 'rice', label: 'rice', emoji: '🍚' },
       { id: 'potato', label: 'potato', emoji: '🥔' },
+      { id: 'sweet_potato', label: 'sweet_potato', emoji: '🍠' },
       { id: 'pasta', label: 'pasta', emoji: '🍝' },
       { id: 'oats', label: 'oats', emoji: '🥣' },
+      { id: 'quinoa', label: 'quinoa', emoji: '🥗' },
+      { id: 'beans', label: 'beans', emoji: '🫘' },
+      { id: 'lentils', label: 'lentils', emoji: '🥘' },
       { id: 'bread', label: 'bread', emoji: '🍞' },
+      { id: 'corn', label: 'corn', emoji: '🌽' },
+      { id: 'tortilla', label: 'tortilla', emoji: '🫓' },
     ]
   },
   {
     id: 'fats',
     title: 'fats',
-    min: 2,
+    min: 1,
     items: [
       { id: 'avocado', label: 'avocado', emoji: '🥑' },
       { id: 'nuts', label: 'nuts', emoji: '🥜' },
-      { id: 'peanutButter', label: 'peanutButter', emoji: '🍯' },
-      { id: 'oliveOil', label: 'oliveOil', emoji: '🫒' },
+      { id: 'almonds', label: 'almonds', emoji: '🫘' },
+      { id: 'peanut_butter', label: 'peanut_butter', emoji: '🍯' },
+      { id: 'olive_oil', label: 'olive_oil', emoji: '🫒' },
+      { id: 'cheese', label: 'cheese', emoji: '🧀' },
+      { id: 'yogurt', label: 'yogurt', emoji: '🍦' },
+      { id: 'chia_seeds', label: 'chia_seeds', emoji: '🌱' },
+      { id: 'coconut_oil', label: 'coconut_oil', emoji: '🥥' },
     ]
   },
   {
@@ -333,6 +348,10 @@ const FOOD_CATEGORIES = [
       { id: 'apple', label: 'apple', emoji: '🍎' },
       { id: 'berries', label: 'berries', emoji: '🍓' },
       { id: 'orange', label: 'orange', emoji: '🍊' },
+      { id: 'mango', label: 'mango', emoji: '🥭' },
+      { id: 'pineapple', label: 'pineapple', emoji: '🍍' },
+      { id: 'pear', label: 'pear', emoji: '🍐' },
+      { id: 'kiwi', label: 'kiwi', emoji: '🥝' },
     ]
   },
   {
@@ -345,6 +364,10 @@ const FOOD_CATEGORIES = [
       { id: 'carrot', label: 'carrot', emoji: '🥕' },
       { id: 'tomato', label: 'tomato', emoji: '🍅' },
       { id: 'onion', label: 'onion', emoji: '🧅' },
+      { id: 'lettuce', label: 'lettuce', emoji: '🥬' },
+      { id: 'cucumber', label: 'cucumber', emoji: '🥒' },
+      { id: 'bell_pepper', label: 'bell_pepper', emoji: '🫑' },
+      { id: 'zucchini', label: 'zucchini', emoji: '🥒' },
     ]
   },
   {
@@ -353,8 +376,12 @@ const FOOD_CATEGORIES = [
     min: 1,
     items: [
       { id: 'salt', label: 'salt', emoji: '🧂' },
-      { id: 'soySauce', label: 'soySauce', emoji: '🍶' },
-      { id: 'hotSauce', label: 'hotSauce', emoji: '🥫' },
+      { id: 'pepper', label: 'pepper', emoji: '🌶️' },
+      { id: 'soy_sauce', label: 'soy_sauce', emoji: '🍶' },
+      { id: 'hot_sauce', label: 'hot_sauce', emoji: '🥫' },
+      { id: 'garlic', label: 'garlic', emoji: '🧄' },
+      { id: 'mustard', label: 'mustard', emoji: '🍯' },
+      { id: 'lemon_juice', label: 'lemon_juice', emoji: '🍋' },
     ]
   }
 ];
@@ -364,20 +391,20 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
   const colors = useTheme();
 
   const toggle = (id: string) => {
-    const cur = data.restrictions ?? [];
-    onChange({ restrictions: cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id] });
+    const cur = data.availableFoods ?? [];
+    onChange({ availableFoods: cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id] });
   };
 
   const selectAll = (categoryItems: {id: string}[]) => {
-    const cur = data.restrictions ?? [];
+    const cur = data.availableFoods ?? [];
     const itemIds = categoryItems.map(i => i.id);
     const allSelected = itemIds.every(id => cur.includes(id));
     
     if (allSelected) {
-      onChange({ restrictions: cur.filter(id => !itemIds.includes(id)) });
+      onChange({ availableFoods: cur.filter(id => !itemIds.includes(id)) });
     } else {
       const uniqueNew = [...new Set([...cur, ...itemIds])];
-      onChange({ restrictions: uniqueNew });
+      onChange({ availableFoods: uniqueNew });
     }
   };
 
@@ -405,7 +432,7 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
           
           <View style={step.dietGrid}>
             {cat.items.map((item) => {
-              const active = data.restrictions?.includes(item.id);
+              const active = data.availableFoods?.includes(item.id);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -640,7 +667,7 @@ export default function OnboardingScreen() {
   const { theme } = useSettingsStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData]               = useState<Partial<OnboardingData>>({ 
-    restrictions: [], 
+    availableFoods: [], 
     age: 25, 
     weight: 70, 
     height: 170, 
@@ -662,7 +689,6 @@ export default function OnboardingScreen() {
   useEffect(() => {
     // When starting onboarding, clear any leftover local data from previous sessions
     // to ensure the new user starts with a clean slate.
-    useNutritionStore.getState().reset();
     useCoachStore.getState().resetAll();
     useBodyStore.getState().reset();
     useRecipesStore.getState().reset();
@@ -687,7 +713,7 @@ export default function OnboardingScreen() {
   const handleNext = () => {
     // Validation for food selection step
     if (stepId === 'diet') {
-      const cur = data.restrictions ?? [];
+      const cur = data.availableFoods ?? [];
       for (const cat of FOOD_CATEGORIES) {
         const selectedInCategory = cat.items.filter(item => cur.includes(item.id));
         if (selectedInCategory.length < cat.min) {
@@ -751,7 +777,7 @@ export default function OnboardingScreen() {
         macros:         { protein: finalProtein, carbs: finalCarbs, fat: finalFat },
         targetWeight:   d.targetWeight,
         startingWeight: d.weight,
-        restrictions:   d.restrictions,
+        availableFoods: d.availableFoods,
         preferences:    [d.dietType, d.velocity],
         isPro:          false,
         role:           'user' as const,
@@ -773,7 +799,7 @@ export default function OnboardingScreen() {
         target_calories:  profileData.targetCalories,
         starting_weight:  profileData.startingWeight,
         macros:           profileData.macros,
-        restrictions:     profileData.restrictions,
+        available_foods:  profileData.availableFoods,
         preferences:      profileData.preferences,
         is_pro:           profileData.isPro,
         onboarding_done:  profileData.onboardingDone,

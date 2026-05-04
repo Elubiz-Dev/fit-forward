@@ -75,14 +75,19 @@ export default function RootLayout() {
             height:         data.height,
             activityLevel:  data.activity_level,
             goal:           data.goal,
+            targetWeight:   data.target_weight,
+            startingWeight: data.starting_weight,
             tdee:           data.tdee,
             targetCalories: data.target_calories,
             macros:         data.macros,
-            restrictions:   data.restrictions,
+            availableFoods: data.available_foods,
             preferences:    data.preferences,
             isPro:          data.is_pro,
             role:           data.role || 'user',
             onboardingDone: data.onboarding_done,
+            lifestyle:      data.lifestyle,
+            extraSnacks:    data.extra_snacks,
+            widgetsOrder:   data.widgets_order,
           });
         } else {
           setProfile(null);
@@ -166,6 +171,10 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="modals/sleep"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/food-selection"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>

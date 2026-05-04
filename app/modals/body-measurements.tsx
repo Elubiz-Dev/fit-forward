@@ -72,7 +72,7 @@ export default function BodyMeasurementsModal() {
 
     setSaving(true);
     try {
-      const today = new Date().toLocaleDateString('en-CA');
+      const today = new Date().toISOString().split('T')[0];
       const measurement: BodyMeasurement = {
         id:      `bm-${Date.now()}`,
         date:    today,
@@ -126,7 +126,7 @@ export default function BodyMeasurementsModal() {
       setShowSuccess(true);
 
     } catch (err) {
-      Alert.alert('Error', 'Failed to save measurements.');
+      Alert.alert(t('common.error'), t('profile.saveMeasurementsFailed'));
     } finally {
       setSaving(false);
     }
@@ -207,7 +207,7 @@ export default function BodyMeasurementsModal() {
               {photo ? (
                 <View style={{ position: 'relative' }}>
                   <Text style={{ fontSize: 40 }}>📸</Text>
-                  <Text style={{ fontSize: 12, color: colors.success, fontWeight: '700' }}>Photo Attached!</Text>
+                  <Text style={{ fontSize: 12, color: colors.success, fontWeight: '700' }}>{t('profile.photoAttached')}</Text>
                 </View>
               ) : (
                 <View style={{ alignItems: 'center' }}>

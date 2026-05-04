@@ -12,7 +12,10 @@
     "or": "or",
     "back": "Back",
     "remove": "Remove",
-    "locale": "en-US"
+    "locale": "en-US",
+    "done": "Fatto",
+    "continue": "Continua",
+    "previous": "Prec."
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -92,7 +95,12 @@
     "cm": "cm",
     "kg": "kg",
     "dietarySub": "e.g. Vegan, Nut-free",
-    "none": "None"
+    "none": "None",
+    "bodyMeasurements": "Misure Corporee",
+    "progressPhoto": "Foto di Progresso",
+    "recentHistory": "Cronologia Recente",
+    "saveMeasurementsFailed": "Impossibile salvare le misurazioni.",
+    "photoAttached": "Foto allegata!"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -445,7 +453,37 @@
       "salt": "Sale",
       "soySauce": "Salsa di soia",
       "hotSauce": "Salsa piccante",
-      "protein_powder": "Proteine in Polvere"
+      "protein_powder": "Proteina in Polvere",
+      "turkey": "Tacchino",
+      "pork": "Maiale",
+      "shrimp": "Gamberetti",
+      "seitan": "Seitan",
+      "sweet_potato": "Patata Dolce",
+      "quinoa": "Quinoa",
+      "beans": "Fagioli",
+      "lentils": "Lenticchie",
+      "corn": "Mais",
+      "tortilla": "Tortilla",
+      "almonds": "Mandorle",
+      "peanut_butter": "Burro di Arachidi",
+      "olive_oil": "Olio d'Oliva",
+      "yogurt": "Yogurt",
+      "chia_seeds": "Semi di Chia",
+      "coconut_oil": "Olio di Cocco",
+      "mango": "Mango",
+      "pineapple": "Ananas",
+      "pear": "Pera",
+      "kiwi": "Kiwi",
+      "lettuce": "Lattuga",
+      "cucumber": "Cetriolo",
+      "bell_pepper": "Peperone",
+      "zucchini": "Zucchina",
+      "pepper": "Pepe",
+      "soy_sauce": "Salsa di Soia",
+      "hot_sauce": "Salsa Piccante",
+      "garlic": "Aglio",
+      "mustard": "Senape",
+      "lemon_juice": "Succo di Limone"
     },
     "foodsTitle": "Cibi Preferiti",
     "foodsSub": "Seleziona i cibi che ti piacciono di più.",
@@ -455,9 +493,11 @@
     "fruits": "Frutta",
     "veggies": "Verdure",
     "condiments": "Condimenti",
-    "chooseAtLeast": "Scegli almeno 3 cibi.",
+    "chooseAtLeast": "Scegli almeno {{count}}",
     "selectAll": "Seleziona Tutto",
-    "deselectAll": "Deseleziona Tutto"
+    "deselectAll": "Deseleziona Tutto",
+    "validationFoodMin": "Seleziona almeno {{min}} opzioni per {{category}}",
+    "proBtn": "Passa a Pro"
   },
   "scan": {
     "title": "Scan Food",
@@ -490,7 +530,14 @@
     "limitReached": "AI Limit Reached",
     "limitReachedSub": "You have reached the daily limit of 15 AI registrations. Upgrade to Pro for unlimited use!",
     "aiLimitNote": "{{count}} AI registrations left today",
-    "recording": "Recording..."
+    "recording": "Recording...",
+    "text": "Testo",
+    "barcodeHint": "Centra il codice a barre per scansionare",
+    "noFoodsFound": "Nessun alimento rilevato. Sii più specifico.",
+    "lookupFailed": "Ricerca del codice a barre non riuscita.",
+    "noVoiceDetected": "Nessuna voce rilevata. Parla più chiaramente.",
+    "audioFileError": "Errore hardware: file audio non creato.",
+    "audioProcessError": "Errore nell'elaborazione audio: {{error}}"
   },
   "foodDetail": {
     "per": "Per",

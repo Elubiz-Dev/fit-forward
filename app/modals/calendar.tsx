@@ -45,7 +45,7 @@ export default function CalendarModal() {
 
   const handleSelectDay = (day: number) => {
     const newDate = new Date(calendarData.year, calendarData.month, day);
-    const dateString = newDate.toLocaleDateString('en-CA');
+    const dateString = newDate.toISOString().split('T')[0];
     setDate(dateString);
     router.back();
   };
@@ -108,7 +108,7 @@ export default function CalendarModal() {
             ))}
             {Array.from({ length: calendarData.daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const dayDate = new Date(calendarData.year, calendarData.month, day).toLocaleDateString('en-CA');
+              const dayDate = new Date(calendarData.year, calendarData.month, day).toISOString().split('T')[0];
               const isSelected = dayDate === selectedDate;
               const isActive = activeDays[dayDate];
               

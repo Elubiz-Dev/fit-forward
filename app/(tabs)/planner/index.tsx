@@ -83,7 +83,7 @@ export default function PlannerScreen() {
         targetCalories: profile.targetCalories,
         macros:         profile.macros,
         goal:           profile.goal,
-        restrictions:   profile.restrictions,
+        availableFoods: profile.availableFoods,
         preferences:    profile.preferences,
       }, language);
 
@@ -93,7 +93,7 @@ export default function PlannerScreen() {
       const { data: planData } = await supabase.from('meal_plans').insert({
         user_id:    profile.id,
         title:      'Weekly AI Plan',
-        week_start: new Date().toLocaleDateString('en-CA'),
+        week_start: new Date().toISOString().split('T')[0],
       }).select().single();
 
       if (planData) {

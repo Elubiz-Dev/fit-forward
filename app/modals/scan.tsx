@@ -143,14 +143,14 @@ export default function ScanModal() {
         if (text?.trim()) {
           setTextInput(prev => prev ? `${prev} ${text}` : text);
         } else {
-          Alert.alert(t('common.error'), 'No se detectó voz. Intenta hablar más claro.');
+          Alert.alert(t('common.error'), t('scan.noVoiceDetected'));
         }
       } else {
-        Alert.alert(t('common.error'), 'Error de hardware: No se generó el archivo de audio.');
+        Alert.alert(t('common.error'), t('scan.audioFileError'));
       }
     } catch (err: any) {
       console.error('Stop error:', err);
-      Alert.alert(t('common.error'), `Error al procesar audio: ${err.message || 'Error desconocido'}`);
+      Alert.alert(t('common.error'), t('scan.audioProcessError', { error: err.message || '' }));
     } finally {
       recordingStatus.current = 'idle';
       setLoading(false);
@@ -164,7 +164,7 @@ export default function ScanModal() {
     try {
       const items = await parseVoiceLog(textInput, language);
       if (!items || items.length === 0) {
-        Alert.alert(t('common.error'), t('scan.noFoodsFound') || 'No se detectaron alimentos. Intenta ser más específico.');
+        Alert.alert(t('common.error'), t('scan.noFoodsFound'));
         return;
       }
 
@@ -242,7 +242,7 @@ export default function ScanModal() {
       });
     } catch {
       setLoading(false);
-      Alert.alert(t('common.error'), t('scan.lookupFailed') || 'Failed to look up barcode. Please try again.', [
+      Alert.alert(t('common.error'), t('scan.lookupFailed'), [
         { text: 'OK', onPress: () => setScanned(false) },
       ]);
     }
@@ -357,7 +357,7 @@ export default function ScanModal() {
     if (!editedFoods.length) return;
 
     const targetMeal = initialMeal || getAutoMeal();
-    const logDate = date || new Date().toLocaleDateString('en-CA');
+    const logDate = date || new Date().toISOString().split('T')[0];
 
     editedFoods.forEach((food) => {
       addLog({

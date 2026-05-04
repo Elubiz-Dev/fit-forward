@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, Image, Linking,
@@ -10,7 +10,8 @@ import { router } from 'expo-router';
 import { Colors, Spacing, Radius } from '../../../constants';
 import { 
   useAuthStore, useBodyStore, useSettingsStore, 
-  useNutritionStore, useCoachStore, useRecipesStore, useProgressStore 
+  useNutritionStore, useCoachStore, useRecipesStore, useProgressStore,
+  UserProfile 
 } from '../../../store';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../../services/supabase';
@@ -18,7 +19,72 @@ import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
 import LanguageModal from '../../../components/LanguageModal';
-import { Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, Activity, Scale, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, Activity, Scale, ChevronLeft, ChevronRight, Construction, CheckCircle2, AlertCircle } from 'lucide-react-native';
+import { Animated } from 'react-native';
+
+const ACTIVITY_TO_EXERCISE: Record<string, string> = {
+  'sedentary':   'none',
+  'light':       '1-2',
+  'moderate':    '3-4',
+  'active':      '5-6',
+  'very_active': 'daily',
+};
+
+function CustomToast({ message, type, onHide }: { message: string; type: 'success' | 'error'; onHide: () => void }) {
+  const colors = useTheme();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-20)).current;
+  
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start();
+
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -20, duration: 300, useNativeDriver: true }),
+      ]).start(() => onHide());
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isError = type === 'error';
+
+  return (
+    <Animated.View 
+      style={[
+        toast.container, 
+        { 
+          backgroundColor: isError ? '#FEF2F2' : colors.surface, 
+          borderColor: isError ? '#EF4444' : colors.primary,
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        }
+      ]}
+    >
+      {isError ? (
+        <AlertCircle size={24} color="#EF4444" />
+      ) : (
+        <CheckCircle2 size={24} color={colors.primary} />
+      )}
+      <Text style={[toast.text, { color: isError ? '#991B1B' : colors.textPrimary }]}>{message}</Text>
+    </Animated.View>
+  );
+}
+
+const toast = StyleSheet.create({
+  container: {
+    position: 'absolute', top: 60, left: 20, right: 20,
+    zIndex: 9999, flexDirection: 'row', alignItems: 'center',
+    padding: 16, borderRadius: 16, borderWidth: 1, gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2, shadowRadius: 12, elevation: 10,
+  },
+  text: { fontSize: 14, fontWeight: '700', flex: 1 },
+});
 
 // ─── Inline edit modal (cross-platform, replaces Alert.prompt) ────────────────
 function EditModal({
@@ -132,7 +198,7 @@ function GoalWizardModal({ visible, onClose, onSave, initialData }: {
     }
   }, [visible, initialData]);
 
-  const STEPS_COUNT = 3;
+  const STEPS_COUNT = 5;
 
   const GOALS = [
     { id: 'lose',     icon: <Flame size={24} color={colors.primary} />, title: t('onboarding.loseTitle', 'Perder Grasa'),   sub: t('onboarding.loseSub', 'Optimiza la pérdida de peso y conserva tu masa muscular') },
@@ -140,17 +206,44 @@ function GoalWizardModal({ visible, onClose, onSave, initialData }: {
     { id: 'maintain', icon: <Heart size={24} color={colors.primary} />, title: t('onboarding.stayTitle', 'Mantener Peso'),  sub: t('onboarding.staySub', 'Mantén tu peso estable y busca la recomposición corporal') },
   ];
 
+  const LIFESTYLE_OPTIONS = [
+    { id: 'seated',             label: t('neat.seated', 'Sentado'),             icon: <Monitor size={22} color={colors.primary} />, sub: t('neat.seatedSub') },
+    { id: 'standing_sometimes', label: t('neat.standing_sometimes', 'De pie a veces'), icon: <Footprints size={22} color={colors.primary} />, sub: t('neat.standing_sometimesSub') },
+    { id: 'standing_mostly',    label: t('neat.standing_mostly', 'De pie casi siempre'), icon: <Activity size={22} color={colors.primary} />, sub: t('neat.standing_mostlySub') },
+    { id: 'moving',             label: t('neat.moving', 'En movimiento'),          icon: <Zap size={22} color={colors.primary} />, sub: t('neat.movingSub') },
+    { id: 'physical_work',      label: t('neat.physical_work', 'Trabajo físico'),      icon: <Construction size={22} color={colors.primary} />, sub: t('neat.physical_workSub') },
+  ];
+
   const ACTIVITIES = [
-    { id: 'sedentary',   label: t('exercise.none', 'No Hago Ejercicio'),    sub: t('onboarding.activitySedentary', 'Poco o nada de ejercicio'),     icon: <Monitor size={22} color={colors.primary} /> },
-    { id: 'light',       label: t('exercise.1-2', '1-2 Días por Semana'), sub: t('onboarding.activityLight', 'Ejercicio ligero o caminatas'),            icon: <Footprints size={22} color={colors.primary} /> },
-    { id: 'moderate',    label: t('exercise.3-4', '3-4 Días por Semana'), sub: t('onboarding.activityModerate', 'Ejercicio regular'),         icon: <Activity size={22} color={colors.primary} /> },
-    { id: 'active',      label: t('exercise.5-6', '5-6 Días por Semana'),    sub: t('onboarding.activityActive', 'Ejercicio intenso'),              icon: <Dumbbell size={22} color={colors.primary} /> },
-    { id: 'very_active', label: t('exercise.daily', 'Diario'),    sub: t('onboarding.activityVeryActive', 'Entrenamiento diario'),              icon: <Zap size={22} color={colors.primary} /> },
+    { id: 'none',   label: t('exercise.none', 'No Hago Ejercicio'),    sub: t('onboarding.activitySedentary', 'Poco o nada de ejercicio'),     icon: <Monitor size={22} color={colors.primary} /> },
+    { id: '1-2',    label: t('exercise.1-2', '1-2 Días por Semana'), sub: t('onboarding.activityLight', 'Ejercicio ligero o caminatas'),            icon: <Footprints size={22} color={colors.primary} /> },
+    { id: '3-4',    label: t('exercise.3-4', '3-4 Días por Semana'), sub: t('onboarding.activityModerate', 'Ejercicio regular'),         icon: <Activity size={22} color={colors.primary} /> },
+    { id: '5-6',    label: t('exercise.5-6', '5-6 Días por Semana'),    sub: t('onboarding.activityActive', 'Ejercicio intenso'),              icon: <Dumbbell size={22} color={colors.primary} /> },
+    { id: 'daily',  label: t('exercise.daily', 'Diario'),    sub: t('onboarding.activityVeryActive', 'Entrenamiento diario'),              icon: <Zap size={22} color={colors.primary} /> },
   ];
 
   const handleNext = () => {
-    if (step < STEPS_COUNT - 1) setStep(step + 1);
-    else onSave(data);
+    if (step === 4) {
+      // Final step validation
+      if (data.goal === 'lose' && data.targetWeight > data.weight) {
+        Alert.alert(t('common.error'), t('profile.loseWeightValidation', 'El peso objetivo debe ser menor al actual'));
+        return;
+      }
+      if (data.goal === 'gain' && data.targetWeight < data.weight) {
+        Alert.alert(t('common.error'), t('profile.gainWeightValidation', 'El peso objetivo debe ser mayor al actual'));
+        return;
+      }
+    }
+    if (step < STEPS_COUNT - 1) {
+      const nextStep = step + 1;
+      // If maintain, skip or auto-set target weight in final step
+      if (nextStep === 4 && data.goal === 'maintain') {
+        setData({ ...data, targetWeight: data.weight });
+      }
+      setStep(nextStep);
+    } else {
+      onSave(data);
+    }
   };
 
   const handleBack = () => {
@@ -174,6 +267,31 @@ function GoalWizardModal({ visible, onClose, onSave, initialData }: {
         <ScrollView contentContainerStyle={wm.scroll}>
           {step === 0 && (
             <View>
+              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('profile.currentWeight', '¿Cuál es tu peso actual?')}</Text>
+              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('profile.enterWeight', 'Ingresa tu peso en kg')}</Text>
+              <View style={wm.weightControl}>
+                <TouchableOpacity 
+                  style={[wm.weightBtn, { borderColor: colors.border }]} 
+                  onPress={() => setData({...data, weight: Math.max(20, (data.weight || 70) - 1)})}
+                >
+                  <Text style={{ fontSize: 32, color: colors.primary }}>-</Text>
+                </TouchableOpacity>
+                <View style={wm.weightValue}>
+                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.weight || 70}</Text>
+                  <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
+                </View>
+                <TouchableOpacity 
+                  style={[wm.weightBtn, { borderColor: colors.border }]} 
+                  onPress={() => setData({...data, weight: (data.weight || 70) + 1})}
+                >
+                  <Text style={{ fontSize: 32, color: colors.primary }}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {step === 1 && (
+            <View>
               <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.goalTitle', '¿Cuál es tu objetivo?')}</Text>
               <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.goalSub', 'Calcularemos tus calorías necesarias para lograrlo')}</Text>
               <View style={wm.list}>
@@ -190,13 +308,13 @@ function GoalWizardModal({ visible, onClose, onSave, initialData }: {
             </View>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.activityTitle', 'Estilo de Vida')}</Text>
+              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('neat.title', 'Estilo de vida')}</Text>
               <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.activitySub', '¿Qué tan activo eres en tu día a día?')}</Text>
               <View style={wm.list}>
-                {ACTIVITIES.map(a => (
-                  <TouchableOpacity key={a.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.activityLevel === a.id ? colors.primary : colors.border }]} onPress={() => setData({...data, activityLevel: a.id})}>
+                {LIFESTYLE_OPTIONS.map(a => (
+                  <TouchableOpacity key={a.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.lifestyle === a.id ? colors.primary : colors.border }]} onPress={() => setData({...data, lifestyle: a.id})}>
                     <View style={wm.iconContainer}>{a.icon}</View>
                     <View style={{ flex: 1 }}>
                       <Text style={[wm.cardTitle, { color: colors.textPrimary }]}>{a.label}</Text>
@@ -208,19 +326,72 @@ function GoalWizardModal({ visible, onClose, onSave, initialData }: {
             </View>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
+            <View>
+              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.activityTitle', 'Ejercicio Semanal')}</Text>
+              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.activitySub', '¿Cuántas veces entrenas por semana?')}</Text>
+              <View style={wm.list}>
+                {ACTIVITIES.map(a => (
+                  <TouchableOpacity key={a.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.exerciseLevel === a.id ? colors.primary : colors.border }]} onPress={() => setData({...data, exerciseLevel: a.id})}>
+                    <View style={wm.iconContainer}>{a.icon}</View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[wm.cardTitle, { color: colors.textPrimary }]}>{a.label}</Text>
+                      <Text style={[wm.cardSub, { color: colors.textSecondary }]}>{a.sub}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {step === 4 && (
             <View>
               <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.targetWeight', 'Peso objetivo')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('profile.enterWeight', 'Ingresa el peso en kg')}</Text>
+              <Text style={[wm.sub, { color: colors.textSecondary }]}>
+                {data.goal === 'maintain' 
+                  ? t('profile.maintainWeightInfo', 'Tu peso objetivo es igual al actual')
+                  : t('profile.enterWeight', 'Ingresa el peso en kg')}
+              </Text>
+              
               <View style={wm.weightControl}>
-                <TouchableOpacity onPress={() => setData({...data, targetWeight: data.targetWeight - 1})} style={[wm.weightBtn, { borderColor: colors.border }]}>
+                {/* Botón Decrementar (-) */}
+                <TouchableOpacity 
+                  style={[
+                    wm.weightBtn, 
+                    { borderColor: colors.border },
+                    (data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight || data.weight) <= data.weight)) && { opacity: 0.3 }
+                  ]} 
+                  onPress={() => {
+                    const currentTarget = data.targetWeight || data.weight;
+                    if (data.goal === 'maintain') return;
+                    if (data.goal === 'gain' && currentTarget <= data.weight) return;
+                    setData({...data, targetWeight: Math.max(20, currentTarget - 1)});
+                  }}
+                  disabled={data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight || data.weight) <= data.weight)}
+                >
                   <Text style={{ fontSize: 32, color: colors.primary }}>-</Text>
                 </TouchableOpacity>
+
                 <View style={wm.weightValue}>
-                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.targetWeight}</Text>
-                  <Text style={[wm.weightUnit, { color: colors.textMuted }]}>kg</Text>
+                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.targetWeight || data.weight}</Text>
+                  <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
                 </View>
-                <TouchableOpacity onPress={() => setData({...data, targetWeight: data.targetWeight + 1})} style={[wm.weightBtn, { borderColor: colors.border }]}>
+
+                {/* Botón Incrementar (+) */}
+                <TouchableOpacity 
+                  style={[
+                    wm.weightBtn, 
+                    { borderColor: colors.border },
+                    (data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight || data.weight) >= data.weight)) && { opacity: 0.3 }
+                  ]} 
+                  onPress={() => {
+                    const currentTarget = data.targetWeight || data.weight;
+                    if (data.goal === 'maintain') return;
+                    if (data.goal === 'lose' && currentTarget >= data.weight) return;
+                    setData({...data, targetWeight: currentTarget + 1});
+                  }}
+                  disabled={data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight || data.weight) >= data.weight)}
+                >
                   <Text style={{ fontSize: 32, color: colors.primary }}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -279,7 +450,8 @@ export default function ProfileScreen() {
   const colors = useTheme();
   const { theme, setTheme, language, setLanguage } = useSettingsStore();
   const { profile, setProfile, clearAuth } = useAuthStore();
-  const { latest: latestMeasurement }      = useBodyStore();
+  const { setNeat, setExerciseLevel }      = useNutritionStore();
+  const { latest: latestMeasurement, addMeasurement } = useBodyStore();
   const lastMeasure = latestMeasurement();
 
   // Edit modal state
@@ -291,7 +463,8 @@ export default function ProfileScreen() {
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [wizardVisible, setWizardVisible] = useState(false);
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const openEdit = (field: string, title: string, placeholder: string, keyboardType: 'numeric' | 'default' = 'default') => {
     setEditModal({
@@ -346,14 +519,37 @@ export default function ProfileScreen() {
         tdee:             newProfile.tdee,
         target_calories:  newProfile.targetCalories,
         macros:           newProfile.macros,
-        restrictions:     newProfile.restrictions,
+        available_foods:  newProfile.availableFoods,
+        extra_snacks:     newProfile.extraSnacks,
       }).eq('id', userId);
 
       if (error) throw error;
       setProfile(newProfile);
+      
+      // Add a body measurement if weight was changed to keep history synced
+      if (updates.weight !== undefined && updates.weight !== profile.weight) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        addMeasurement({
+          id: Date.now().toString(),
+          date: todayStr,
+          weight: updates.weight,
+          bodyFat: lastMeasure?.bodyFat,
+        });
+        
+        supabase.from('body_measurements').insert([{
+          user_id: userId,
+          measured_at: todayStr,
+          weight: updates.weight,
+          body_fat_pct: lastMeasure?.bodyFat
+        }]).then(({ error }) => {
+          if (error) console.error('Failed to sync body measurement to DB:', error);
+        });
+      }
+
+      setToastMsg({ text: t('profile.updateSuccess'), type: 'success' });
     } catch (err) {
       console.error('Update profile error:', err);
-      Alert.alert(t('common.error'), t('profile.updateFailed'));
+      setToastMsg({ text: t('profile.updateFailed'), type: 'error' });
     }
   };
 
@@ -410,12 +606,12 @@ export default function ProfileScreen() {
   };
 
   const handleSaveEdit = (val: string) => {
-    if (!val.trim() && editModal.field !== 'restrictions') return;
+    if (!val.trim() && editModal.field !== 'availableFoods') return;
     const field = editModal.field;
     
-    if (field === 'restrictions') {
+    if (field === 'availableFoods') {
       const list = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
-      updateProfileField('restrictions', list);
+      updateProfileField('availableFoods', list);
       return;
     }
 
@@ -430,8 +626,99 @@ export default function ProfileScreen() {
     updateProfileField(field, parsed);
   };
 
+  const handleSaveGoal = async (newData: any) => {
+    if (!profile) return;
+    
+    // Combine Lifestyle and Exercise to get final activityLevel for TDEE
+    const LIFESTYLE_MAP: Record<string, number> = { seated: 0, standing_sometimes: 1, standing_mostly: 2, moving: 3, physical_work: 4 };
+    const EXERCISE_MAP: Record<string, number> = { none: 0, '1-2': 1, '3-4': 2, '5-6': 3, daily: 4 };
+    const REVERSE_MAP: Record<number, UserProfile['activityLevel']> = { 0: 'sedentary', 1: 'light', 2: 'moderate', 3: 'active', 4: 'very_active' };
+
+    const lifeScore = LIFESTYLE_MAP[newData.lifestyle] || 0;
+    const exeScore  = EXERCISE_MAP[newData.exerciseLevel] || 0;
+    const finalActivityLevel = REVERSE_MAP[Math.max(lifeScore, exeScore)];
+
+    const { tdee } = calculateTDEE({
+      weight: newData.weight || profile.weight,
+      height: profile.height,
+      age: profile.age,
+      sex: profile.sex,
+      activityLevel: finalActivityLevel,
+    });
+    const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, newData.goal);
+
+    const updatedProfile: UserProfile = {
+      ...profile,
+      weight: newData.weight,
+      goal: newData.goal,
+      targetWeight: newData.targetWeight,
+      activityLevel: finalActivityLevel,
+      lifestyle: newData.lifestyle,
+      tdee,
+      targetCalories,
+      macros: { protein, carbs, fat },
+    };
+
+    setProfile(updatedProfile);
+    setGoalModalVisible(false);
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          weight: newData.weight,
+          goal: newData.goal,
+          target_weight: newData.targetWeight,
+          activity_level: finalActivityLevel,
+          lifestyle: newData.lifestyle,
+          tdee,
+          target_calories: targetCalories,
+          macros: { protein, carbs, fat },
+        })
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+
+      // Sync today's activity in tracker immediately
+      setNeat(newData.lifestyle);
+      setExerciseLevel(newData.exerciseLevel);
+
+      // Persist exerciseLevel to DB
+      await supabase
+        .from('users')
+        .update({ exercise_level: newData.exerciseLevel })
+        .eq('id', profile.id);
+
+      // Add a body measurement if weight was changed to keep history synced
+      if (newData.weight !== profile.weight) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        addMeasurement({
+          id: Date.now().toString(),
+          date: todayStr,
+          weight: newData.weight,
+          bodyFat: lastMeasure?.bodyFat, // preserve previous body fat if exists
+        });
+        
+        // Also try to insert into supabase body_measurements
+        supabase.from('body_measurements').insert([{
+          user_id: profile.id,
+          measured_at: todayStr,
+          weight: newData.weight,
+          body_fat_pct: lastMeasure?.bodyFat
+        }]).then(({ error }) => {
+          if (error) console.error('Failed to sync body measurement to DB:', error);
+        });
+      }
+
+      setToastMsg({ text: t('profile.updateSuccess'), type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setToastMsg({ text: t('profile.updateFailed'), type: 'error' });
+    }
+  };
+
   const handleEditGoalFlow = () => {
-    setWizardVisible(true);
+    setGoalModalVisible(true);
   };
 
   const handleEditSex = () => {
@@ -444,10 +731,11 @@ export default function ProfileScreen() {
 
   const handleEditActivity = () => {
     Alert.alert(t('profile.activity'), t('profile.activityQuest'), [
-      { text: t('profile.sedentary'),   onPress: () => updateProfileField('activityLevel', 'sedentary') },
-      { text: t('profile.lightlyActive'), onPress: () => updateProfileField('activityLevel', 'light') },
-      { text: t('profile.moderatelyActive'), onPress: () => updateProfileField('activityLevel', 'moderate') },
-      { text: t('profile.veryActive'), onPress: () => updateProfileField('activityLevel', 'active') },
+      { text: t('profile.sedentary'),         onPress: () => updateProfileField('activityLevel', 'sedentary') },
+      { text: t('profile.lightlyActive'),      onPress: () => updateProfileField('activityLevel', 'light') },
+      { text: t('profile.moderatelyActive'),   onPress: () => updateProfileField('activityLevel', 'moderate') },
+      { text: t('profile.veryActive'),         onPress: () => updateProfileField('activityLevel', 'active') },
+      { text: t('profile.very_active'),        onPress: () => updateProfileField('activityLevel', 'very_active') },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
@@ -503,6 +791,8 @@ export default function ProfileScreen() {
         onClose={() => setEditModal(p => ({ ...p, visible: false }))}
       />
 
+      {toastMsg && <CustomToast message={toastMsg.text} type={toastMsg.type} onHide={() => setToastMsg(null)} />}
+
       <LanguageModal
         visible={langModalVisible}
         currentLang={language}
@@ -510,22 +800,18 @@ export default function ProfileScreen() {
         onClose={() => setLangModalVisible(false)}
       />
 
-      <GoalWizardModal
-        visible={wizardVisible}
-        onClose={() => setWizardVisible(false)}
-        onSave={(data) => {
-          updateProfileFields({
-            goal: data.goal,
-            activityLevel: data.activityLevel,
-            targetWeight: data.targetWeight
-          });
-          setWizardVisible(false);
-        }}
-        initialData={{
-          goal: profile?.goal ?? 'lose',
-          activityLevel: profile?.activityLevel ?? 'moderate',
-          targetWeight: profile?.targetWeight ?? profile?.weight ?? 70
-        }}
+      <GoalWizardModal 
+        visible={goalModalVisible} 
+        onClose={() => setGoalModalVisible(false)} 
+        onSave={handleSaveGoal}
+        initialData={{ 
+          weight: profile?.weight || 70,
+          goal: profile?.goal, 
+          activityLevel: profile?.activityLevel, 
+          lifestyle: profile?.lifestyle || 'standing_sometimes',
+          exerciseLevel: ACTIVITY_TO_EXERCISE[profile?.activityLevel || 'moderate'],
+          targetWeight: profile?.targetWeight || profile?.weight || 70
+        }} 
       />
 
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
@@ -571,7 +857,7 @@ export default function ProfileScreen() {
         <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('profile.settings', 'Configuración')}</Text>
           <MenuRow icon="🔥" label={t('profile.updateGoals', 'Actualizar objetivos')} onPress={handleEditGoalFlow} />
-          <MenuRow icon="🍎" label={t('profile.mealPlanFoods', 'Plan de Comidas y Alimentos')} onPress={() => openEdit('restrictions', t('profile.dietary'), t('profile.dietarySub'), 'default')} />
+          <MenuRow icon="🍎" label={t('profile.mealPlanFoods', 'Tus Comidas Disponibles')} onPress={() => router.push('/modals/food-selection' as any)} />
           <MenuRow icon="🔔" label={t('profile.reminders', 'Recordatorios')} onPress={handleNotImplemented} />
           <MenuRow icon="🌗" label={t('profile.interface', 'Interfaz')} value={theme === 'dark' ? t('profile.dark', 'Oscuro') : t('profile.lightMode', 'Claro')} onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
           <MenuRow icon="🍱" label={t('profile.syncMeals', 'Sincronizar Comidas')} rightIcon="🔒" onPress={handleNotImplemented} />
