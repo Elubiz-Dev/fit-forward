@@ -8,6 +8,7 @@ import { useAuthStore, useNutritionStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../services/supabase';
+import { getLocalDateString } from '../../utils/date';
 
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type Meal = typeof MEALS[number];
@@ -127,7 +128,7 @@ export default function FoodDetailModal() {
           fat,
           grams:     g,
           meal,
-          logged_at: date || new Date().toISOString().split('T')[0],
+          logged_at: date || getLocalDateString(),
           sugar,
           fiber,
           sodium,

@@ -12,6 +12,7 @@ import { useAuthStore, useNutritionStore, useSettingsStore, useBodyStore } from 
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
+import { getLocalDateString } from '../../../utils/date';
 
 const { width } = Dimensions.get('window');
 const WIDGET_WIDTH = (width - Spacing.base * 2 - Spacing.md) / 2;
@@ -160,7 +161,7 @@ export default function DashboardScreen() {
     progressPct = diff <= 1.5 ? 100 : Math.max(0, 100 - (diff * 10));
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   let dateLabel = t('tracker.today', 'Hoy');
   if (selectedDate === todayStr) {
     dateLabel = t('tracker.today', 'Hoy');

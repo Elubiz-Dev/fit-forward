@@ -12,6 +12,7 @@ import { useAuthStore, useNutritionStore, useSettingsStore } from '../../../stor
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
+import { getLocalDateString } from '../../../utils/date';
 
 const RING_SIZE     = 220;
 const STROKE_WIDTH  = 12;
@@ -72,7 +73,8 @@ export default function TrackerScreen() {
     todayLogs, fetchLogs, selectedDate, setDate, streakDays, 
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
     removeActivityLog, updateActivityLog,
-    addSteps, dailyNeat, dailyExercise, activityLogs, totals
+    addSteps, dailyNeat, dailyExercise, activityLogs, totals,
+    setLogs
   } = useNutritionStore();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
@@ -81,8 +83,16 @@ export default function TrackerScreen() {
     const load = async () => {
       if (profile?.id) {
         setIsFetching(true);
-        await fetchLogs(profile.id, selectedDate);
-        setIsFetching(false);
+        try {
+          // Clear current logs to avoid showing old data during fetch
+          setLogs([]);
+          await fetchLogs(profile.id, selectedDate);
+        } catch (err) {
+          console.error('[Tracker] Load error:', err);
+          Alert.alert(t('common.error'), t('tracker.loadFailed') || 'Could not load data');
+        } finally {
+          setIsFetching(false);
+        }
       }
     };
     load();
@@ -205,7 +215,7 @@ export default function TrackerScreen() {
           <Text style={[s.streakText, { color: colors.textPrimary }]}>🔥 {streakDays}</Text>
           <TouchableOpacity onPress={() => router.push('/modals/calendar' as any)}>
             <Text style={[s.dateText, { color: colors.textPrimary }]}>
-              🗓️ {selectedDate === new Date().toISOString().split('T')[0] ? t('tracker.today') : new Date(selectedDate + 'T12:00:00').toLocaleDateString(t('common.locale'), { month: 'short', day: 'numeric' })} ▾
+              🗓️ {selectedDate === getLocalDateString() ? t('tracker.today') : new Date(selectedDate + 'T12:00:00').toLocaleDateString(t('common.locale'), { month: 'short', day: 'numeric' })} ▾
             </Text>
           </TouchableOpacity>
         </View>
@@ -373,7 +383,12 @@ export default function TrackerScreen() {
         </TouchableOpacity>
 
         {/* Water */}
-        {isFetching && <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />}
+        {isFetching && (
+          <View style={{ marginVertical: 20, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>{t('common.loading')}</Text>
+          </View>
+        )}
         
         <View style={[s.card, { backgroundColor: colors.surface }]}>
           <View style={s.cardHeader}>

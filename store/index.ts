@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocalDateString } from '../utils/date';
 import type { FoodItem } from '../services/foodDatabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -199,7 +200,7 @@ export const useNutritionStore = create<NutritionState>()(
   persist(
     (set, get) => ({
       todayLogs:    [],
-      selectedDate: new Date().toISOString().split('T')[0],
+      selectedDate: new Date().toLocaleDateString('en-CA'),
       streakDays:   0,
       activityCals: 0,
       activityLogs: [],
@@ -212,10 +213,10 @@ export const useNutritionStore = create<NutritionState>()(
       dailyNeat:    {},
       dailyExercise:{},
       aiUsageCount: 0,
-      lastAiUsageDate: new Date().toISOString().split('T')[0],
+      lastAiUsageDate: new Date().toLocaleDateString('en-CA'),
 
       checkAndResetAiLimit: () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         if (get().lastAiUsageDate !== today) {
           set({ aiUsageCount: 0, lastAiUsageDate: today });
         }
@@ -238,12 +239,12 @@ export const useNutritionStore = create<NutritionState>()(
         let checkDate = new Date(); 
         
         while (true) {
-          const dateStr = checkDate.toISOString().split('T')[0];
+          const dateStr = getLocalDateString(checkDate);
           if (newActiveDays[dateStr]) {
             streak++;
             checkDate.setDate(checkDate.getDate() - 1);
           } else {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getLocalDateString();
             if (dateStr === todayStr) {
                checkDate.setDate(checkDate.getDate() - 1);
                continue;
@@ -337,48 +338,57 @@ export const useNutritionStore = create<NutritionState>()(
       },
 
       fetchLogs: async (userId, date) => {
-        // logged_at is DATE type — compare directly, not with timestamps
-        const { supabase } = await import('../services/supabase');
-        const { data, error } = await supabase
-          .from('food_logs')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('logged_at', date);
+        try {
+          const { supabase } = await import('../services/supabase');
+          const { data, error } = await supabase
+            .from('food_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('logged_at', date);
 
-      if (data && !error) {
-        const formattedLogs = data.map((d: any) => ({
-          id:        d.id,
-          foodItem:  {
-            id:       d.food_id ?? d.id,
-            name:     d.food_name,
-            calories: d.grams > 0 ? Math.round((d.calories / d.grams) * 100) : d.calories,
-            protein:  d.grams > 0 ? Math.round((d.protein  / d.grams) * 100) : d.protein,
-            carbs:    d.grams > 0 ? Math.round((d.carbs    / d.grams) * 100) : d.carbs,
-            fat:      d.grams > 0 ? Math.round((d.fat      / d.grams) * 100) : d.fat,
-            sugar:    d.grams > 0 ? Math.round((d.sugar    / d.grams) * 100) : d.sugar,
-            fiber:    d.grams > 0 ? Math.round((d.fiber    / d.grams) * 100) : d.fiber,
-            sodium:   d.grams > 0 ? Math.round((d.sodium   / d.grams) * 100) : d.sodium,
-            iron:     d.grams > 0 ? Math.round((d.iron     / d.grams) * 100) : d.iron,
-            saturatedFat: d.grams > 0 ? Math.round((d.saturated_fat / d.grams) * 100) : d.saturated_fat,
-            transFat:     d.grams > 0 ? Math.round((d.trans_fat     / d.grams) * 100) : d.trans_fat,
-            source:   'custom',
-          },
-          grams:    d.grams,
-          meal:     d.meal,
-          loggedAt: d.created_at || d.logged_at,
-          calories: d.calories,
-          protein:  d.protein,
-          carbs:    d.carbs,
-          fat:      d.fat,
-          sugar:    d.sugar,
-          fiber:    d.fiber,
-          sodium:   d.sodium,
-          iron:     d.iron,
-          saturatedFat: d.saturated_fat,
-          transFat:     d.trans_fat,
-        }));
-        set({ todayLogs: formattedLogs as any });
-      }
+          if (error) throw error;
+
+          if (data) {
+            const formattedLogs = data.map((d: any) => ({
+              id:        d.id,
+              foodItem:  {
+                id:       d.food_id ?? d.id,
+                name:     d.food_name,
+                calories: d.grams > 0 ? Math.round((d.calories / d.grams) * 100) : d.calories,
+                protein:  d.grams > 0 ? Math.round((d.protein  / d.grams) * 100) : d.protein,
+                carbs:    d.grams > 0 ? Math.round((d.carbs    / d.grams) * 100) : d.carbs,
+                fat:      d.grams > 0 ? Math.round((d.fat      / d.grams) * 100) : d.fat,
+                sugar:    d.grams > 0 ? Math.round((d.sugar    / d.grams) * 100) : d.sugar,
+                fiber:    d.grams > 0 ? Math.round((d.fiber    / d.grams) * 100) : d.fiber,
+                sodium:   d.grams > 0 ? Math.round((d.sodium   / d.grams) * 100) : d.sodium,
+                iron:     d.grams > 0 ? Math.round((d.iron     / d.grams) * 100) : d.iron,
+                saturatedFat: d.grams > 0 ? Math.round((d.saturated_fat / d.grams) * 100) : d.saturated_fat,
+                transFat:     d.grams > 0 ? Math.round((d.trans_fat     / d.grams) * 100) : d.trans_fat,
+                source:   'custom',
+              },
+              grams:    d.grams,
+              meal:     d.meal,
+              loggedAt: d.created_at || d.logged_at,
+              calories: d.calories,
+              protein:  d.protein,
+              carbs:    d.carbs,
+              fat:      d.fat,
+              sugar:    d.sugar,
+              fiber:    d.fiber,
+              sodium:   d.sodium,
+              iron:     d.iron,
+              saturatedFat: d.saturated_fat,
+              transFat:     d.trans_fat,
+            }));
+            set({ todayLogs: formattedLogs as any });
+          } else {
+            set({ todayLogs: [] });
+          }
+        } catch (err) {
+          console.error('[NutritionStore] fetchLogs error:', err);
+          set({ todayLogs: [] });
+          throw err; // Re-throw so UI can handle it
+        }
       },
       reset: () => set({
         todayLogs: [],
@@ -458,7 +468,7 @@ export const useCoachStore = create<CoachState>()(
       currentTrainerSessionId:      null,
       isTyping:      false,
       msgCount:      0,
-      lastResetDate: new Date().toISOString().split('T')[0],
+      lastResetDate: getLocalDateString(),
 
       setMessages: (messages, type) => set((s) => ({
         [type === 'nutritionist' ? 'nutritionistMessages' : 'trainerMessages']: messages
@@ -481,7 +491,7 @@ export const useCoachStore = create<CoachState>()(
         [type === 'nutritionist' ? 'nutritionistMessages' : 'trainerMessages']: []
       })),
       checkAndResetDaily: () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         if (get().lastResetDate !== today) {
           set({ msgCount: 0, lastResetDate: today });
         }

@@ -12,6 +12,7 @@ import { supabase } from '../../services/supabase';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { SuccessModal } from '../../components/SuccessModal';
+import { getLocalDateString } from '../../utils/date';
 
 import { useAudioRecorder, useAudioRecorderState, AudioModule, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { transcribeAudio, parseVoiceLog } from '../../services/groq';
@@ -357,7 +358,7 @@ export default function ScanModal() {
     if (!editedFoods.length) return;
 
     const targetMeal = initialMeal || getAutoMeal();
-    const logDate = date || new Date().toISOString().split('T')[0];
+    const logDate = date || getLocalDateString();
 
     editedFoods.forEach((food) => {
       addLog({

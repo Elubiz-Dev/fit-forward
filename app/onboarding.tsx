@@ -450,7 +450,7 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
                     { color: colors.textSecondary }, 
                     active && { color: colors.textPrimary, fontWeight: '700' }
                   ]}>
-                    {t(`onboarding.foodItems.${item.label}`)}
+                    {t(`onboarding.foodItems.${item.label}`) || item.label}
                   </Text>
                 </TouchableOpacity>
               );

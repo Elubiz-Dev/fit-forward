@@ -196,7 +196,11 @@ export default function FoodSelectionModal() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={s.content} 
+        showsVerticalScrollIndicator={false}
+      >
         <View style={s.intro}>
            <View style={[s.iconCircle, { backgroundColor: colors.primary + '15' }]}>
               <Apple size={32} color={colors.primary} />
@@ -232,12 +236,8 @@ export default function FoodSelectionModal() {
                     activeOpacity={0.7}
                   >
                     <Text style={{ fontSize: 16, marginRight: 6 }}>{item.emoji}</Text>
-                    <Text style={[
-                      s.pillText, 
-                      { color: colors.textSecondary }, 
-                      active && { color: colors.textPrimary, fontWeight: '700' }
-                    ]}>
-                      {t(`onboarding.foodItems.${item.label}`)}
+                    <Text style={[s.pillText, { color: colors.textSecondary }, active && { color: colors.textPrimary, fontWeight: '700' }]}>
+                      {t(`onboarding.foodItems.${item.label}`) || item.label}
                     </Text>
                   </TouchableOpacity>
                 );
