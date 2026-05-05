@@ -9,6 +9,11 @@ import { Colors, Spacing, Radius } from '../../constants';
 import { supabase } from '../../services';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -17,6 +22,26 @@ export default function RegisterScreen() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
+
+  const redirectTo = makeRedirectUri();
+
+  const createSessionFromUrl = async (url: string) => {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
+
+    if (errorCode) throw new Error(errorCode);
+
+    const { access_token, refresh_token } = params;
+
+    if (!access_token) return;
+
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+    if (error) throw error;
+
+    return data.session;
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -43,6 +68,32 @@ export default function RegisterScreen() {
     
     // NavigationGuard will detect the new session and redirect to /onboarding
     // because the profile record in 'users' table won't exist yet.
+  };
+
+  const handleOAuth = async (provider: 'google' | 'facebook') => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectTo,
+        );
+        if (res.type === 'success') {
+          const { url } = res;
+          await createSessionFromUrl(url);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message);
+    }
   };
 
   return (
@@ -115,9 +166,23 @@ export default function RegisterScreen() {
           <View style={[s.divLine, { backgroundColor: colors.border }]} />
         </View>
 
-        <TouchableOpacity style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.8}>
-          <Text style={[s.socialText, { color: colors.textPrimary }]}>🔗  {t('auth.continueGoogle')}</Text>
-        </TouchableOpacity>
+        <View style={s.socialRow}>
+          <TouchableOpacity 
+            style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            activeOpacity={0.8}
+            onPress={() => handleOAuth('google')}
+          >
+            <Text style={[s.socialText, { color: colors.textPrimary }]}>Google</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+            activeOpacity={0.8}
+            onPress={() => handleOAuth('facebook')}
+          >
+            <Text style={[s.socialText, { color: colors.textPrimary }]}>Facebook</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={s.footer}>
           <Text style={[s.footerText, { color: colors.textSecondary }]}>{t('auth.haveAccount').split('?')[0]}? </Text>
@@ -149,8 +214,9 @@ const s = StyleSheet.create({
   divider:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   divLine:      { flex: 1, height: 1 },
   divText:      { fontSize: 13 },
-  socialBtn:    { borderRadius: Radius.md, borderWidth: 1.5, padding: 16, alignItems: 'center' },
-  socialText:   { fontWeight: '600', fontSize: 15 },
+  socialRow:    { flexDirection: 'row', gap: 12 },
+  socialBtn:    { flex: 1, borderRadius: Radius.md, borderWidth: 1.5, padding: 14, alignItems: 'center' },
+  socialText:   { fontWeight: '600', fontSize: 14 },
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 32, paddingBottom: 20 },
   footerText:   { fontSize: 14 },
   footerLink:   { fontWeight: '700', fontSize: 14 },

@@ -10,6 +10,11 @@ import { supabase } from '../../services';
 import { useAuthStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -18,6 +23,26 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const { setSession }          = useAuthStore();
+
+  const redirectTo = makeRedirectUri();
+
+  const createSessionFromUrl = async (url: string) => {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
+
+    if (errorCode) throw new Error(errorCode);
+
+    const { access_token, refresh_token } = params;
+
+    if (!access_token) return;
+
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+    if (error) throw error;
+
+    return data.session;
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,9 +57,32 @@ export default function LoginScreen() {
       Alert.alert(t('auth.loginFailed'), error.message);
       return;
     }
-    
-    // Redirection is now handled automatically by NavigationGuard in _layout.tsx
-    // once onAuthStateChange triggers and profile is fetched.
+  };
+
+  const handleOAuth = async (provider: 'google' | 'facebook') => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectTo,
+        );
+        if (res.type === 'success') {
+          const { url } = res;
+          await createSessionFromUrl(url);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message);
+    }
   };
 
   return (
@@ -98,6 +146,30 @@ export default function LoginScreen() {
               <Text style={styles.btnText}>{loading ? t('auth.signingIn') : t('auth.signIn')}</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={[styles.divLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.divText, { color: colors.textMuted }]}>{t('common.or')}</Text>
+            <View style={[styles.divLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          <View style={styles.socialRow}>
+            <TouchableOpacity 
+              style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+              activeOpacity={0.8}
+              onPress={() => handleOAuth('google')}
+            >
+              <Text style={[styles.socialText, { color: colors.textPrimary }]}>Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+              activeOpacity={0.8}
+              onPress={() => handleOAuth('facebook')}
+            >
+              <Text style={[styles.socialText, { color: colors.textPrimary }]}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Footer */}
@@ -129,6 +201,12 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   btnGradient: { padding: Spacing.base, alignItems: 'center' },
   btnText:     { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  divider:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 12 },
+  divLine:      { flex: 1, height: 1 },
+  divText:      { fontSize: 13 },
+  socialRow:    { flexDirection: 'row', gap: 12 },
+  socialBtn:    { flex: 1, borderRadius: Radius.md, borderWidth: 1.5, padding: 14, alignItems: 'center' },
+  socialText:   { fontWeight: '600', fontSize: 14 },
   footer:      { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 'auto', paddingTop: 32 },
   footerText:  { fontSize: 14 },
   footerLink:  { fontWeight: '700', fontSize: 14 },
