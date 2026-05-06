@@ -215,7 +215,9 @@
     "recalculateMeals": "Recalcular Comidas",
     "exportPlan": "Exportar plan",
     "exportDay": "Exportar día",
-    "text": "Texto"
+    "text": "Texto",
+    "loadFailed": "No se pudieron cargar los datos. Inténtalo de nuevo.",
+    "addSnack": "Añadir Snack"
   },
   "planner": {
     "title": "Planificador",
@@ -252,6 +254,11 @@
     "fri": "Vie",
     "sat": "Sáb",
     "sun": "Dom",
+    "workoutsTab": "Rutinas",
+    "nutritionTab": "Nutrición",
+    "noWorkouts": "No hay rutinas planeadas",
+    "restDayHint": "¡Hoy toca descansar! Aprovecha para recuperar energías y dejar que tus músculos se reparen.",
+    "noPlanYet": "Aún no tienes un plan",
     "myStreaks": "Mis Rachas",
     "currentStreak": "racha actual",
     "totalDays": "Días totales"

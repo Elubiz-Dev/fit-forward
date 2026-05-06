@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Switch } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
@@ -90,7 +91,7 @@ export default function AddActivityModal() {
                 });
               } else {
                 addActivityLog({
-                  id: Math.random().toString(36).substr(2, 9),
+                  id: Crypto.randomUUID(),
                   name: t(selected.name),
                   icon: selected.icon,
                   calories: cals,

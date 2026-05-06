@@ -14,34 +14,25 @@
  *  - parseVoiceLog
  */
 
-import OpenAI from 'openai';
-
-// ─── Client ───────────────────────────────────────────────────────────────────
-const apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '';
-
-if (!apiKey) {
-  console.warn('[Groq] Missing EXPO_PUBLIC_GROQ_API_KEY in .env. Please restart your Metro Bundler.');
-}
-
-const openai = new OpenAI({
-  apiKey: apiKey,
-  baseURL: 'https://api.groq.com/openai/v1',
-  dangerouslyAllowBrowser: true, // Required for React Native
-});
+import { supabase } from './supabase';
 
 // ─── Model IDs ────────────────────────────────────────────────────────────────
 const CHAT_MODEL   = 'llama-3.3-70b-versatile';
-const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; // Groq's official vision model
+const VISION_MODEL = 'llama-3.2-11b-vision-preview'; // Updated to a more standard Groq vision model
 const AUDIO_MODEL  = 'whisper-large-v3';
 
-// Helper to use OpenAI SDK for chat completions
+// Helper to use Supabase Edge Function as a proxy
 async function fetchGroq(payload: any) {
-  if (!apiKey) {
-    throw new Error('Groq API Key is missing. Make sure EXPO_PUBLIC_GROQ_API_KEY is in your .env file and restart the app.');
+  const { data, error } = await supabase.functions.invoke('groq-proxy', {
+    body: payload,
+  });
+
+  if (error) {
+    console.error('[Groq Proxy Error]:', error);
+    throw new Error(`AI Service Error: ${error.message || 'Unknown error'}`);
   }
 
-  const response = await openai.chat.completions.create(payload);
-  return response;
+  return data;
 }
 
 // ─── Coach system prompt ──────────────────────────────────────────────────────
@@ -266,6 +257,57 @@ Return ONLY valid JSON (no markdown). Use this exact structure:
   }
 }
 
+// ─── Generate weekly workout plan ─────────────────────────────────────────────
+export async function generateWorkoutPlan(userProfile: {
+  goal: string;
+  activityLevel: string;
+}, language: string = 'en'): Promise<Record<string, { name: string; exercises: { name: string; sets: number; reps: string; rest: string }[] }>> {
+  const langNames: Record<string, string> = {
+    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
+  };
+  const targetLang = langNames[language] || 'English';
+
+  const prompt = `Create a 7-day workout plan for someone with these parameters:
+- Goal: ${userProfile.goal}
+- Activity Level: ${userProfile.activityLevel}
+
+IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targetLang}.
+
+Return ONLY valid JSON (no markdown). Use this exact structure:
+{
+  "Mon": {
+    "name": "Chest & Triceps",
+    "exercises": [
+      { "name": "Bench Press", "sets": 3, "reps": "10-12", "rest": "90s" },
+      { "name": "Incline DB Press", "sets": 3, "reps": "12", "rest": "60s" }
+    ]
+  },
+  "Tue": { "name": "Rest Day", "exercises": [] },
+  "Wed": { "name": "Back & Biceps", "exercises": [] },
+  "Thu": { "name": "Rest Day", "exercises": [] },
+  "Fri": { "name": "Legs & Shoulders", "exercises": [] },
+  "Sat": { "name": "Active Recovery", "exercises": [] },
+  "Sun": { "name": "Rest Day", "exercises": [] }
+}`;
+
+  const data = await fetchGroq({
+    model: CHAT_MODEL,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 3072,
+    temperature: 0.6,
+    response_format: { type: 'json_object' },
+  });
+
+  let text = (data.choices[0]?.message?.content ?? '').trim();
+  text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Failed to parse workout plan from AI. Please try again.');
+  }
+}
+
 // ─── Weekly analysis ───────────────────────────────────────────────────────────
 export async function generateWeeklyAnalysis(data: {
   avgCalories: number;
@@ -314,26 +356,17 @@ export async function transcribeAudio(uri: string): Promise<string> {
   
   formData.append('model', AUDIO_MODEL);
 
-  if (!apiKey) {
-    throw new Error('Groq API Key is missing. Please add EXPO_PUBLIC_GROQ_API_KEY to your .env and restart Metro.');
-  }
-
-  if (__DEV__) console.log('[Groq] Transcribing:', uri);
-  const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-    },
+  if (__DEV__) console.log('[Groq] Transcribing via Edge Function:', uri);
+  
+  const { data, error } = await supabase.functions.invoke('groq-proxy', {
     body: formData,
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    console.error('[Groq] Transcription Error:', err);
-    throw new Error(`Transcription error: ${err}`);
+  if (error) {
+    console.error('[Groq] Transcription Proxy Error:', error);
+    throw new Error(`Transcription error: ${error.message}`);
   }
 
-  const data = await response.json();
   return data.text ?? '';
 }
 

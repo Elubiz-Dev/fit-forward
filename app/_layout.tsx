@@ -47,7 +47,7 @@ function NavigationGuard() {
 }
 
 export default function RootLayout() {
-  const { setSession, setLoading, setProfile } = useAuthStore();
+  const { setSession, setLoading, setProfile, fetchProfile } = useAuthStore();
   const { language, theme } = useSettingsStore();
   const colors = useTheme();
 
@@ -55,48 +55,6 @@ export default function RootLayout() {
     i18n.changeLanguage(language);
   }, [language]);
   useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (data && !error) {
-          setProfile({
-            id:             data.id,
-            email:          data.email,
-            name:           data.name,
-            avatarUrl:      data.avatar_url,
-            sex:            data.sex,
-            age:            data.age,
-            weight:         data.weight,
-            height:         data.height,
-            activityLevel:  data.activity_level,
-            goal:           data.goal,
-            targetWeight:   data.target_weight,
-            startingWeight: data.starting_weight,
-            tdee:           data.tdee,
-            targetCalories: data.target_calories,
-            macros:         data.macros,
-            availableFoods: data.available_foods,
-            preferences:    data.preferences,
-            isPro:          data.is_pro,
-            role:           data.role || 'user',
-            onboardingDone: data.onboarding_done,
-            lifestyle:      data.lifestyle,
-            extraSnacks:    data.extra_snacks,
-            widgetsOrder:   data.widgets_order,
-          });
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        console.warn('[Auth] Profile fetch error:', err);
-        setProfile(null);
-      }
-    };
 
     const handleAuthStateChange = async (newSession: any) => {
       setSession(newSession);

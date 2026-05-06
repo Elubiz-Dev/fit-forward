@@ -343,7 +343,9 @@
     "exercise": "Sport",
     "exerciseSub": "Aktives Training",
     "burned": "verbrannt",
-    "text": "Text"
+    "text": "Text",
+    "loadFailed": "Daten konnten nicht geladen werden. Bitte versuche es erneut.",
+    "addSnack": "Snack Hinzufügen"
   },
   "planner": {
     "title": "Mahlzeitenplaner",

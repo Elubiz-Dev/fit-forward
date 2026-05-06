@@ -126,7 +126,7 @@ export default function DashboardScreen() {
   const { language } = useSettingsStore();
   const { profile, setProfile } = useAuthStore();
   const { todayLogs, dailySleep, selectedDate, totals, fetchLogs } = useNutritionStore();
-  const { latest } = useBodyStore();
+  const { latest, fetchMeasurements, getForDate } = useBodyStore();
   
   const totalsData = useMemo(() => totals(), [todayLogs]);
   const { calories } = totalsData;
@@ -136,15 +136,20 @@ export default function DashboardScreen() {
   useEffect(() => {
     async function loadSelectedData() {
       if (!profile?.id) return;
-      await fetchLogs(profile.id, selectedDate);
+      await Promise.all([
+        fetchLogs(profile.id, selectedDate),
+        fetchMeasurements(profile.id)
+      ]);
     }
     loadSelectedData();
   }, [profile?.id, selectedDate]);
 
+  const dateMeasurement = getForDate(selectedDate);
   const initialWeight = profile?.startingWeight || profile?.weight || 0;
-  const currentWeight = latest()?.weight || profile?.weight || 0;
+  const currentWeight = dateMeasurement?.weight || profile?.weight || 0;
   const targetWeight  = profile?.targetWeight || currentWeight;
   const sleepHours = dailySleep[selectedDate] || 0;
+  const bodyFat = dateMeasurement?.bodyFat;
 
   let progressPct = 0;
   if (profile?.goal === 'lose') {
@@ -253,7 +258,7 @@ export default function DashboardScreen() {
       case 'bodyFat':
         return (
           <WidgetCard key={id} {...commonProps} title={t('dashboard.bodyFatWidget')} icon="🔥"
-            value={latest()?.bodyFat ? `${latest()?.bodyFat}%` : '--'} subValue={t('dashboard.tapToUpdate')}
+            value={bodyFat ? `${bodyFat}%` : '--'} subValue={t('dashboard.tapToUpdate')}
             onPress={() => router.push('/modals/body-measurements')}
           />
         );

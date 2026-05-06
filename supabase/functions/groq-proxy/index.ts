@@ -7,13 +7,11 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // 1. Verify user authentication
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Auth Header" }), {
@@ -25,19 +23,10 @@ Deno.serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get the user to verify the token is valid
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -45,43 +34,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Parse the request payload meant for Groq
-    const body = await req.json();
-
-    // 3. Make the request to Groq API
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is not configured in the environment");
+      throw new Error("GROQ_API_KEY is not configured");
     }
 
-    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const contentType = req.headers.get("content-type") || "";
+    let url = "https://api.groq.com/openai/v1/chat/completions";
+    let body: any;
+
+    if (contentType.includes("multipart/form-data")) {
+      url = "https://api.groq.com/openai/v1/audio/transcriptions";
+      body = await req.formData();
+    } else {
+      body = JSON.stringify(await req.json());
+    }
+
+    const groqResponse = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${GROQ_API_KEY}`,
+        ...(contentType.includes("application/json") ? { "Content-Type": "application/json" } : {}),
       },
-      body: JSON.stringify(body),
+      body: body,
     });
-
-    if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      throw new Error(`Groq API error: ${groqResponse.status} ${errorText}`);
-    }
 
     const groqData = await groqResponse.json();
-
-    // 4. Return the Groq response to the client
     return new Response(JSON.stringify(groqData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: groqResponse.status,
     });
   } catch (error) {
-    console.error("Proxy error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Internal Server Error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

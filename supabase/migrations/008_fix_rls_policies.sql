@@ -18,6 +18,16 @@ CREATE POLICY "admins_read_all_users" ON public.users
   FOR SELECT
   USING (auth.uid() = id OR public.is_admin());
 
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS TEXT AS $$
+  SELECT role FROM public.users WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION public.get_current_user_is_pro()
+RETURNS BOOLEAN AS $$
+  SELECT is_pro FROM public.users WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
 -- ─── Protect is_pro and role from user self-modification ─────
 -- Users can update their own row, but cannot elevate role/is_pro
 CREATE POLICY "users_update_own" ON public.users
@@ -25,8 +35,8 @@ CREATE POLICY "users_update_own" ON public.users
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id
-    AND role = (SELECT role FROM public.users WHERE id = auth.uid())
-    AND is_pro = (SELECT is_pro FROM public.users WHERE id = auth.uid())
+    AND role = public.get_current_user_role()
+    AND is_pro = public.get_current_user_is_pro()
   );
 
 -- ─── Missing index on email ───────────────────────────────────

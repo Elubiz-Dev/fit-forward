@@ -343,7 +343,9 @@
     "exercise": "Exercice",
     "exerciseSub": "Entraînement actif",
     "burned": "brûlé",
-    "text": "Texte"
+    "text": "Texte",
+    "loadFailed": "Impossible de charger les données. Veuillez réessayer.",
+    "addSnack": "Ajouter Snack"
   },
   "planner": {
     "title": "Planificateur de Repas",

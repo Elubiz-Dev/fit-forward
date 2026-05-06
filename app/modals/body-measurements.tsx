@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Spacing, Radius } from '../../constants';
-import { useBodyStore, useAuthStore, BodyMeasurement, useProgressStore } from '../../store';
+import { useBodyStore, useAuthStore, BodyMeasurement, useProgressStore, useNutritionStore } from '../../store';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../hooks/useTheme';
@@ -63,6 +63,7 @@ export default function BodyMeasurementsModal() {
     }
   };
 
+  const { selectedDate } = useNutritionStore();
   const handleSave = async () => {
     const hasAtLeastOne = FIELDS.some(f => values[f.key]?.trim());
     if (!hasAtLeastOne) {
@@ -72,10 +73,9 @@ export default function BodyMeasurementsModal() {
 
     setSaving(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
       const measurement: BodyMeasurement = {
         id:      `bm-${Date.now()}`,
-        date:    today,
+        date:    selectedDate,
         weight:  values.weight  ? parseFloat(values.weight)  : undefined,
         bodyFat: values.bodyFat ? parseFloat(values.bodyFat) : undefined,
         waist:   values.waist   ? parseFloat(values.waist)   : undefined,
@@ -86,41 +86,27 @@ export default function BodyMeasurementsModal() {
         neck:    values.neck    ? parseFloat(values.neck)    : undefined,
       };
 
-      addMeasurement(measurement);
+      // Store's addMeasurement now handles Supabase sync
+      await addMeasurement(measurement);
 
-      if (profile?.id) {
+      if (profile?.id && photo) {
         // Save photo if exists
-        if (photo) {
-          const fileExt = 'jpg';
-          const fileName = `${profile.id}/progress_${Date.now()}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
+        const fileExt = 'jpg';
+        const fileName = `${profile.id}/progress_${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('progress-photos')
+          .upload(fileName, decode(photo), {
+            contentType: `image/${fileExt}`,
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: { publicUrl } } = supabase.storage
             .from('progress-photos')
-            .upload(fileName, decode(photo), {
-              contentType: `image/${fileExt}`,
-            });
-
-          if (!uploadError && uploadData) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('progress-photos')
-              .getPublicUrl(fileName);
-            
-            addPhoto({ id: `p-${Date.now()}`, uri: publicUrl, date: today });
-          }
+            .getPublicUrl(fileName);
+          
+          addPhoto({ id: `p-${Date.now()}`, uri: publicUrl, date: selectedDate });
         }
-
-        await supabase.from('body_measurements').insert({
-          user_id:      profile.id,
-          measured_at:  today,
-          weight:       measurement.weight,
-          body_fat_pct: measurement.bodyFat,
-          waist_cm:     measurement.waist,
-          hip_cm:       measurement.hips,
-          chest_cm:     measurement.chest,
-          arms_cm:      measurement.arms,
-          legs_cm:      measurement.legs,
-          neck_cm:      measurement.neck,
-        });
       }
 
       setShowSuccess(true);

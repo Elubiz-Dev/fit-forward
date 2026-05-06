@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { SuccessModal } from '../../components/SuccessModal';
 import { getLocalDateString } from '../../utils/date';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
 
 import { useAudioRecorder, useAudioRecorderState, AudioModule, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { transcribeAudio, parseVoiceLog } from '../../services/groq';
@@ -56,6 +57,51 @@ export default function ScanModal() {
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [facing, setFacing] = useState<'back' | 'front'>('back');
 
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   useEffect(() => {
     if (!permission?.granted) requestPermission();
   }, []);
@@ -63,13 +109,14 @@ export default function ScanModal() {
   const checkAiLimit = (): boolean => {
     if (profile?.isPro) return true;
     if (aiUsageCount >= 15) {
-      Alert.alert(
+      showAlert(
+        'confirm',
         t('scan.limitReached') || 'AI Limit Reached',
         t('scan.limitReachedSub') || 'You have reached the daily limit of 15 AI-powered registrations. Upgrade to Pro for unlimited use!',
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('onboarding.proBtn'), onPress: () => router.push('/modals/paywall') }
-        ]
+        () => router.push('/modals/paywall'),
+        () => {},
+        t('onboarding.proBtn'),
+        t('common.cancel')
       );
       return false;
     }
@@ -88,7 +135,7 @@ export default function ScanModal() {
     try {
       const perm = await requestRecordingPermissionsAsync();
       if (perm.status !== 'granted') {
-        Alert.alert(t('tracker.micPermission'), t('tracker.micPermissionSub'));
+        showAlert('warning', t('tracker.micPermission'), t('tracker.micPermissionSub'));
         return;
       }
 
@@ -144,14 +191,14 @@ export default function ScanModal() {
         if (text?.trim()) {
           setTextInput(prev => prev ? `${prev} ${text}` : text);
         } else {
-          Alert.alert(t('common.error'), t('scan.noVoiceDetected'));
+          showAlert('info', t('common.error'), t('scan.noVoiceDetected'));
         }
       } else {
-        Alert.alert(t('common.error'), t('scan.audioFileError'));
+        showAlert('error', t('common.error'), t('scan.audioFileError'));
       }
     } catch (err: any) {
       console.error('Stop error:', err);
-      Alert.alert(t('common.error'), t('scan.audioProcessError', { error: err.message || '' }));
+      showAlert('error', t('common.error'), t('scan.audioProcessError', { error: err.message || '' }));
     } finally {
       recordingStatus.current = 'idle';
       setLoading(false);
@@ -165,7 +212,7 @@ export default function ScanModal() {
     try {
       const items = await parseVoiceLog(textInput, language);
       if (!items || items.length === 0) {
-        Alert.alert(t('common.error'), t('scan.noFoodsFound'));
+        showAlert('warning', t('common.error'), t('scan.noFoodsFound'));
         return;
       }
 
@@ -193,7 +240,7 @@ export default function ScanModal() {
       setCapturedUri('text'); // Flag to indicate text mode
       incrementAiUsage();
     } catch (err) {
-      Alert.alert(t('common.error'), 'AI analysis failed');
+      showAlert('error', t('common.error'), 'AI analysis failed');
     } finally {
       setLoading(false);
     }
@@ -222,13 +269,14 @@ export default function ScanModal() {
       setLoading(false);
 
       if (!food) {
-        Alert.alert(
+        showAlert(
+          'confirm',
           t('scan.productNotFound'),
           `Barcode: ${data}\n\n${t('scan.productNotFoundSub')}`,
-          [
-            { text: t('scan.tryAgain'), onPress: () => setScanned(false) },
-            { text: t('common.cancel'), onPress: () => router.back() },
-          ]
+          () => setScanned(false),
+          () => router.back(),
+          t('scan.tryAgain'),
+          t('common.cancel')
         );
         return;
       }
@@ -243,9 +291,7 @@ export default function ScanModal() {
       });
     } catch {
       setLoading(false);
-      Alert.alert(t('common.error'), t('scan.lookupFailed'), [
-        { text: 'OK', onPress: () => setScanned(false) },
-      ]);
+      showAlert('error', t('common.error'), t('scan.lookupFailed'), () => setScanned(false));
     }
   };
 
@@ -285,7 +331,7 @@ export default function ScanModal() {
       }
     } catch (err: any) {
       console.error('Picker Error:', err);
-      Alert.alert(t('scan.analysisFailed'), t('scan.analysisFailedSub', { error: err?.message || err }));
+      showAlert('error', t('scan.analysisFailed'), t('scan.analysisFailedSub', { error: err?.message || err }));
     } finally {
       setLoading(false);
     }
@@ -324,9 +370,7 @@ export default function ScanModal() {
       incrementAiUsage();
     } catch (err: any) {
       console.error('Analysis Error:', err);
-      Alert.alert(t('scan.analysisFailed'), t('scan.analysisFailedSub', { error: err?.message || err }), [
-        { text: 'OK' },
-      ]);
+      showAlert('error', t('scan.analysisFailed'), t('scan.analysisFailedSub', { error: err?.message || err }));
     } finally {
       setLoading(false);
     }
@@ -359,40 +403,40 @@ export default function ScanModal() {
 
     const targetMeal = initialMeal || getAutoMeal();
     const logDate = date || getLocalDateString();
+    const ts = new Date().toISOString().split('T')[1] || '12:00:00.000Z';
+    const finalLoggedAt = date ? `${date}T${ts}` : new Date().toISOString();
 
-    editedFoods.forEach((food) => {
-      addLog({
-        id:       `temp-${Date.now()}-${food.name}`,
-        foodItem: {
-          id:       `ai-${Date.now()}-${food.name}`,
-          name:     food.name,
-          calories: Math.round((food.originalCal / food.originalGrams) * 100),
-          protein:  Math.round((food.originalProt / food.originalGrams) * 100),
-          carbs:    Math.round((food.originalCarbs / food.originalGrams) * 100),
-          fat:      Math.round((food.originalFat / food.originalGrams) * 100),
-          sugar:    food.originalSugar ? Math.round((food.originalSugar / food.originalGrams) * 100) : undefined,
-          fiber:    food.originalFiber ? Math.round((food.originalFiber / food.originalGrams) * 100) : undefined,
-          sodium:   food.originalSodium ? Math.round((food.originalSodium / food.originalGrams) * 100) : undefined,
-          iron:     food.originalIron ? Math.round((food.originalIron / food.originalGrams) * 100) : undefined,
-          saturatedFat: food.originalSatFat ? Math.round((food.originalSatFat / food.originalGrams) * 100) : undefined,
-          transFat:     food.originalTransFat ? Math.round((food.originalTransFat / food.originalGrams) * 100) : undefined,
-          source:   'custom',
-        },
-        grams:    food.grams,
-        meal:     targetMeal,
-        loggedAt: date ? `${date}T${new Date().toISOString().split('T')[1]}` : new Date().toISOString(),
-        calories: food.calories,
-        protein:  food.protein,
-        carbs:    food.carbs,
-        fat:      food.fat,
-        sugar:    food.sugar,
-        fiber:    food.fiber,
-        sodium:   food.sodium,
-        iron:     food.iron,
-        saturatedFat: food.saturatedFat,
-        transFat:     food.transFat,
-      });
-    });
+    const localLogs = editedFoods.map((food, index) => ({
+      id:       `temp-${Date.now()}-${index}`,
+      foodItem: {
+        id:       `ai-${Date.now()}-${index}`,
+        name:     food.name,
+        calories: Math.round((food.originalCal / food.originalGrams) * 100),
+        protein:  Math.round((food.originalProt / food.originalGrams) * 100),
+        carbs:    Math.round((food.originalCarbs / food.originalGrams) * 100),
+        fat:      Math.round((food.originalFat / food.originalGrams) * 100),
+        sugar:    food.originalSugar ? Math.round((food.originalSugar / food.originalGrams) * 100) : undefined,
+        fiber:    food.originalFiber ? Math.round((food.originalFiber / food.originalGrams) * 100) : undefined,
+        sodium:   food.originalSodium ? Math.round((food.originalSodium / food.originalGrams) * 100) : undefined,
+        iron:     food.originalIron ? Math.round((food.originalIron / food.originalGrams) * 100) : undefined,
+        saturatedFat: food.originalSatFat ? Math.round((food.originalSatFat / food.originalGrams) * 100) : undefined,
+        transFat:     food.originalTransFat ? Math.round((food.originalTransFat / food.originalGrams) * 100) : undefined,
+        source:   'custom' as const,
+      },
+      grams:    food.grams,
+      meal:     targetMeal,
+      loggedAt: finalLoggedAt,
+      calories: food.calories,
+      protein:  food.protein,
+      carbs:    food.carbs,
+      fat:      food.fat,
+      sugar:    food.sugar,
+      fiber:    food.fiber,
+      sodium:   food.sodium,
+      iron:     food.iron,
+      saturatedFat: food.saturatedFat,
+      transFat:     food.transFat,
+    }));
 
     if (profile?.id) {
       const dbItems = editedFoods.map(food => ({
@@ -417,10 +461,16 @@ export default function ScanModal() {
       
       if (!error) {
         await fetchLogs(profile.id, selectedDate || logDate);
+        setShowSuccess(true);
+      } else {
+        showAlert('error', t('common.error'), 'Failed to save foods');
+        return;
       }
+    } else {
+      // Local fallback if no profile
+      localLogs.forEach(log => addLog(log));
+      setShowSuccess(true);
     }
-
-    setShowSuccess(true);
   };
 
   let content;
@@ -633,6 +683,16 @@ export default function ScanModal() {
 
   return (
     <View style={{ flex: 1 }}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       {content}
       <SuccessModal
         visible={showSuccess}

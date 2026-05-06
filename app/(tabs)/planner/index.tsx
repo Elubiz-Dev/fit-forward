@@ -10,6 +10,7 @@ import { supabase } from '../../../services/supabase';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
 import { SuccessModal } from '../../../components/SuccessModal';
+import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -23,51 +24,132 @@ interface PlanItem {
   fat?: number;
 }
 
+type PlannerMode = 'nutrition' | 'workouts';
+
+interface WorkoutRoutine {
+  name: string;
+  exercises: { name: string; sets: number; reps: string; rest: string }[];
+}
+
 export default function PlannerScreen() {
   const { t } = useTranslation();
   const colors = useTheme();
   const { language } = useSettingsStore();
+  const [mode, setMode]           = useState<PlannerMode>('nutrition');
   const [activeDay, setActiveDay] = useState('Mon');
   const [loading, setLoading]     = useState(false);
-  const [plans, setPlans]         = useState<Record<string, PlanItem[]>>({});
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [mealPlans, setMealPlans] = useState<Record<string, PlanItem[]>>({});
+  const [workoutPlans, setWorkoutPlans] = useState<Record<string, WorkoutRoutine>>({});
   const [analysis, setAnalysis]   = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const { profile }               = useAuthStore();
 
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   const { streakDays, totals }    = useNutritionStore();
   const isPro                     = profile?.isPro ?? false;
 
-  // ... (keeping Supabase logic)
   useEffect(() => {
-    async function loadStoredPlan() {
+    async function loadStoredPlans() {
       if (!profile?.id) return;
+      setInitialLoading(true);
+      try {
+        // Load Meal Plan
+        const { data: mData } = await supabase
+          .from('meal_plans')
+          .select('*, meal_plan_items(*)')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      const { data, error } = await supabase
-        .from('meal_plans')
-        .select('*, meal_plan_items(*)')
-        .eq('user_id', profile.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data && !error && data.meal_plan_items?.length > 0) {
-        const grouped: Record<string, PlanItem[]> = {};
-        data.meal_plan_items.forEach((item: any) => {
-          if (!grouped[item.day_of_week]) grouped[item.day_of_week] = [];
-          grouped[item.day_of_week].push({
-            meal:     item.meal,
-            name:     item.name,
-            calories: item.calories,
-            protein:  item.protein,
-            carbs:    item.carbs,
-            fat:      item.fat,
+        if (mData && mData.meal_plan_items?.length > 0) {
+          const grouped: Record<string, PlanItem[]> = {};
+          mData.meal_plan_items.forEach((item: any) => {
+            if (!grouped[item.day_of_week]) grouped[item.day_of_week] = [];
+            grouped[item.day_of_week].push({
+              meal:     item.meal,
+              name:     item.name,
+              calories: item.calories,
+              protein:  item.protein,
+              carbs:    item.carbs,
+              fat:      item.fat,
+            });
           });
-        });
-        setPlans(grouped);
+          setMealPlans(grouped);
+        }
+
+        // Load Workout Plan
+        const { data: wData } = await supabase
+          .from('workout_plans')
+          .select('*, workout_plan_items(*)')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (wData && wData.workout_plan_items?.length > 0) {
+          const grouped: Record<string, WorkoutRoutine> = {};
+          wData.workout_plan_items.forEach((item: any) => {
+            grouped[item.day_of_week] = {
+              name: item.routine_name,
+              exercises: item.exercises || []
+            };
+          });
+          setWorkoutPlans(grouped);
+        }
+      } catch (err) {
+        console.error('[Planner] Load error:', err);
+      } finally {
+        setInitialLoading(false);
       }
     }
-    loadStoredPlan();
+    loadStoredPlans();
   }, [profile?.id]);
 
   const handleGenerate = async () => {
@@ -79,66 +161,90 @@ export default function PlannerScreen() {
 
     setLoading(true);
     try {
-      const parsedPlan = await generateMealPlan({
-        targetCalories: profile.targetCalories,
-        macros:         profile.macros,
-        goal:           profile.goal,
-        availableFoods: profile.availableFoods,
-        preferences:    profile.preferences,
-      }, language);
+      if (mode === 'nutrition') {
+        const { generateMealPlan } = await import('../../../services/groq');
+        const parsedPlan = await generateMealPlan({
+          targetCalories: profile.targetCalories,
+          macros:         profile.macros,
+          goal:           profile.goal,
+          availableFoods: profile.availableFoods,
+          preferences:    profile.preferences,
+        }, language);
 
-      setPlans(parsedPlan);
+        setMealPlans(parsedPlan);
 
-      // Save to Supabase
-      const { data: planData } = await supabase.from('meal_plans').insert({
-        user_id:    profile.id,
-        title:      'Weekly AI Plan',
-        week_start: new Date().toISOString().split('T')[0],
-      }).select().single();
+        // Delete old plans for this user to keep DB clean
+        await supabase.from('meal_plans').delete().eq('user_id', profile.id);
 
-      if (planData) {
-        const itemsToInsert: any[] = [];
-        for (const day of DAYS) {
-          const dayMeals = parsedPlan[day] || [];
-          for (const m of dayMeals) {
-            itemsToInsert.push({
-              plan_id:     planData.id,
-              day_of_week: day,
-              meal:        m.meal,
-              name:        m.name,
-              calories:    m.calories,
-              protein:     m.protein ?? 0,
-              carbs:       m.carbs   ?? 0,
-              fat:         m.fat     ?? 0,
-            });
-          }
+        const { data: planData } = await supabase.from('meal_plans').insert({
+          user_id:    profile.id,
+          title:      'Weekly AI Plan',
+          week_start: new Date().toISOString().split('T')[0],
+        }).select().single();
+
+        if (planData) {
+          const itemsToInsert = DAYS.flatMap(day => (parsedPlan[day] || []).map(m => ({
+            plan_id:     planData.id,
+            day_of_week: day,
+            meal:        m.meal,
+            name:        m.name,
+            calories:    m.calories,
+            protein:     m.protein ?? 0,
+            carbs:       m.carbs   ?? 0,
+            fat:         m.fat     ?? 0,
+          })));
+          if (itemsToInsert.length > 0) await supabase.from('meal_plan_items').insert(itemsToInsert);
         }
-        if (itemsToInsert.length > 0) {
-          await supabase.from('meal_plan_items').insert(itemsToInsert);
+      } else {
+        const { generateWorkoutPlan } = await import('../../../services/groq');
+        const parsedPlan = await generateWorkoutPlan({
+          goal: profile.goal,
+          activityLevel: profile.activityLevel,
+        }, language);
+
+        setWorkoutPlans(parsedPlan);
+
+        // Delete old workout plans
+        await supabase.from('workout_plans').delete().eq('user_id', profile.id);
+
+        const { data: planData } = await supabase.from('workout_plans').insert({
+          user_id:    profile.id,
+          title:      'Weekly AI Workout',
+          week_start: new Date().toISOString().split('T')[0],
+        }).select().single();
+
+        if (planData) {
+          const itemsToInsert = DAYS.map(day => ({
+            plan_id:      planData.id,
+            day_of_week:  day,
+            routine_name: parsedPlan[day]?.name || 'Rest Day',
+            exercises:    parsedPlan[day]?.exercises || []
+          }));
+          await supabase.from('workout_plan_items').insert(itemsToInsert);
         }
       }
 
       setShowSuccess(true);
-
     } catch (err: any) {
-      Alert.alert(t('common.error'), err?.message ?? t('planner.analysisFailedSub'));
+      showAlert('error', t('common.error'), err?.message ?? t('planner.analysisFailedSub'));
     } finally {
       setLoading(false);
     }
   };
 
-  const meals    = plans[activeDay] ?? [];
+  const meals    = mealPlans[activeDay] ?? [];
   const totalCal = meals.reduce((a, m) => a + m.calories, 0);
+  const workout  = workoutPlans[activeDay];
 
   const handleShoppingList = () => {
     if (!isPro) { router.push('/modals/paywall'); return; }
-    const allItems = Object.values(plans).flat();
+    const allItems = Object.values(mealPlans).flat();
     if (allItems.length === 0) {
-      Alert.alert(t('planner.noPlan'), t('planner.noPlanSub'));
+      showAlert('info', t('planner.noPlan'), t('planner.noPlanSub'));
       return;
     }
     const list = allItems.map(i => `• ${i.name} (${i.calories} kcal)`).join('\n');
-    Alert.alert(t('planner.shoppingListTitle'), list);
+    showAlert('info', t('planner.shoppingListTitle'), list);
   };
 
   const handleWeeklyAnalysis = async () => {
@@ -157,7 +263,7 @@ export default function PlannerScreen() {
       }, language);
       setAnalysis(res);
     } catch (err) {
-      Alert.alert(t('planner.analysisFailed'), t('planner.analysisFailedSub'));
+      showAlert('error', t('planner.analysisFailed'), t('planner.analysisFailedSub'));
     } finally {
       setAnalyzing(false);
     }
@@ -165,6 +271,16 @@ export default function PlannerScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={s.header}>
@@ -181,28 +297,45 @@ export default function PlannerScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Mode Selector */}
+        <View style={[s.tabs, { backgroundColor: colors.surfaceAlt }]}>
+          {(['nutrition', 'workouts'] as PlannerMode[]).map((m) => (
+            <TouchableOpacity 
+              key={m} 
+              style={[s.tab, mode === m && { backgroundColor: colors.surface }]} 
+              onPress={() => setMode(m)}
+            >
+              <Text style={[s.tabText, { color: mode === m ? colors.primary : colors.textSecondary }]}>
+                {m === 'nutrition' ? t('planner.nutritionTab') : t('planner.workoutsTab')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <DayPicker active={activeDay} onSelect={setActiveDay} />
 
         {/* Weekly Analysis Section */}
-        <View style={[s.analysisWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={s.analysisHeader}>
-            <Text style={[s.analysisTitle, { color: colors.textPrimary }]}>{t('planner.aiReview')}</Text>
-            <TouchableOpacity onPress={handleWeeklyAnalysis} disabled={analyzing}>
-              <Text style={[s.analysisBtnText, { color: colors.primary }]}>{analysis ? t('planner.regenerate') : t('planner.analyze')}</Text>
-            </TouchableOpacity>
-          </View>
-          {analyzing ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />
-          ) : analysis ? (
-            <View style={[s.analysisContent, { backgroundColor: colors.surfaceAlt }]}>
-              <Text style={[s.analysisText, { color: colors.textSecondary }]}>{analysis}</Text>
+        {mode === 'nutrition' && (
+          <View style={[s.analysisWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={s.analysisHeader}>
+              <Text style={[s.analysisTitle, { color: colors.textPrimary }]}>{t('planner.aiReview')}</Text>
+              <TouchableOpacity onPress={handleWeeklyAnalysis} disabled={analyzing}>
+                <Text style={[s.analysisBtnText, { color: colors.primary }]}>{analysis ? t('planner.regenerate') : t('planner.analyze')}</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <Text style={[s.analysisPlaceholder, { color: colors.textMuted }]}>{t('planner.reviewPlaceholder')}</Text>
-          )}
-        </View>
+            {analyzing ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 10 }} />
+            ) : analysis ? (
+              <View style={[s.analysisContent, { backgroundColor: colors.surfaceAlt }]}>
+                <Text style={[s.analysisText, { color: colors.textSecondary }]}>{analysis}</Text>
+              </View>
+            ) : (
+              <Text style={[s.analysisPlaceholder, { color: colors.textMuted }]}>{t('planner.reviewPlaceholder')}</Text>
+            )}
+          </View>
+        )}
 
-        {meals.length > 0 && (
+        {mode === 'nutrition' && meals.length > 0 && (
           <View style={[s.summary, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={[s.summaryText, { color: colors.textSecondary }]}>
               {totalCal} kcal {t('planner.planned')} · {Math.max((profile?.targetCalories ?? 2000) - totalCal, 0)} {t('tracker.remaining')}
@@ -210,46 +343,74 @@ export default function PlannerScreen() {
           </View>
         )}
 
-        <View style={s.mealList}>
-          {meals.length > 0 ? (
-            meals.map((m, i) => (
-              <MealCard key={i} name={m.name} meal={m.meal} cal={m.calories}
-                protein={m.protein} carbs={m.carbs} fat={m.fat} />
-            ))
+        <View style={s.contentList}>
+          {mode === 'nutrition' ? (
+            meals.length > 0 ? (
+              meals.map((m, i) => (
+                <MealCard key={i} name={m.name} meal={m.meal} cal={m.calories}
+                  protein={m.protein} carbs={m.carbs} fat={m.fat} />
+              ))
+            ) : (
+              <EmptyState title={t('planner.noMeals')} loading={loading} isPro={isPro} onUnlock={() => router.push('/modals/paywall')} />
+            )
           ) : (
-            <View style={s.emptyDay}>
-              <Text style={s.emptyEmoji}>📅</Text>
-              <Text style={[s.emptyTitle, { color: colors.textPrimary }]}>{t('planner.noMeals')}</Text>
-              <Text style={[s.emptySub, { color: colors.textSecondary }]}>
-                {loading ? t('common.loading') : isPro
-                  ? t('planner.emptySubPro')
-                  : t('planner.emptySubFree')}
-              </Text>
-              {!isPro && !loading && (
-                <TouchableOpacity style={s.proBtn} activeOpacity={0.8} onPress={() => router.push('/modals/paywall')}>
-                  <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proGrad}>
-                    <Text style={s.proText}>{t('planner.unlockPro')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </View>
+            workout ? (
+              <View style={s.workoutRoutine}>
+                <View style={[s.routineHeader, { backgroundColor: colors.surfaceAlt }]}>
+                  <Text style={[s.routineName, { color: colors.textPrimary }]}>{workout.name}</Text>
+                  {workout.exercises.length === 0 && <Text style={{ fontSize: 32, marginTop: 10 }}>🧘</Text>}
+                </View>
+
+                {workout.exercises.length > 0 ? (
+                  workout.exercises.map((ex, i) => (
+                    <View key={i} style={[s.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={s.exerciseHeader}>
+                        <Text style={[s.exerciseName, { color: colors.textPrimary }]}>{ex.name}</Text>
+                        <View style={[s.exerciseBadge, { backgroundColor: colors.primary + '22' }]}>
+                          <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>{ex.sets} SETS</Text>
+                        </View>
+                      </View>
+                      <View style={s.exerciseMeta}>
+                        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>🔁 {ex.reps} reps</Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>⏱️ {ex.rest} rest</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={s.restDayCard}>
+                    <Text style={[s.restDayText, { color: colors.textSecondary }]}>{t('planner.restDayHint', '¡Hoy toca descansar! Recupera energías para tu próxima sesión.')}</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <EmptyState title={t('planner.noWorkouts')} loading={loading} isPro={isPro} onUnlock={() => router.push('/modals/paywall')} />
+            )
           )}
         </View>
 
         {/* Shopping list teaser */}
-        <TouchableOpacity onPress={handleShoppingList} activeOpacity={0.8}>
-          <LinearGradient colors={colors.theme === 'dark' ? ['#7C5CFC11', '#4338CA11'] : [colors.pro + '15', colors.pro + '08']} style={[s.teaser, { borderColor: colors.pro + '33' }]}>
-            <Text style={s.teaserEmoji}>🛒</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.teaserTitle, { color: colors.textPrimary }]}>{t('planner.autoShoppingList')}</Text>
-              <Text style={[s.teaserSub, { color: colors.textSecondary }]}>{t('planner.shoppingListSub')}</Text>
-            </View>
-            {!isPro && <View style={[s.proBadge, { backgroundColor: colors.pro + '22', borderColor: colors.pro + '66' }]}><Text style={[s.proBadgeText, { color: colors.pro }]}>PRO</Text></View>}
-          </LinearGradient>
-        </TouchableOpacity>
+        {mode === 'nutrition' && (
+          <TouchableOpacity onPress={handleShoppingList} activeOpacity={0.8}>
+            <LinearGradient colors={colors.theme === 'dark' ? ['#7C5CFC11', '#4338CA11'] : [colors.pro + '15', colors.pro + '08']} style={[s.teaser, { borderColor: colors.pro + '33' }]}>
+              <Text style={s.teaserEmoji}>🛒</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.teaserTitle, { color: colors.textPrimary }]}>{t('planner.autoShoppingList')}</Text>
+                <Text style={[s.teaserSub, { color: colors.textSecondary }]}>{t('planner.shoppingListSub')}</Text>
+              </View>
+              {!isPro && <View style={[s.proBadge, { backgroundColor: colors.pro + '22', borderColor: colors.pro + '66' }]}><Text style={[s.proBadgeText, { color: colors.pro }]}>PRO</Text></View>}
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {initialLoading && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, zIndex: 10, justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 12 }}>{t('common.loading')}</Text>
+        </View>
+      )}
 
       <SuccessModal
         visible={showSuccess}
@@ -259,6 +420,29 @@ export default function PlannerScreen() {
       />
     </SafeAreaView>
 
+  );
+}
+
+function EmptyState({ title, loading, isPro, onUnlock }: { title: string; loading: boolean; isPro: boolean; onUnlock: () => void }) {
+  const { t } = useTranslation();
+  const colors = useTheme();
+  return (
+    <View style={s.emptyDay}>
+      <Text style={s.emptyEmoji}>📅</Text>
+      <Text style={[s.emptyTitle, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[s.emptySub, { color: colors.textSecondary }]}>
+        {loading ? t('common.loading') : isPro
+          ? t('planner.emptySubPro')
+          : t('planner.emptySubFree')}
+      </Text>
+      {!isPro && !loading && (
+        <TouchableOpacity style={s.proBtn} activeOpacity={0.8} onPress={onUnlock}>
+          <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proGrad}>
+            <Text style={s.proText}>{t('planner.unlockPro')}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -291,7 +475,7 @@ function MealCard({ name, meal, cal, protein, carbs, fat }: {
     <View style={[mc.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={[mc.mealDot, { backgroundColor: colors.primary }]} />
       <View style={mc.info}>
-        <Text style={[mc.mealLabel, { color: colors.textMuted }]}>{(`common.${meal}`)}</Text>
+        <Text style={[mc.mealLabel, { color: colors.textMuted }]}>{(`tracker.${meal}`)}</Text>
         <Text style={[mc.name, { color: colors.textPrimary }]}>{name}</Text>
         {(protein !== undefined) && (
           <View style={mc.macroRow}>
@@ -332,9 +516,12 @@ const s = StyleSheet.create({
   genBtn:      { borderRadius: Radius.md, overflow: 'hidden' },
   genGrad:     { paddingHorizontal: 14, paddingVertical: 10 },
   genText:     { color: '#fff', fontWeight: '700', fontSize: 13 },
+  tabs:        { flexDirection: 'row', marginHorizontal: Spacing.base, marginBottom: Spacing.base, borderRadius: Radius.lg, padding: 4 },
+  tab:         { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md },
+  tabText:     { fontSize: 13, fontWeight: '700' },
   summary:     { marginHorizontal: Spacing.base, marginBottom: Spacing.base, borderRadius: Radius.md, padding: 10, alignItems: 'center' },
   summaryText: { fontSize: 13, fontWeight: '500' },
-  mealList:    { paddingHorizontal: Spacing.base },
+  contentList: { paddingHorizontal: Spacing.base },
   emptyDay:    { alignItems: 'center', paddingVertical: 60 },
   emptyEmoji:  { fontSize: 48, marginBottom: 12 },
   emptyTitle:  { fontSize: 18, fontWeight: '700', marginBottom: 6 },
@@ -355,4 +542,14 @@ const s = StyleSheet.create({
   analysisContent: { borderRadius: Radius.md, padding: 12, marginTop: 4 },
   analysisText: { fontSize: 14, lineHeight: 20 },
   analysisPlaceholder: { fontSize: 13, fontStyle: 'italic' },
+  workoutRoutine: { gap: 12 },
+  routineHeader: { padding: 16, borderRadius: Radius.lg, alignItems: 'center', marginBottom: 8 },
+  routineName: { fontSize: 18, fontWeight: '800' },
+  exerciseCard: { padding: Spacing.base, borderRadius: Radius.lg, borderWidth: 1 },
+  exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  exerciseName: { fontSize: 15, fontWeight: '700' },
+  exerciseBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm },
+  exerciseMeta: { flexDirection: 'row', gap: 12 },
+  restDayCard: { padding: 20, alignItems: 'center' },
+  restDayText: { textAlign: 'center', fontStyle: 'italic', fontSize: 14, lineHeight: 22 },
 });

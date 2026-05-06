@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Dimensions, Alert, ActivityIndicator
+  ScrollView, Alert, ActivityIndicator
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,8 +21,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { calculateTDEE, calculateMacros } from '../services/foodDatabase';
 import { supabase } from '../services/supabase';
+import { CustomAlert, AlertType } from '../components/CustomAlert';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 
 // ─── Step types ────────────────────────────────────────────────────────────────
 const STEPS = ['goal', 'stats', 'activity', 'dietType', 'diet', 'personalization'] as const;
@@ -679,6 +679,51 @@ export default function OnboardingScreen() {
   const [error, setError]             = useState<string | null>(null);
   const { setProfile, profile }       = useAuthStore();
 
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(null), 3000);
@@ -757,7 +802,7 @@ export default function OnboardingScreen() {
 
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) {
-        Alert.alert(t('common.error'), t('profile.userIdNotFound'));
+        showAlert('error', t('common.error'), t('profile.userIdNotFound'));
         router.replace('/(auth)/welcome');
         return;
       }
@@ -828,7 +873,17 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       {/* Error Overlay */}
       {error && (
         <View style={s.errorContainer}>

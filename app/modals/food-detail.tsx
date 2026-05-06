@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../services/supabase';
 import { getLocalDateString } from '../../utils/date';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
 
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type Meal = typeof MEALS[number];
@@ -41,6 +42,52 @@ export default function FoodDetailModal() {
   };
 
   const [meal, setMeal]       = useState<Meal>(initialMeal || getAutoMeal());
+  
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   const { addLog, updateLog, removeLog } = useNutritionStore();
   const { profile }           = useAuthStore();
 
@@ -59,7 +106,7 @@ export default function FoodDetailModal() {
 
   const handleSave = async () => {
     if (!g || g <= 0) {
-      Alert.alert(t('common.error'), t('foodDetail.invalidAmount'));
+      showAlert('error', t('common.error'), t('foodDetail.invalidAmount'));
       return;
     }
 
@@ -149,6 +196,16 @@ export default function FoodDetailModal() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       <View style={[s.handle, { backgroundColor: colors.border }]} />
 
       <ScrollView>
@@ -211,23 +268,26 @@ export default function FoodDetailModal() {
           <TouchableOpacity 
             style={s.deleteRow} 
             onPress={() => {
-              Alert.alert(
+              showAlert(
+                'confirm',
                 t('tracker.removeEntry'),
                 t('tracker.removeConfirm', { name: food.name }),
-                [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  { 
-                    text: t('common.remove'), 
-                    style: 'destructive',
-                    onPress: async () => {
-                      removeLog(logId);
-                      if (profile?.id) {
-                        await supabase.from('food_logs').delete().eq('id', logId);
-                      }
-                      router.back();
-                    }
+                async () => {
+                  if (!profile?.id) {
+                    showAlert('error', t('common.error'), t('profile.userIdNotFound'));
+                    return;
                   }
-                ]
+                  const { error } = await supabase.from('food_logs').delete().eq('id', logId);
+                  if (!error) {
+                    removeLog(logId);
+                    router.back();
+                  } else {
+                    showAlert('error', t('common.error'), 'Could not delete log. Try again.');
+                  }
+                },
+                () => {},
+                t('common.remove'),
+                t('common.cancel')
               );
             }}
           >

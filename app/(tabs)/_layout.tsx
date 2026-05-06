@@ -30,7 +30,6 @@ export default function TabsLayout() {
   const { profile } = useAuthStore();
   const isPro = profile?.isPro ?? false;
   const pathname = usePathname();
-  const { width } = Dimensions.get('window');
 
   const tabs = ['/tracker', '/dashboard', '/coach', '/planner'];
   const currentIndex = tabs.findIndex(t => pathname.includes(t));
@@ -41,8 +40,9 @@ export default function TabsLayout() {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
+        const currentWidth = Dimensions.get('window').width;
         const { dx, dy, x0 } = gestureState;
-        const isEdge = x0 < 50 || x0 > width - 50;
+        const isEdge = x0 < 50 || x0 > currentWidth - 50;
         return isEdge && Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 30;
       },
       onPanResponderRelease: (_, gestureState) => {

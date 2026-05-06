@@ -343,7 +343,9 @@
     "exercise": "Esercizio",
     "exerciseSub": "Allenamento attivo",
     "burned": "bruciato",
-    "text": "Testo"
+    "text": "Testo",
+    "loadFailed": "Impossibile caricare i dati. Riprova.",
+    "addSnack": "Aggiungi Snack"
   },
   "planner": {
     "title": "Pianificatore Pasti",

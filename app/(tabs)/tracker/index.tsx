@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, Alert, Dimensions, ActivityIndicator
+  TouchableOpacity, Image, Alert, useWindowDimensions, ActivityIndicator
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
 import { getLocalDateString } from '../../../utils/date';
+import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 
 const RING_SIZE     = 220;
 const STROKE_WIDTH  = 12;
@@ -69,15 +70,61 @@ export default function TrackerScreen() {
   const colors = useTheme();
   const { language } = useSettingsStore();
   const { profile, setProfile } = useAuthStore();
+  const { width } = useWindowDimensions();
   const { 
     todayLogs, fetchLogs, selectedDate, setDate, streakDays, 
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
     removeActivityLog, updateActivityLog,
     addSteps, dailyNeat, dailyExercise, activityLogs, totals,
-    setLogs
+    setLogs, setActivityLogs, addExtraSnack, removeExtraSnack
   } = useNutritionStore();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
+
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -86,10 +133,11 @@ export default function TrackerScreen() {
         try {
           // Clear current logs to avoid showing old data during fetch
           setLogs([]);
+          setActivityLogs([]);
           await fetchLogs(profile.id, selectedDate);
         } catch (err) {
           console.error('[Tracker] Load error:', err);
-          Alert.alert(t('common.error'), t('tracker.loadFailed') || 'Could not load data');
+          showAlert('error', t('common.error'), t('tracker.loadFailed') || 'Could not load data');
         } finally {
           setIsFetching(false);
         }
@@ -122,25 +170,6 @@ export default function TrackerScreen() {
     return acc;
   }, {} as Record<string, typeof todayLogs>);
 
-  const handleAddExtraSnack = async () => {
-    if (!profile) return;
-    const newCount = (profile.extraSnacks || 0) + 1;
-    const newProfile = { ...profile, extraSnacks: newCount };
-    setProfile(newProfile);
-    if (profile.id) {
-      await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
-    }
-  };
-
-  const handleRemoveExtraSnack = async () => {
-    if (!profile) return;
-    const newCount = Math.max(0, (profile.extraSnacks || 0) - 1);
-    const newProfile = { ...profile, extraSnacks: newCount };
-    setProfile(newProfile);
-    if (profile.id) {
-      await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
-    }
-  };
 
   const handleAddMeal = (meal: Meal) => {
     router.push({ pathname: '/modals/scan', params: { initialMeal: meal, date: selectedDate } } as any);
@@ -187,19 +216,29 @@ export default function TrackerScreen() {
   const steps = dailySteps[selectedDate] || 0;
 
   const handleActivityPress = (act: any) => {
-    Alert.alert(
+    showAlert(
+      'confirm',
       act.name,
       t('tracker.holdToRemove'),
-      [
-        { text: t('common.save'), onPress: () => router.push({ pathname: '/modals/add-activity', params: { id: act.id } } as any) },
-        { text: t('common.remove'), onPress: () => removeActivityLog(act.id), style: 'destructive' },
-        { text: t('common.cancel'), style: 'cancel' }
-      ]
+      () => removeActivityLog(act.id),
+      () => {},
+      t('common.remove'),
+      t('common.cancel')
     );
   };
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity style={s.avatarWrap} onPress={() => router.push('/(tabs)/profile' as any)}>
@@ -250,12 +289,12 @@ export default function TrackerScreen() {
           style={s.carousel}
           contentContainerStyle={s.carouselContent}
           onMomentumScrollEnd={(e) => {
-            const index = Math.round(e.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 32));
+            const index = Math.round(e.nativeEvent.contentOffset.x / (width - 32));
             setCarouselIndex(index);
           }}
         >
           {/* Main Calorie Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: Dimensions.get('window').width - 32 }]}>
+          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: width - 32 }]}>
             <View style={s.arcWrap}>
               <Svg width={RING_SIZE} height={RING_SIZE / 2 + 20}>
                 <Path
@@ -291,7 +330,7 @@ export default function TrackerScreen() {
           </View>
 
           {/* Other Nutrients Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: Dimensions.get('window').width - 32 }]}>
+          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: width - 32 }]}>
             <View style={s.cardHeader}>
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.otherNutrients')}</Text>
             </View>
@@ -327,8 +366,17 @@ export default function TrackerScreen() {
           ))}
         </View>
 
+
+        {/* Loading state - shown ABOVE meals to prevent stale data confusion */}
+        {isFetching && (
+          <View style={{ marginVertical: 20, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>{t('common.loading')}</Text>
+          </View>
+        )}
+
         {/* Meals */}
-        {allMeals.map((m) => {
+        {!isFetching && allMeals.map((m) => {
           const mealLogs = grouped[m] || [];
           const mealCals = Math.round(mealLogs.reduce((s, l) => s + (l.calories || 0), 0));
           const isExtraSnack = m.startsWith('snack') && m !== 'snack';
@@ -341,7 +389,7 @@ export default function TrackerScreen() {
                   {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
                 </Text>
                 {isExtraSnack && m === `snack${(profile?.extraSnacks || 0) + 1}` && (
-                  <TouchableOpacity onPress={handleRemoveExtraSnack}>
+                  <TouchableOpacity onPress={removeExtraSnack}>
                     <Text style={{ color: colors.error, fontSize: 13 }}>{t('common.remove', 'Remove')}</Text>
                   </TouchableOpacity>
                 )}
@@ -377,19 +425,13 @@ export default function TrackerScreen() {
 
         <TouchableOpacity 
           style={[s.mealCard, { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border, alignItems: 'center', paddingVertical: 20 }]} 
-          onPress={handleAddExtraSnack}
+          onPress={addExtraSnack}
         >
           <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>+ {t('tracker.addSnack', 'Add Snack')}</Text>
         </TouchableOpacity>
 
         {/* Water */}
-        {isFetching && (
-          <View style={{ marginVertical: 20, alignItems: 'center' }}>
-            <ActivityIndicator color={colors.primary} size="small" />
-            <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>{t('common.loading')}</Text>
-          </View>
-        )}
-        
+
         <View style={[s.card, { backgroundColor: colors.surface }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>

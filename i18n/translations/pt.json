@@ -343,7 +343,9 @@
     "exercise": "Exercício",
     "exerciseSub": "Treino ativo",
     "burned": "queimado",
-    "text": "Texto"
+    "text": "Texto",
+    "loadFailed": "Não foi possível carregar os dados. Tente novamente.",
+    "addSnack": "Adicionar Lanche"
   },
   "planner": {
     "title": "Planejador de Refeições",
