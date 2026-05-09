@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { getFoodByBarcode } from '../../services/foodDatabase';
 import { analyzeFoodPhoto } from '../../services/groq';
-import { useNutritionStore, useSettingsStore, useAuthStore } from '../../store';
+import { useNutritionStore, useSettingsStore, useAuthStore, usePurchaseStore } from '../../store';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +53,8 @@ export default function ScanModal() {
   const { language } = useSettingsStore();
   const { addLog, fetchLogs, selectedDate, aiUsageCount, incrementAiUsage } = useNutritionStore();
   const { profile } = useAuthStore();
+  const { isPro } = usePurchaseStore();
+  const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
   const [showSuccess, setShowSuccess] = useState(false);
   const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
   const [facing, setFacing] = useState<'back' | 'front'>('back');
@@ -107,7 +109,7 @@ export default function ScanModal() {
   }, []);
 
   const checkAiLimit = (): boolean => {
-    if (profile?.isPro) return true;
+    if (isProActually) return true;
     if (aiUsageCount >= 15) {
       showAlert(
         'confirm',
@@ -127,7 +129,7 @@ export default function ScanModal() {
 
   const startRecording = async () => {
     if (recordingStatus.current !== 'idle') return;
-    if (!profile?.isPro) {
+    if (!isProActually) {
       router.push('/modals/paywall');
       return;
     }
@@ -643,7 +645,7 @@ export default function ScanModal() {
                       <Text style={{ fontSize: 20 }}>🔄</Text>
                     </TouchableOpacity>
                   </View>
-                  {!profile?.isPro && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 15 - aiUsageCount }) || `${15 - aiUsageCount} AI scans left today`}</Text>}
+                  {!isProActually && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 15 - aiUsageCount }) || `${15 - aiUsageCount} AI scans left today`}</Text>}
                 </View>
               </>
             ) : (
@@ -663,7 +665,7 @@ export default function ScanModal() {
                     onPressOut={stopRecording}
                   >
                     <Text style={{ fontSize: 24 }}>{recorderState.isRecording ? '🛑' : '🎤'}</Text>
-                    {!profile?.isPro && <View style={s.lockBadge}><Text style={{ fontSize: 10 }}>🔒</Text></View>}
+                    {!isProActually && <View style={s.lockBadge}><Text style={{ fontSize: 10 }}>🔒</Text></View>}
                   </TouchableOpacity>
                 </View>
                 {recorderState.isRecording && <Text style={[s.recordingStatus, { color: colors.error }]}>{t('scan.recording') || 'Recording...'}</Text>}

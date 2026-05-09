@@ -350,7 +350,16 @@
     "progressPhoto": "Foto de Progreso",
     "recentHistory": "Historial Reciente",
     "saveMeasurementsFailed": "Error al guardar las medidas. Inténtalo de nuevo.",
-    "photoAttached": "¡Foto adjunta!"
+    "photoAttached": "¡Foto adjunta!",
+    "healthProfile": "Perfil de Salud",
+    "healthProfileSub": "Restricciones, condiciones y medicamentos",
+    "healthProfileSaved": "Perfil de salud actualizado ✨",
+    "healthProfileFailed": "Error al actualizar el perfil de salud",
+    "dietaryRestrictions": "Restricciones Alimenticias",
+    "medicalConditions": "Condiciones Médicas",
+    "medicationsSupplements": "Medicamentos y Suplementos",
+    "noneSelected": "Ninguno seleccionado",
+    "editHealthProfile": "Editar Perfil de Salud"
   },
   "recipes": {
     "title": "Recetas IA",
@@ -506,7 +515,55 @@
       "lemon_juice": "Jugo de Limón"
     },
     "deselectAll": "Deseleccionar Todo",
-    "proBtn": "Mejorar a Pro"
+    "proBtn": "Mejorar a Pro",
+    "healthProfileTitle": "Perfil de Salud",
+    "healthProfileSub": "Ayúdanos a personalizar tu plan (opcional)",
+    "dietaryRestrictionsTitle": "¿Tienes alguna restricción alimenticia?",
+    "dietaryRestrictionsSub": "Selecciona todas las que apliquen — puedes omitir este paso",
+    "medicalConditionsTitle": "¿Tienes alguna condición médica que debamos considerar?",
+    "medicalConditionsSub": "Esto nos ayuda a hacer recomendaciones más seguras para ti",
+    "medicationsTitle": "¿Actualmente tomas algún medicamento o suplemento?",
+    "medicationsSub": "Esto nos ayuda a evitar conflictos con tu plan nutricional",
+    "skipStep": "Omitir este paso",
+    "otherSpecify": "Otra (especificar)",
+    "otherPlaceholder": "Escribe aquí...",
+    "dietaryItems": {
+      "vegetarian": "Vegetariano",
+      "vegan": "Vegano",
+      "gluten_free": "Sin gluten (Celíaco)",
+      "lactose_free": "Sin lactosa",
+      "no_seafood": "Sin mariscos",
+      "no_nuts": "Sin frutos secos",
+      "halal": "Halal / Kosher",
+      "intermittent_fasting": "Ayuno intermitente",
+      "low_sodium": "Dieta baja en sodio",
+      "low_carb": "Dieta baja en carbohidratos"
+    },
+    "medicalItems": {
+      "diabetes_type1": "Diabetes tipo 1",
+      "diabetes_type2": "Diabetes tipo 2",
+      "hypertension": "Hipertensión",
+      "thyroid": "Hipotiroidismo / Hipertiroidismo",
+      "ibs": "Síndrome de intestino irritable (SII)",
+      "cardiovascular": "Enfermedad cardiovascular",
+      "anemia": "Anemia",
+      "obesity": "Obesidad (diagnóstico médico)",
+      "renal": "Insuficiencia renal",
+      "none": "Ninguna"
+    },
+    "medicationItems": {
+      "metformin": "Metformina (diabetes)",
+      "blood_pressure_meds": "Medicamentos para la presión",
+      "anticoagulants": "Anticoagulantes",
+      "antidepressants": "Antidepresivos / Ansiolíticos",
+      "thyroid_hormone": "Hormona tiroidea (Levotiroxina)",
+      "whey_protein": "Proteína en polvo (Whey/Caseína/Vegana)",
+      "creatine": "Creatina",
+      "multivitamins": "Vitaminas / Multivitamínicos",
+      "omega3": "Omega-3",
+      "iron": "Hierro",
+      "none": "Ninguno"
+    }
   },
   "scan": {
     "title": "Escanear Alimento",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator
+  ScrollView, Alert, ActivityIndicator, TextInput
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,7 +25,11 @@ import { CustomAlert, AlertType } from '../components/CustomAlert';
 
 
 // ─── Step types ────────────────────────────────────────────────────────────────
-const STEPS = ['goal', 'stats', 'activity', 'dietType', 'diet', 'personalization'] as const;
+const STEPS = [
+  'goal', 'stats', 'activity', 
+  'dietaryRestrictions', 'medicalConditions', 'medications', 
+  'dietType', 'diet', 'personalization'
+] as const;
 type Step = typeof STEPS[number];
 
 interface OnboardingData {
@@ -35,6 +39,9 @@ interface OnboardingData {
   weight:       number;
   height:       number;
   activityLevel:'sedentary'|'light'|'moderate'|'active'|'very_active';
+  dietaryRestrictions: string[];
+  medicalConditions: string[];
+  medicationsSupplements: string[];
   dietType:     'recommended' | 'high_protein' | 'low_carb' | 'keto' | 'low_fat';
   targetWeight: number;
   velocity:     'slow' | 'moderate' | 'fast';
@@ -231,7 +238,134 @@ function ActivityStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
   );
 }
 
+// ─── Health Profile Steps ───────────────────────────────────────────────────────
+
+function HealthProfileStep({ 
+  icon: Icon,
+  titleKey, 
+  subKey, 
+  itemsObj, 
+  fieldKey,
+  data, 
+  onChange 
+}: { 
+  icon: React.ElementType;
+  titleKey: string;
+  subKey: string;
+  itemsObj: Record<string, string>;
+  fieldKey: 'dietaryRestrictions' | 'medicalConditions' | 'medicationsSupplements';
+  data: Partial<OnboardingData>;
+  onChange: (d: Partial<OnboardingData>) => void;
+}) {
+  const { t } = useTranslation();
+  const colors = useTheme();
+  
+  const selected = data[fieldKey] || [];
+  const predefinedKeys = Object.keys(itemsObj);
+  const customValues = selected.filter(k => !predefinedKeys.includes(k));
+  const customText = customValues.length > 0 ? customValues[0].replace('custom:', '') : '';
+
+  const toggle = (id: string) => {
+    if (id === 'none') {
+      onChange({ [fieldKey]: ['none'] });
+      return;
+    }
+    const newSelection = selected.includes(id) 
+      ? selected.filter(x => x !== id) 
+      : [...selected.filter(x => x !== 'none'), id];
+    onChange({ [fieldKey]: newSelection });
+  };
+
+  const setCustomText = (text: string) => {
+    const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none');
+    if (text.trim() === '') {
+      onChange({ [fieldKey]: base.length > 0 ? base : [] });
+    } else {
+      onChange({ [fieldKey]: [...base, `custom:${text}`] });
+    }
+  };
+
+  return (
+    <View style={step.container}>
+      <View style={step.headerSection}>
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary }]}>
+          <Icon size={36} color={colors.primary} />
+        </View>
+        <Text style={[step.title, { color: colors.textPrimary }]}>{t(titleKey)}</Text>
+        <Text style={[step.sub, { color: colors.textSecondary }]}>{t(subKey)}</Text>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        {Object.entries(itemsObj).map(([key, label]) => {
+          const isActive = selected.includes(key);
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[
+                step.optionCard, 
+                { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12 }, 
+                isActive && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+              ]}
+              onPress={() => toggle(key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[step.optionTitle, { color: colors.textPrimary, flex: 1, marginLeft: 8 }]}>{label}</Text>
+              <View style={[step.radioOuter, { borderColor: colors.border, borderRadius: 6 }]}>
+                {isActive && <View style={[step.radioInner, { backgroundColor: colors.primary, borderRadius: 3 }]} />}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+        
+        {/* Custom Input */}
+        <View style={[
+            step.optionCard, 
+            { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12, flexDirection: 'column', alignItems: 'stretch' },
+            customText.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+          ]}>
+          <Text style={[step.optionTitle, { color: colors.textPrimary, marginLeft: 8, marginBottom: 8 }]}>{t('onboarding.otherSpecify')}</Text>
+          <TextInput
+            style={{
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.border,
+              marginHorizontal: 8
+            }}
+            placeholder={t('onboarding.otherPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            value={customText}
+            onChangeText={setCustomText}
+            onFocus={() => { if(selected.includes('none')) toggle('none'); }}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function DietaryRestrictionsStep(props: any) {
+  const { t } = useTranslation();
+  const itemsObj = t('onboarding.dietaryItems', { returnObjects: true }) as Record<string, string>;
+  return <HealthProfileStep icon={Apple} titleKey="onboarding.dietaryRestrictionsTitle" subKey="onboarding.dietaryRestrictionsSub" itemsObj={itemsObj} fieldKey="dietaryRestrictions" {...props} />;
+}
+
+function MedicalConditionsStep(props: any) {
+  const { t } = useTranslation();
+  const itemsObj = t('onboarding.medicalItems', { returnObjects: true }) as Record<string, string>;
+  return <HealthProfileStep icon={Heart} titleKey="onboarding.medicalConditionsTitle" subKey="onboarding.medicalConditionsSub" itemsObj={itemsObj} fieldKey="medicalConditions" {...props} />;
+}
+
+function MedicationsStep(props: any) {
+  const { t } = useTranslation();
+  const itemsObj = t('onboarding.medicationItems', { returnObjects: true }) as Record<string, string>;
+  return <HealthProfileStep icon={Activity} titleKey="onboarding.medicationsTitle" subKey="onboarding.medicationsSub" itemsObj={itemsObj} fieldKey="medicationsSupplements" {...props} />;
+}
+
 // ─── Step 4: Diet Type ────────────────────────────────────────────────────────
+
 function DietTypeStep({ data, onChange }: { data: Partial<OnboardingData>; onChange: (d: Partial<OnboardingData>) => void }) {
   const { t } = useTranslation();
   const colors = useTheme();
@@ -466,6 +600,20 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
   const { t } = useTranslation();
   const colors = useTheme();
 
+  useEffect(() => {
+    // Initialize or sync target weight based on goal
+    const cur = data.weight ?? 70;
+    const tar = data.targetWeight ?? cur;
+
+    if (data.goal === 'maintain' && tar !== cur) {
+      onChange({ targetWeight: cur });
+    } else if (data.goal === 'lose' && tar >= cur) {
+      onChange({ targetWeight: cur - 2 }); // Default 2kg loss
+    } else if (data.goal === 'gain' && tar <= cur) {
+      onChange({ targetWeight: cur + 2 }); // Default 2kg gain
+    }
+  }, [data.goal]);
+
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
@@ -501,15 +649,41 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
           </View>
           <View style={step.miniNumRow}>
             <TouchableOpacity 
-              onPress={() => onChange({ targetWeight: (data.targetWeight ?? 70) - 1 })}
-              style={[step.miniNumBtn, { borderColor: colors.border }]}
+              onPress={() => {
+                const currentVal = data.targetWeight ?? data.weight ?? 70;
+                if (data.goal === 'lose') {
+                  onChange({ targetWeight: currentVal - 1 });
+                } else if (data.goal === 'gain' && currentVal > (data.weight ?? 0) + 1) {
+                  onChange({ targetWeight: currentVal - 1 });
+                }
+              }}
+              style={[
+                step.miniNumBtn, 
+                { borderColor: colors.border },
+                (data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight ?? 0) <= (data.weight ?? 0) + 1)) && { opacity: 0.3 }
+              ]}
+              disabled={data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight ?? 0) <= (data.weight ?? 0) + 1)}
             >
               <Text style={{ color: colors.primary }}>-</Text>
             </TouchableOpacity>
-            <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{data.targetWeight ?? 70} kg</Text>
+            
+            <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{data.targetWeight ?? data.weight ?? 70} kg</Text>
+            
             <TouchableOpacity 
-              onPress={() => onChange({ targetWeight: (data.targetWeight ?? 70) + 1 })}
-              style={[step.miniNumBtn, { borderColor: colors.border }]}
+              onPress={() => {
+                const currentVal = data.targetWeight ?? data.weight ?? 70;
+                if (data.goal === 'gain') {
+                  onChange({ targetWeight: currentVal + 1 });
+                } else if (data.goal === 'lose' && currentVal < (data.weight ?? 0) - 1) {
+                  onChange({ targetWeight: currentVal + 1 });
+                }
+              }}
+              style={[
+                step.miniNumBtn, 
+                { borderColor: colors.border },
+                (data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight ?? 0) >= (data.weight ?? 0) - 1)) && { opacity: 0.3 }
+              ]}
+              disabled={data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight ?? 0) >= (data.weight ?? 0) - 1)}
             >
               <Text style={{ color: colors.primary }}>+</Text>
             </TouchableOpacity>
@@ -771,6 +945,25 @@ export default function OnboardingScreen() {
       }
     }
 
+    // Weight Goal Validation
+    if (stepId === 'personalization') {
+      const curWeight = data.weight ?? 0;
+      const tarWeight = data.targetWeight ?? curWeight;
+      
+      if (data.goal === 'lose' && tarWeight >= curWeight) {
+        setError(t('profile.loseWeightValidation', 'Target weight must be less than current weight'));
+        return;
+      }
+      if (data.goal === 'gain' && tarWeight <= curWeight) {
+        setError(t('profile.gainWeightValidation', 'Target weight must be greater than current weight'));
+        return;
+      }
+      if (data.goal === 'maintain' && tarWeight !== curWeight) {
+        // Force maintain to match
+        updateData({ targetWeight: curWeight });
+      }
+    }
+
     if (currentStep < STEPS.length - 1) {
       setCurrentStep((s) => s + 1);
     } else {
@@ -827,6 +1020,9 @@ export default function OnboardingScreen() {
         isPro:          false,
         role:           'user' as const,
         onboardingDone: true,
+        dietaryRestrictions: d.dietaryRestrictions ?? [],
+        medicalConditions: d.medicalConditions ?? [],
+        medicationsSupplements: d.medicationsSupplements ?? [],
       };
 
       const { error: upsertError } = await supabase.from('users').upsert({
@@ -848,6 +1044,9 @@ export default function OnboardingScreen() {
         preferences:      profileData.preferences,
         is_pro:           profileData.isPro,
         onboarding_done:  profileData.onboardingDone,
+        dietary_restrictions: profileData.dietaryRestrictions,
+        medical_conditions: profileData.medicalConditions,
+        medications_supplements: profileData.medicationsSupplements,
         updated_at:       new Date().toISOString(),
       });
 
@@ -867,6 +1066,9 @@ export default function OnboardingScreen() {
     goal:     <GoalStep     data={data} onChange={updateData} />,
     stats:    <StatsStep    data={data} onChange={updateData} />,
     activity: <ActivityStep data={data} onChange={updateData} />,
+    dietaryRestrictions: <DietaryRestrictionsStep data={data} onChange={updateData} />,
+    medicalConditions:   <MedicalConditionsStep data={data} onChange={updateData} />,
+    medications:         <MedicationsStep data={data} onChange={updateData} />,
     dietType: <DietTypeStep data={data} onChange={updateData} />,
     diet:     <DietStep     data={data} onChange={updateData} />,
     personalization: <PersonalizationStep data={data} onChange={updateData} />,

@@ -158,7 +158,12 @@
     "syncHealth": "Sync Health",
     "weeklyAvg": "Weekly Average",
     "tapToAdd": "Tap to add",
-    "loggedToday": "Logged today"
+    "loggedToday": "Logged today",
+    "seeHistory": "See history",
+    "measurementsSub": "Waist, chest, etc.",
+    "achievementsWidget": "Achievements",
+    "viewAchievements": "View Medals",
+    "achievementsSub": "Completed challenges"
   },
   "tracker": {
     "title": "Tracker",
@@ -256,6 +261,7 @@
     "workoutsTab": "Workouts",
     "nutritionTab": "Nutrition",
     "noWorkouts": "No workouts planned",
+    "restDay": "Rest Day",
     "restDayHint": "Today is a rest day! Take this time to recover and let your muscles repair.",
     "noPlanYet": "You don't have a plan yet",
     "myStreaks": "My Streaks",
@@ -317,6 +323,9 @@
     "userIdNotFound": "User ID not found. Please log in again.",
     "updateFailed": "Failed to update profile",
     "updateSuccess": "Profile updated successfully ✨",
+    "roleSuperAdmin": "Super Admin",
+    "roleAdmin": "Administrator",
+    "rolePro": "Pro Member",
     "notAuth": "User not authenticated",
     "uploadFailed": "Failed to upload profile picture",
     "loseWeightValidation": "Target weight must be lower than current weight",
@@ -349,7 +358,16 @@
     "progressPhoto": "Progress Photo",
     "recentHistory": "Recent History",
     "saveMeasurementsFailed": "Failed to save measurements. Please try again.",
-    "photoAttached": "Photo attached!"
+    "photoAttached": "Photo attached!",
+    "healthProfile": "Health Profile",
+    "healthProfileSub": "Restrictions, conditions & medications",
+    "healthProfileSaved": "Health profile updated ✨",
+    "healthProfileFailed": "Failed to update health profile",
+    "dietaryRestrictions": "Dietary Restrictions",
+    "medicalConditions": "Medical Conditions",
+    "medicationsSupplements": "Medications & Supplements",
+    "noneSelected": "None selected",
+    "editHealthProfile": "Edit Health Profile"
   },
   "recipes": {
     "title": "AI Recipes",
@@ -505,7 +523,55 @@
       "lemon_juice": "Lemon Juice"
     },
     "deselectAll": "Deselect All",
-    "proBtn": "Upgrade to Pro"
+    "proBtn": "Upgrade to Pro",
+    "healthProfileTitle": "Health Profile",
+    "healthProfileSub": "Help us personalize your nutrition plan (optional)",
+    "dietaryRestrictionsTitle": "Any dietary restrictions?",
+    "dietaryRestrictionsSub": "Select all that apply — you can skip this step",
+    "medicalConditionsTitle": "Any medical conditions we should know?",
+    "medicalConditionsSub": "This helps us tailor safer recommendations for you",
+    "medicationsTitle": "Do you take any medications or supplements?",
+    "medicationsSub": "This helps us avoid conflicts with your nutrition plan",
+    "skipStep": "Skip this step",
+    "otherSpecify": "Other (specify)",
+    "otherPlaceholder": "Type here...",
+    "dietaryItems": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "gluten_free": "Gluten-Free (Celiac)",
+      "lactose_free": "Lactose-Free",
+      "no_seafood": "No Seafood",
+      "no_nuts": "No Nuts",
+      "halal": "Halal / Kosher",
+      "intermittent_fasting": "Intermittent Fasting",
+      "low_sodium": "Low-Sodium Diet",
+      "low_carb": "Low-Carb Diet"
+    },
+    "medicalItems": {
+      "diabetes_type1": "Type 1 Diabetes",
+      "diabetes_type2": "Type 2 Diabetes",
+      "hypertension": "Hypertension",
+      "thyroid": "Hypo/Hyperthyroidism",
+      "ibs": "Irritable Bowel Syndrome",
+      "cardiovascular": "Cardiovascular Disease",
+      "anemia": "Anemia",
+      "obesity": "Obesity (medical diagnosis)",
+      "renal": "Renal Insufficiency",
+      "none": "None"
+    },
+    "medicationItems": {
+      "metformin": "Metformin (diabetes)",
+      "blood_pressure_meds": "Blood Pressure Medication",
+      "anticoagulants": "Anticoagulants",
+      "antidepressants": "Antidepressants / Anxiolytics",
+      "thyroid_hormone": "Thyroid Hormone (Levothyroxine)",
+      "whey_protein": "Protein Powder (Whey/Casein/Vegan)",
+      "creatine": "Creatine",
+      "multivitamins": "Vitamins / Multivitamins",
+      "omega3": "Omega-3",
+      "iron": "Iron",
+      "none": "None"
+    }
   },
   "scan": {
     "title": "Scan Food",

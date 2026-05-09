@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, PanResponder, Dimensions } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { FileText, BarChart2, MessageCircle, Calendar } from 'lucide-react-native';
-import { useAuthStore } from '../../store';
+import { useAuthStore, usePurchaseStore } from '../../store';
 import React, { useRef } from 'react';
 
 function TabIcon({ Icon, label, focused }: { Icon: any; label: string; focused: boolean }) {
@@ -28,7 +28,8 @@ export default function TabsLayout() {
   const { t } = useTranslation();
   const colors = useTheme();
   const { profile } = useAuthStore();
-  const isPro = profile?.isPro ?? false;
+  const { isPro } = usePurchaseStore();
+  const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
   const pathname = usePathname();
 
   const tabs = ['/tracker', '/dashboard', '/coach', '/planner'];
@@ -53,7 +54,7 @@ export default function TabsLayout() {
           // Swipe Left -> Next Tab
           if (currentIdx !== -1 && currentIdx < tabs.length - 1) {
             const next = tabs[currentIdx + 1];
-            if (next === '/planner' && !pro) {
+            if (next === '/planner' && !isProActually) {
               router.push('/modals/paywall');
             } else {
               router.push(next as any);
@@ -118,7 +119,7 @@ export default function TabsLayout() {
         }}
         listeners={{
           tabPress: (e) => {
-            if (!isPro) {
+            if (!isProActually) {
               e.preventDefault();
               router.push('/modals/paywall');
             }

@@ -11,8 +11,9 @@ import { Colors, Spacing, Radius } from '../../../constants';
 import { 
   useAuthStore, useBodyStore, useSettingsStore, 
   useNutritionStore, useCoachStore, useRecipesStore, useProgressStore,
-  UserProfile 
+  usePurchaseStore, UserProfile 
 } from '../../../store';
+import RevenueCatUI from 'react-native-purchases-ui';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../../services/supabase';
 import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
@@ -451,6 +452,7 @@ export default function ProfileScreen() {
   const colors = useTheme();
   const { theme, setTheme, language, setLanguage } = useSettingsStore();
   const { profile, setProfile, clearAuth } = useAuthStore();
+  const { isPro, refreshStatus } = usePurchaseStore();
   const { setNeat, setExerciseLevel }      = useNutritionStore();
   const { latest: latestMeasurement, addMeasurement } = useBodyStore();
   const lastMeasure = latestMeasurement();
@@ -463,6 +465,7 @@ export default function ProfileScreen() {
 
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showHealth, setShowHealth] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -801,6 +804,16 @@ export default function ProfileScreen() {
     showAlert('info', t('common.comingSoon'), t('common.notImplemented'));
   };
 
+  const handleManageSubscription = async () => {
+    try {
+      await RevenueCatUI.presentCustomerCenter();
+    } catch (e) {
+      console.error('Error presenting Customer Center', e);
+      // Fallback if Customer Center is not configured or fails
+      router.push('/modals/paywall');
+    }
+  };
+
   const handleLogout = async () => {
     showAlert(
       'confirm',
@@ -829,10 +842,10 @@ export default function ProfileScreen() {
     : '--';
 
   const goalLabel = profile?.goal === 'lose'
-    ? '⬇️ ' + t('profile.loseWeight')
+    ? '⬇️ ' + t('profile.loseWeight', 'Perder Peso')
     : profile?.goal === 'gain'
-    ? '⬆️ ' + t('profile.gainMuscle')
-    : '⚖️ ' + t('profile.maintain');
+    ? '⬆️ ' + t('profile.gainMuscle', 'Ganar Músculo')
+    : '⚖️ ' + t('profile.maintain', 'Mantener');
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -900,15 +913,15 @@ export default function ProfileScreen() {
           <Text style={[s.email, { color: colors.textSecondary }]}>{profile?.email ?? ''}</Text>
           {profile?.role === 'super_admin' ? (
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>⚡ Super Admin</Text>
+              <Text style={s.proBadgeText}>⚡ {t('profile.roleSuperAdmin', 'Super Admin')}</Text>
             </LinearGradient>
           ) : profile?.role === 'admin' ? (
             <LinearGradient colors={['#10B981', '#059669']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>🛡️ Administrator</Text>
+              <Text style={s.proBadgeText}>🛡️ {t('profile.roleAdmin', 'Administrator')}</Text>
             </LinearGradient>
-          ) : profile?.isPro ? (
+          ) : isPro ? (
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>⭐ Pro Member</Text>
+              <Text style={s.proBadgeText}>⭐ {t('profile.rolePro', 'Pro Member')}</Text>
             </LinearGradient>
           ) : (
             <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/modals/paywall')}>
@@ -923,7 +936,16 @@ export default function ProfileScreen() {
         <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('profile.settings', 'Configuración')}</Text>
           <MenuRow icon="🔥" label={t('profile.updateGoals', 'Actualizar objetivos')} onPress={handleEditGoalFlow} />
+          {isPro && <MenuRow icon="⭐" label={t('profile.manageSubscription', 'Gestionar Suscripción')} onPress={handleManageSubscription} />}
           <MenuRow icon="🍎" label={t('profile.mealPlanFoods', 'Tus Comidas Disponibles')} onPress={() => router.push('/modals/food-selection' as any)} />
+          <MenuRow icon="🩺" label={t('profile.healthProfile', 'Perfil de Salud')} rightIcon={showHealth ? '▼' : '›'} onPress={() => setShowHealth(!showHealth)} />
+          {showHealth && (
+            <View style={{ backgroundColor: colors.surfaceAlt, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <MenuRow icon="🍏" label={t('profile.dietaryRestrictions', 'Restricciones Dietéticas')} value={profile?.dietaryRestrictions?.includes('none') || !profile?.dietaryRestrictions?.length ? t('profile.none') : `${profile.dietaryRestrictions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} />
+              <MenuRow icon="❤️" label={t('profile.medicalConditions', 'Condiciones Médicas')} value={profile?.medicalConditions?.includes('none') || !profile?.medicalConditions?.length ? t('profile.none') : `${profile.medicalConditions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} />
+              <MenuRow icon="💊" label={t('profile.medicationsSupplements', 'Medicamentos')} value={profile?.medicationsSupplements?.includes('none') || !profile?.medicationsSupplements?.length ? t('profile.none') : `${profile.medicationsSupplements.length} seleccionados`} indent onPress={() => router.push('/modals/health-profile' as any)} />
+            </View>
+          )}
           <MenuRow icon="🔔" label={t('profile.reminders', 'Recordatorios')} onPress={handleNotImplemented} />
           <MenuRow icon="🌗" label={t('profile.interface', 'Interfaz')} value={theme === 'dark' ? t('profile.dark', 'Oscuro') : t('profile.lightMode', 'Claro')} onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
           <MenuRow icon="🍱" label={t('profile.syncMeals', 'Sincronizar Comidas')} rightIcon="🔒" onPress={handleNotImplemented} />
@@ -953,7 +975,7 @@ export default function ProfileScreen() {
               <MenuRow icon="📧" label={t('about.email', 'Email')} value="fitgoenterprise@gmail.com" indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} />
               <MenuRow icon="💬" label={t('profile.sendFeedback', 'Enviar Sugerencia')} indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} />
               <View style={s.hashtagRow}>
-                <Text style={[s.hashtagText, { color: colors.primary }]}>#FitGo #TuMejorVersion</Text>
+                <Text style={[s.hashtagText, { color: colors.primary }]}>#FitGo {t('about.hashtag', '#TuMejorVersion')}</Text>
               </View>
             </View>
           )}

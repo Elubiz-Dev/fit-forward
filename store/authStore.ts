@@ -60,6 +60,10 @@ export const useAuthStore = create<AuthState>()(
                 lifestyle:      data.lifestyle,
                 extraSnacks:    data.extra_snacks,
                 widgetsOrder:   data.widgets_order,
+                // ── Health Profile ────────────────────────────────────────
+                dietaryRestrictions:    data.dietary_restrictions    ?? [],
+                medicalConditions:      data.medical_conditions      ?? [],
+                medicationsSupplements: data.medications_supplements ?? [],
               }
             });
           } else {

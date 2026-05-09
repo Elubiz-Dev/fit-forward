@@ -57,23 +57,22 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
 
   const getIcon = () => {
     const size = 32;
-    const color = '#fff';
     switch (type) {
-      case 'success': return <CheckCircle2 size={size} color={color} strokeWidth={2.5} />;
-      case 'error':   return <XCircle size={size} color={color} strokeWidth={2.5} />;
-      case 'warning': return <AlertCircle size={size} color={color} strokeWidth={2.5} />;
-      case 'confirm': return <HelpCircle size={size} color={color} strokeWidth={2.5} />;
-      default:        return <Info size={size} color={color} strokeWidth={2.5} />;
+      case 'success': return <CheckCircle2 size={size} color="#fff" strokeWidth={2.5} />;
+      case 'error':   return <XCircle size={size} color="#fff" strokeWidth={2.5} />;
+      case 'warning': return <AlertCircle size={size} color="#fff" strokeWidth={2.5} />;
+      case 'confirm': return <HelpCircle size={size} color="#fff" strokeWidth={2.5} />;
+      default:        return <Info size={size} color="#fff" strokeWidth={2.5} />;
     }
   };
 
   const getColors = (): [string, string] => {
     switch (type) {
-      case 'success': return ['#10B981', '#059669'];
-      case 'error':   return ['#EF4444', '#DC2626'];
-      case 'warning': return ['#F59E0B', '#D97706'];
-      case 'confirm': return ['#7C5CFC', '#4338CA'];
-      default:        return ['#3B82F6', '#2563EB'];
+      case 'success': return [colors.success, '#15803D'];
+      case 'error':   return [colors.error, '#B91C1C'];
+      case 'warning': return [colors.warning, '#B45309'];
+      case 'confirm': return [colors.primary, colors.primaryDark];
+      default:        return [colors.primary, colors.primaryDark];
     }
   };
 

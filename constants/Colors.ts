@@ -14,7 +14,7 @@ const Palette = {
   success:      '#22C55E',
   warning:      '#F59E0B',
   error:        '#EF4444',
-  info:         '#3B82F6',
+  info:         '#7C5CFC',
 
   protein:      '#7C5CFC',  // purple
   carbs:        '#22D3EE',  // cyan

@@ -29,7 +29,12 @@ async function fetchGroq(payload: any) {
 
   if (error) {
     console.error('[Groq Proxy Error]:', error);
-    throw new Error(`AI Service Error: ${error.message || 'Unknown error'}`);
+    // Try to extract a more descriptive error from the body if possible
+    let errorMsg = error.message || 'Unknown error';
+    if (error && typeof error === 'object' && 'context' in error) {
+      console.error('[Groq Proxy Error Context]:', (error as any).context);
+    }
+    throw new Error(`AI Service Error: ${errorMsg}`);
   }
 
   return data;
@@ -43,17 +48,31 @@ export function buildCoachSystemPrompt(userProfile: {
   targetCalories: number;
   macros: { protein: number; carbs: number; fat: number };
   availableFoods?: string[];
+  age?: number;
+  weight?: number;
+  height?: number;
+  sex?: 'male' | 'female';
+  activityLevel?: string;
+  dietaryRestrictions?: string[];
+  medicalConditions?: string[];
+  medicationsSupplements?: string[];
+  preferences?: string[];
 }, language: string = 'en', coachType: 'nutritionist' | 'trainer' = 'nutritionist') {
   const langNames: Record<string, string> = {
-    en: 'English',
-    es: 'Spanish',
-    fr: 'French',
-    pt: 'Portuguese',
-    it: 'Italian',
-    de: 'German',
-    ru: 'Russian'
+    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
   };
   const targetLang = langNames[language] || 'English';
+
+  const basicStats = `- Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
+- Activity Level: ${userProfile.activityLevel ?? 'Unknown'}
+- Goal: ${userProfile.goal}`;
+
+  const healthData = `
+Health Profile (CRITICAL):
+- Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None reported'}
+- Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None reported'}
+- Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None reported'}
+- Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}`;
 
   if (coachType === 'trainer') {
     return `You are Fitz, an expert AI personal trainer inside the FitGO app.
@@ -61,15 +80,17 @@ IMPORTANT: You MUST respond in ${targetLang}.
 
 User profile:
 - Name: ${userProfile.name}
-- Goal: ${userProfile.goal}
+${basicStats}
+${healthData}
 
 Guidelines:
 1. Act exclusively as a personal trainer. Focus entirely on workouts, exercises, physical conditioning, and training routines.
 2. Always tailor advice specifically to the user's fitness goal (${userProfile.goal}), adjusting exercise selection, volume, and intensity accordingly.
-3. When suggesting routines, provide clear structure: warm-up, exercises (with sets, reps, and rest times), and cool-down.
-4. Keep responses concise and action-oriented (under 200 words unless a detailed plan is requested).
-5. Be highly motivating and encouraging, like a professional real-life personal trainer.
-6. If the user asks about diets, macros, or nutrition, gently remind them that you are currently in "Personal Trainer" mode and they should switch to the "Nutritionist" tab for dietary advice.`;
+3. CRITICAL: Take into account any medical conditions or physical limitations mentioned in the Health Profile when suggesting exercises or intensities to avoid injury.
+4. When suggesting routines, provide clear structure: warm-up, exercises (with sets, reps, and rest times), and cool-down.
+5. Keep responses concise and action-oriented (under 200 words unless a detailed plan is requested).
+6. Be highly motivating and encouraging, like a professional real-life personal trainer.
+7. If the user asks about diets, macros, or nutrition, gently remind them that you are currently in "Personal Trainer" mode and they should switch to the "Nutritionist" tab for dietary advice.`;
   }
 
   return `You are Fitz, an expert AI nutritionist inside the FitGO app.
@@ -77,19 +98,21 @@ IMPORTANT: You MUST respond in ${targetLang}.
 
 User profile:
 - Name: ${userProfile.name}
-- Nutrition Goal: ${userProfile.goal}
+${basicStats}
 - TDEE: ${userProfile.tdee} kcal/day
 - Daily calorie target: ${userProfile.targetCalories} kcal
 - Macro targets: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
-${userProfile.availableFoods?.length ? `- Dietary restrictions: ${userProfile.availableFoods.join(', ')}` : ''}
+${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
+${healthData}
 
 Guidelines:
 1. Act exclusively as a nutritionist and dietitian. Focus on food, calories, macros, recipes, digestion, and dietary habits.
 2. Always tailor advice strictly to the user's goal (${userProfile.goal}) and their specific calorie/macro targets.
-3. When suggesting meals or foods, include rough macronutrient estimates to help them hit their daily goals.
-4. Keep responses concise, practical, and science-backed (under 200 words unless a detailed meal plan is requested).
-5. Be empathetic, supportive, and non-judgmental regarding their dietary journey.
-6. If the user asks about workout routines or physical exercises, gently remind them that you are currently in "Nutritionist" mode and they should switch to the "Personal Trainer" tab for workout advice.`;
+3. CRITICAL: You MUST strictly adhere to the user's Dietary Restrictions, Medical Conditions, and Diet Type Preference. Never suggest foods that conflict with these constraints.
+4. When suggesting meals or foods, include rough macronutrient estimates to help them hit their daily goals.
+5. Keep responses concise, practical, and science-backed (under 200 words unless a detailed meal plan is requested).
+6. Be empathetic, supportive, and non-judgmental regarding their dietary journey.
+7. If the user asks about workout routines or physical exercises, gently remind them that you are currently in "Nutritionist" mode and they should switch to the "Personal Trainer" tab for workout advice.`;
 }
 
 // ─── Send coach message ───────────────────────────────────────────────────────
@@ -208,6 +231,14 @@ export async function generateMealPlan(userProfile: {
   goal: string;
   availableFoods?: string[];
   preferences?: string[];
+  age?: number;
+  weight?: number;
+  height?: number;
+  sex?: 'male' | 'female';
+  activityLevel?: string;
+  dietaryRestrictions?: string[];
+  medicalConditions?: string[];
+  medicationsSupplements?: string[];
 }, language: string = 'en'): Promise<Record<string, { meal: string; name: string; calories: number; protein: number; carbs: number; fat: number }[]>> {
   const langNames: Record<string, string> = {
     en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
@@ -218,8 +249,15 @@ export async function generateMealPlan(userProfile: {
 - Daily calories: ${userProfile.targetCalories} kcal
 - Macros: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
 - Goal: ${userProfile.goal}
+- Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
 ${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
-${userProfile.preferences?.length ? `- Preferences: ${userProfile.preferences.join(', ')}` : ''}
+
+CRITICAL HEALTH CONSTRAINTS:
+- Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
+- Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None'}
+- Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None'}
+
+IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include any ingredients that conflict with their medical conditions or dietary restrictions.
 
 IMPORTANT: All meal names, descriptions, and instructions MUST be in ${targetLang}.
 
@@ -261,6 +299,11 @@ Return ONLY valid JSON (no markdown). Use this exact structure:
 export async function generateWorkoutPlan(userProfile: {
   goal: string;
   activityLevel: string;
+  age?: number;
+  weight?: number;
+  height?: number;
+  sex?: 'male' | 'female';
+  medicalConditions?: string[];
 }, language: string = 'en'): Promise<Record<string, { name: string; exercises: { name: string; sets: number; reps: string; rest: string }[] }>> {
   const langNames: Record<string, string> = {
     en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
@@ -270,6 +313,12 @@ export async function generateWorkoutPlan(userProfile: {
   const prompt = `Create a 7-day workout plan for someone with these parameters:
 - Goal: ${userProfile.goal}
 - Activity Level: ${userProfile.activityLevel}
+- Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
+
+CRITICAL HEALTH CONSTRAINTS:
+- Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
+
+IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include exercises that could exacerbate their medical conditions. Modify intensity and selection accordingly.
 
 IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targetLang}.
 

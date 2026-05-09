@@ -9,20 +9,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
-import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore } from '../store';
+import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore } from '../store';
 import { sendCoachMessage, buildCoachSystemPrompt, transcribeAudio } from '../services/groq';
 import { supabase } from '../services/supabase';
 import { Spacing, Radius } from '../constants';
 import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { safe } from '../utils/sanitize';
+import CoachHistoryModal from './CoachHistoryModal';
 
 const FREE_MSG_LIMIT = 10;
 
 // Suggestion chips are now generated inside the component using t()
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
-function MessageBubble({ msg }: { msg: CoachMessage }) {
+function MessageBubble({ msg, isLastUser, onEdit }: { msg: CoachMessage; isLastUser?: boolean; onEdit?: (m: CoachMessage) => void }) {
   const colors = useTheme();
   const isUser = msg.role === 'user';
 
@@ -45,9 +46,16 @@ function MessageBubble({ msg }: { msg: CoachMessage }) {
         <Text style={[bubble.text, isUser && bubble.textUser, !isUser && { color: colors.textPrimary }]}>
           {formatContent(msg.content)}
         </Text>
-        <Text style={[bubble.time, isUser ? { color: 'rgba(255,255,255,0.6)' } : { color: colors.textMuted }]}>
-          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          {isLastUser && onEdit && (
+            <TouchableOpacity onPress={() => onEdit(msg)} hitSlop={8}>
+              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' }}>{safe('✎')}</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={[bubble.time, isUser ? { color: 'rgba(255,255,255,0.6)', marginTop: 0 } : { color: colors.textMuted, marginTop: 0 }]}>
+            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -83,6 +91,7 @@ export default function NutritionistScreen() {
   const coachType = 'nutritionist';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSending, setIsSending]       = useState(false); // local send guard
+  const [historyVisible, setHistoryVisible] = useState(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   const isRecording   = recorderState.isRecording;
@@ -92,13 +101,16 @@ export default function NutritionistScreen() {
   const colors = useTheme();
   const { language } = useSettingsStore();
   const {
-    nutritionistMessages: messages, isTyping, msgCount,
+    nutritionistMessages: messages, isTyping, msgCount, nutritionistSessions: sessions,
+    currentNutritionistSessionId: sessionId,
     addMessage, setMessages, setTyping, incrementCount, checkAndResetDaily,
+    setCurrentSessionId, setSessions, removeLastPair,
   } = useCoachStore();
   const { profile } = useAuthStore();
 
-  const isPro   = profile?.isPro ?? false;
-  const atLimit = !isPro && msgCount >= FREE_MSG_LIMIT;
+  const { isPro } = usePurchaseStore();
+  const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
+  const atLimit = !isProActually && msgCount >= FREE_MSG_LIMIT;
 
   // On mount: reset stuck isTyping + check daily message reset
   useEffect(() => {
@@ -107,18 +119,44 @@ export default function NutritionistScreen() {
     checkAndResetDaily();
   }, []);
 
+  const loadSessions = async () => {
+    if (!profile?.id) return;
+    const { data } = await supabase
+      .from('coach_sessions')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('coach_type', 'nutritionist')
+      .order('created_at', { ascending: false });
+    if (data) setSessions(data, 'nutritionist');
+  };
+
+  useEffect(() => { loadSessions(); }, [profile?.id]);
+
   // Load coach history from Supabase
   useEffect(() => {
     if (!profile?.id) return;
 
     async function loadHistory() {
-      const { data, error } = await supabase
+      let query = supabase
         .from('coach_conversations')
         .select('id, role, content, created_at')
         .eq('user_id', profile!.id)
         .eq('coach_type', 'nutritionist')
         .order('created_at', { ascending: true })
         .limit(50);
+
+      if (sessionId) {
+        query = query.eq('session_id', sessionId);
+      } else {
+        // If no session is selected, we either show a welcome or the latest session
+        if (sessions.length > 0) {
+          setCurrentSessionId(sessions[0].id, 'nutritionist');
+          return;
+        }
+        query = query.is('session_id', null);
+      }
+
+      const { data, error } = await query;
 
       if (data && !error && data.length > 0) {
         const formatted: CoachMessage[] = data.map((m: any) => ({
@@ -138,12 +176,20 @@ export default function NutritionistScreen() {
             content:   t('coach.nutritionist.welcome'),
             timestamp: new Date().toISOString(),
           }], 'nutritionist');
+        } else {
+          // If we have messages but they are not for this session, clear them
+          setMessages([{
+            id:        'welcome',
+            role:      'model',
+            content:   t('coach.nutritionist.welcome'),
+            timestamp: new Date().toISOString(),
+          }], 'nutritionist');
         }
       }
     }
 
     loadHistory();
-  }, [profile?.id, language]);
+  }, [profile?.id, language, sessionId]);
 
   // Scroll to bottom on new message or typing change
   useEffect(() => {
@@ -259,6 +305,26 @@ export default function NutritionistScreen() {
 
     const currentImg = selectedImage;
 
+    let activeSessionId = sessionId;
+
+    if (!activeSessionId) {
+      const { data: newSession } = await supabase
+        .from('coach_sessions')
+        .insert({
+          user_id: profile.id,
+          title: text.slice(0, 30) || 'New Chat',
+          coach_type: 'nutritionist'
+        })
+        .select()
+        .single();
+      
+      if (newSession) {
+        activeSessionId = newSession.id;
+        setCurrentSessionId(activeSessionId, 'nutritionist');
+        loadSessions();
+      }
+    }
+
     // Optimistic UI: add user message immediately
     const userMsg: CoachMessage = {
       id:        `u-${Date.now()}`,
@@ -280,6 +346,7 @@ export default function NutritionistScreen() {
       role:    'user',
       content: text || '[Image]',
       coach_type: 'nutritionist',
+      session_id: activeSessionId,
     });
 
     try {
@@ -317,6 +384,15 @@ export default function NutritionistScreen() {
         targetCalories: profile.targetCalories ?? 2000,
         macros:         profile.macros         ?? { protein: 150, carbs: 200, fat: 67 },
         availableFoods: profile.availableFoods,
+        age:            profile.age,
+        weight:         profile.weight,
+        height:         profile.height,
+        sex:            profile.sex,
+        activityLevel:  profile.activityLevel,
+        dietaryRestrictions: profile.dietaryRestrictions,
+        medicalConditions: profile.medicalConditions,
+        medicationsSupplements: profile.medicationsSupplements,
+        preferences:    profile.preferences,
       }, language, coachType);
 
       const reply = await sendCoachMessage(history, text, systemPrompt, currentImg ?? undefined);
@@ -335,6 +411,7 @@ export default function NutritionistScreen() {
         role:    'model',
         content: reply,
         coach_type: 'nutritionist',
+        session_id: activeSessionId,
       });
 
     } catch (err: any) {
@@ -366,7 +443,15 @@ export default function NutritionistScreen() {
             <Text style={[s.onlineText, { color: colors.success }]}>{t('coach.online')}</Text>
           </View>
         </View>
-        {!isPro && (
+
+        <TouchableOpacity 
+          onPress={() => setHistoryVisible(true)}
+          style={[s.historyBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+        >
+          <Text style={{ fontSize: 18 }}>🕒</Text>
+        </TouchableOpacity>
+
+        {!isProActually && (
           <View style={[s.countBadge, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <Text style={[s.countText, { color: colors.textSecondary }]}>
               {Math.max(FREE_MSG_LIMIT - msgCount, 0)}/{FREE_MSG_LIMIT}
@@ -386,7 +471,29 @@ export default function NutritionistScreen() {
           ref={flatRef}
           data={messages}
           keyExtractor={(m) => m.id}
-          renderItem={({ item }) => <MessageBubble msg={item} />}
+          renderItem={({ item, index }) => {
+            const isLastUser = item.role === 'user' && (index === messages.length - 1 || (index === messages.length - 2 && messages[index+1].role === 'model'));
+            return (
+              <MessageBubble 
+                msg={item} 
+                isLastUser={isLastUser}
+                onEdit={(m) => {
+                  setInput(m.content);
+                  removeLastPair('nutritionist');
+                  // Optional: Delete from Supabase as well?
+                  // For simplicity, we just "continue" by sending a new one and the app logic will handle history.
+                  // But the user said "se vuelva a cargar la respuesta", so we'll just remove from local and Supabase.
+                  if (sessionId) {
+                     supabase.from('coach_conversations')
+                      .delete()
+                      .eq('session_id', sessionId)
+                      .gte('created_at', m.timestamp)
+                      .then();
+                  }
+                }}
+              />
+            );
+          }}
           contentContainerStyle={s.messages}
           keyboardShouldPersistTaps="handled"
           ListFooterComponent={
@@ -491,6 +598,12 @@ export default function NutritionistScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      <CoachHistoryModal 
+        visible={historyVisible} 
+        onClose={() => setHistoryVisible(false)} 
+        coachType="nutritionist" 
+      />
     </View>
   );
 }
@@ -534,5 +647,6 @@ const s = StyleSheet.create({
   upgradeBtn:           { borderRadius: Radius.md, overflow: 'hidden' },
   upgradeGrad:          { padding: 14, alignItems: 'center' },
   upgradeText:          { color: '#fff', fontWeight: '700', fontSize: 15 },
+  historyBtn:           { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
 });
 

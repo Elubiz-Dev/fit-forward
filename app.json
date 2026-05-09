@@ -55,7 +55,8 @@
           "microphonePermission": "Allow FitGO to access your microphone to log food and talk with your AI coach."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

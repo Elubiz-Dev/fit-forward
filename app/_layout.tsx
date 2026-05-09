@@ -10,6 +10,9 @@ import { Colors } from '../constants';
 import '../i18n';
 import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
+import { usePurchaseStore } from '../store';
+import { revenueCat } from '../services/revenuecat';
+import Purchases from 'react-native-purchases';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,6 +51,7 @@ function NavigationGuard() {
 
 export default function RootLayout() {
   const { setSession, setLoading, setProfile, fetchProfile } = useAuthStore();
+  const { initialize: initPurchases } = usePurchaseStore();
   const { language, theme } = useSettingsStore();
   const colors = useTheme();
 
@@ -60,8 +64,12 @@ export default function RootLayout() {
       setSession(newSession);
       if (newSession?.user) {
         await fetchProfile(newSession.user.id);
+        // Initialize RevenueCat with user ID
+        await initPurchases(newSession.user.id);
       } else {
         setProfile(null);
+        // Logout from RevenueCat
+        await revenueCat.logout();
       }
       
       // Only hide splash/set loading false once we have tried to get the profile

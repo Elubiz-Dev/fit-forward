@@ -36,19 +36,34 @@ Deno.serve(async (req) => {
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is not configured");
+      console.error("[Groq Proxy] Error: GROQ_API_KEY is not configured in Supabase secrets.");
+      return new Response(
+        JSON.stringify({ error: "GROQ_API_KEY is not configured in Supabase secrets." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const contentType = req.headers.get("content-type") || "";
     let url = "https://api.groq.com/openai/v1/chat/completions";
     let body: any;
 
-    if (contentType.includes("multipart/form-data")) {
-      url = "https://api.groq.com/openai/v1/audio/transcriptions";
-      body = await req.formData();
-    } else {
-      body = JSON.stringify(await req.json());
+    try {
+      if (contentType.includes("multipart/form-data")) {
+        url = "https://api.groq.com/openai/v1/audio/transcriptions";
+        body = await req.formData();
+      } else {
+        const jsonBody = await req.json();
+        body = JSON.stringify(jsonBody);
+      }
+    } catch (e) {
+      console.error("[Groq Proxy] Failed to parse request body:", e);
+      return new Response(
+        JSON.stringify({ error: "Failed to parse request body", details: e.message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log(`[Groq Proxy] Forwarding request to: ${url}`);
 
     const groqResponse = await fetch(url, {
       method: "POST",
@@ -59,12 +74,24 @@ Deno.serve(async (req) => {
       body: body,
     });
 
-    const groqData = await groqResponse.json();
+    const responseText = await groqResponse.text();
+    let groqData;
+    try {
+      groqData = JSON.parse(responseText);
+    } catch (e) {
+      groqData = { error: "Non-JSON response from Groq", raw: responseText };
+    }
+
+    if (!groqResponse.ok) {
+      console.error(`[Groq Proxy] Groq API error (${groqResponse.status}):`, groqData);
+    }
+
     return new Response(JSON.stringify(groqData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: groqResponse.status,
     });
   } catch (error) {
+    console.error("[Groq Proxy] Internal Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

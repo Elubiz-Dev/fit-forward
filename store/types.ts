@@ -3,7 +3,20 @@ import type { FoodItem } from '../services/foodDatabase';
 export type ThemeMode = 'light' | 'dark';
 export type AppLanguage = 'en' | 'es' | 'fr' | 'pt' | 'it' | 'de' | 'ru';
 
-export interface UserProfile {
+/**
+ * Health profile sub-shape stored inside UserProfile.
+ * All fields are optional so users can skip any section.
+ */
+export interface HealthProfile {
+  /** Dietary restrictions, e.g. ['vegetarian', 'gluten_free', 'custom: sin pimientos'] */
+  dietaryRestrictions?:    string[];
+  /** Medical conditions relevant to nutrition, e.g. ['diabetes_type2', 'hypertension'] */
+  medicalConditions?:      string[];
+  /** Medications and supplements currently taken, e.g. ['creatine', 'omega3'] */
+  medicationsSupplements?: string[];
+}
+
+export interface UserProfile extends HealthProfile {
   id:              string;
   name:            string;
   email:           string;
