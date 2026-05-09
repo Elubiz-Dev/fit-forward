@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${GROQ_API_KEY}`,
-        ...(contentType.includes("application/json") ? { "Content-Type": "application/json" } : { "Content-Type": contentType }),
+        ...(contentType.includes("application/json") ? { "Content-Type": "application/json" } : {}),
       },
       body: body,
     });

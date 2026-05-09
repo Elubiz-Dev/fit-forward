@@ -17,8 +17,8 @@
 import { supabase } from './supabase';
 
 // ─── Model IDs ────────────────────────────────────────────────────────────────
-const CHAT_MODEL   = 'llama-4-scout-17b-instruct';
-const VISION_MODEL = 'llama-4-scout-17b-instruct'; // Based on availability in your dashboard
+const CHAT_MODEL   = 'meta-llama/llama-4-scout-17b-16e-instruct'; //no cambiar en proximos
+const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; //no cambiar en proximos
 const AUDIO_MODEL  = 'whisper-large-v3';
 
 // Helper to use Supabase Edge Function as a proxy
@@ -30,21 +30,27 @@ async function fetchGroq(payload: any) {
   if (error) {
     console.error('[Groq Proxy Error]:', error);
     
-    // Attempt to extract details from the error response body
     let errorMsg = error.message || 'Unknown error';
     
+    // FunctionsHttpError contains the actual response in the context property
     if (error && typeof error === 'object' && 'context' in error) {
       const context = (error as any).context;
-      // If it's a response object, we might not be able to await it here easily
-      // but let's try to see if it has some already parsed data or status
-      if (context.status === 400) {
-        errorMsg = `Bad Request (400) - Check model/params.`;
+      try {
+        // Try to read the response body if possible
+        // Note: supabase-js usually already handles this, but let's be safe
+        if (context instanceof Response) {
+          const body = await context.json();
+          if (body && body.error) {
+            errorMsg = body.error.message || JSON.stringify(body.error);
+          }
+        }
+      } catch (e) {
+        // ignore parsing errors
       }
-    }
 
-    // If data exists despite error (unlikely with invoke), it might contain the error body
-    if (data && data.error) {
-      errorMsg = data.error.message || JSON.stringify(data.error);
+      if (context.status === 400 && errorMsg === 'Unknown error') {
+        errorMsg = 'Bad Request (400) - Check model availability or parameters.';
+      }
     }
 
     throw new Error(`AI Service Error: ${errorMsg}`);
@@ -87,9 +93,22 @@ Health Profile (CRITICAL):
 - Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None reported'}
 - Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}`;
 
+  const roles: Record<string, Record<string, string>> = {
+    trainer: {
+      en: 'personal trainer', es: 'entrenador personal', fr: 'entraîneur personnel',
+      pt: 'treinador pessoal', it: 'personal trainer', de: 'Personal Trainer', ru: 'персональный тренер'
+    },
+    nutritionist: {
+      en: 'nutritionist', es: 'nutricionista', fr: 'nutritionniste',
+      pt: 'nutricionista', it: 'nutrizionista', de: 'Ernährungsberater', ru: 'диетолог'
+    }
+  };
+
+  const role = roles[coachType][language] || roles[coachType]['en'];
+  
   if (coachType === 'trainer') {
-    return `You are Fitz, an expert AI personal trainer inside the FitGO app.
-IMPORTANT: You MUST respond in ${targetLang}.
+    return `You are Fitz, an expert AI ${role} inside the FitGO app.
+IMPORTANT: You MUST respond in ${targetLang}. You should also understand and process all user inputs in ${targetLang} or English.
 
 User profile:
 - Name: ${userProfile.name}
@@ -97,17 +116,17 @@ ${basicStats}
 ${healthData}
 
 Guidelines:
-1. Act exclusively as a personal trainer. Focus entirely on workouts, exercises, physical conditioning, and training routines.
+1. Act exclusively as a ${role}. Focus entirely on workouts, exercises, physical conditioning, and training routines.
 2. Always tailor advice specifically to the user's fitness goal (${userProfile.goal}), adjusting exercise selection, volume, and intensity accordingly.
 3. CRITICAL: Take into account any medical conditions or physical limitations mentioned in the Health Profile when suggesting exercises or intensities to avoid injury.
 4. When suggesting routines, provide clear structure: warm-up, exercises (with sets, reps, and rest times), and cool-down.
 5. Keep responses concise and action-oriented (under 200 words unless a detailed plan is requested).
-6. Be highly motivating and encouraging, like a professional real-life personal trainer.
-7. If the user asks about diets, macros, or nutrition, gently remind them that you are currently in "Personal Trainer" mode and they should switch to the "Nutritionist" tab for dietary advice.`;
+6. Be highly motivating and encouraging, like a professional real-life ${role}.
+7. If the user asks about diets, macros, or nutrition, gently remind them that you are currently in "${role}" mode and they should switch to the other coach for dietary advice.`;
   }
 
-  return `You are Fitz, an expert AI nutritionist inside the FitGO app.
-IMPORTANT: You MUST respond in ${targetLang}.
+  return `You are Fitz, an expert AI ${role} inside the FitGO app.
+IMPORTANT: You MUST respond in ${targetLang}. You should also understand and process all user inputs in ${targetLang} or English.
 
 User profile:
 - Name: ${userProfile.name}
@@ -119,13 +138,13 @@ ${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availab
 ${healthData}
 
 Guidelines:
-1. Act exclusively as a nutritionist and dietitian. Focus on food, calories, macros, recipes, digestion, and dietary habits.
+1. Act exclusively as a ${role}. Focus on food, calories, macros, recipes, digestion, and dietary habits.
 2. Always tailor advice strictly to the user's goal (${userProfile.goal}) and their specific calorie/macro targets.
 3. CRITICAL: You MUST strictly adhere to the user's Dietary Restrictions, Medical Conditions, and Diet Type Preference. Never suggest foods that conflict with these constraints.
 4. When suggesting meals or foods, include rough macronutrient estimates to help them hit their daily goals.
 5. Keep responses concise, practical, and science-backed (under 200 words unless a detailed meal plan is requested).
 6. Be empathetic, supportive, and non-judgmental regarding their dietary journey.
-7. If the user asks about workout routines or physical exercises, gently remind them that you are currently in "Nutritionist" mode and they should switch to the "Personal Trainer" tab for workout advice.`;
+7. If the user asks about workout routines or physical exercises, gently remind them that you are currently in "${role}" mode and they should switch to the other coach for workout advice.`;
 }
 
 // ─── Send coach message ───────────────────────────────────────────────────────
@@ -192,8 +211,9 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
     en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
   };
   const targetLang = langNames[language] || 'English';
+  const exampleName = targetLang === 'Spanish' ? 'Ensalada de pollo' : 'Chicken salad';
 
-  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "food name", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
+  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
 
   try {
     const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '');
@@ -275,10 +295,10 @@ IMPORTANT: All meal names, descriptions, and instructions MUST be in ${targetLan
 Return ONLY valid JSON (no markdown). Use this exact structure:
 {
   "Mon": [
-    { "meal": "breakfast", "name": "Oatmeal with berries", "calories": 350, "protein": 12, "carbs": 60, "fat": 8 },
-    { "meal": "lunch", "name": "Grilled chicken salad", "calories": 450, "protein": 40, "carbs": 20, "fat": 15 },
-    { "meal": "dinner", "name": "Salmon with vegetables", "calories": 500, "protein": 45, "carbs": 25, "fat": 20 },
-    { "meal": "snack", "name": "Greek yogurt", "calories": 150, "protein": 15, "carbs": 12, "fat": 3 }
+    { "meal": "breakfast", "name": "${targetLang === 'Spanish' ? 'Avena con bayas' : 'Oatmeal with berries'}", "calories": 350, "protein": 12, "carbs": 60, "fat": 8 },
+    { "meal": "lunch", "name": "${targetLang === 'Spanish' ? 'Ensalada de pollo a la parrilla' : 'Grilled chicken salad'}", "calories": 450, "protein": 40, "carbs": 20, "fat": 15 },
+    { "meal": "dinner", "name": "${targetLang === 'Spanish' ? 'Salmón con verduras' : 'Salmon with vegetables'}", "calories": 500, "protein": 45, "carbs": 25, "fat": 20 },
+    { "meal": "snack", "name": "${targetLang === 'Spanish' ? 'Yogur griego' : 'Greek yogurt'}", "calories": 150, "protein": 15, "carbs": 12, "fat": 3 }
   ],
   "Tue": [],
   "Wed": [],
@@ -336,18 +356,18 @@ IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targe
 Return ONLY valid JSON (no markdown). Use this exact structure:
 {
   "Mon": {
-    "name": "Chest & Triceps",
+    "name": "${targetLang === 'Spanish' ? 'Pecho y Tríceps' : 'Chest & Triceps'}",
     "exercises": [
-      { "name": "Bench Press", "sets": 3, "reps": "10-12", "rest": "90s" },
-      { "name": "Incline DB Press", "sets": 3, "reps": "12", "rest": "60s" }
+      { "name": "${targetLang === 'Spanish' ? 'Press de Banca' : 'Bench Press'}", "sets": 3, "reps": "10-12", "rest": "90s" },
+      { "name": "${targetLang === 'Spanish' ? 'Press Superior con Mancuernas' : 'Incline DB Press'}", "sets": 3, "reps": "12", "rest": "60s" }
     ]
   },
-  "Tue": { "name": "Rest Day", "exercises": [] },
-  "Wed": { "name": "Back & Biceps", "exercises": [] },
-  "Thu": { "name": "Rest Day", "exercises": [] },
-  "Fri": { "name": "Legs & Shoulders", "exercises": [] },
-  "Sat": { "name": "Active Recovery", "exercises": [] },
-  "Sun": { "name": "Rest Day", "exercises": [] }
+  "Tue": { "name": "${targetLang === 'Spanish' ? 'Día de Descanso' : 'Rest Day'}", "exercises": [] },
+  "Wed": { "name": "${targetLang === 'Spanish' ? 'Espalda y Bíceps' : 'Back & Biceps'}", "exercises": [] },
+  "Thu": { "name": "${targetLang === 'Spanish' ? 'Día de Descanso' : 'Rest Day'}", "exercises": [] },
+  "Fri": { "name": "${targetLang === 'Spanish' ? 'Piernas y Hombros' : 'Legs & Shoulders'}", "exercises": [] },
+  "Sat": { "name": "${targetLang === 'Spanish' ? 'Recuperación Activa' : 'Active Recovery'}", "exercises": [] },
+  "Sun": { "name": "${targetLang === 'Spanish' ? 'Día de Descanso' : 'Rest Day'}", "exercises": [] }
 }`;
 
   const data = await fetchGroq({
@@ -416,18 +436,24 @@ export async function transcribeAudio(uri: string): Promise<string> {
   
   formData.append('model', AUDIO_MODEL);
 
-  if (__DEV__) console.log('[Groq] Transcribing via Edge Function:', uri);
+  if (__DEV__) console.log('[Groq] Transcribing via Proxy:', uri, 'Mime:', mimeType);
   
-  const { data, error } = await supabase.functions.invoke('groq-proxy', {
-    body: formData,
-  });
-
-  if (error) {
-    console.error('[Groq] Transcription Proxy Error:', error);
-    throw new Error(`Transcription error: ${error.message}`);
+  try {
+    const { data, error } = await supabase.functions.invoke('groq-proxy', {
+      body: formData,
+    });
+  
+    if (error) {
+      console.error('[Groq] Transcription Error:', error);
+      throw new Error(`AI Transcription failed: ${error.message}`);
+    }
+  
+    if (__DEV__) console.log('[Groq] Transcription Success:', data?.text?.substring(0, 30));
+    return data?.text ?? '';
+  } catch (err: any) {
+    console.error('[Groq] Transcription Fetch Error:', err);
+    throw err;
   }
-
-  return data.text ?? '';
 }
 
 // ─── Generate Recipes ─────────────────────────────────────────────────────────
@@ -484,21 +510,46 @@ export async function parseVoiceLog(text: string, language: string = 'en'): Prom
   };
   const targetLang = langNames[language] || 'English';
 
-  const prompt = `Extract food items and estimated portions from this description: "${text}"
+  const prompt = `You are a professional nutritionist. Extract food items and estimated portions from this description: "${text}"
 IMPORTANT: Extract the food names in ${targetLang}.
-Return ONLY valid JSON. Structure:
+Estimate the nutritional values (calories, macros, and micros) as accurately as possible for the described portion sizes.
+
+CRITICAL RULE: If the user mentions multiple units of the same food (e.g., "3 eggs", "2 apples", "5 tortillas"), you MUST group them into a SINGLE item entry. 
+Example: "3 huevos" should result in ONE item named "${targetLang === 'Spanish' ? '3 Huevos' : '3 Eggs'}" with the TOTAL weight and nutritional values of all 3 eggs combined. Do NOT return them as separate items.
+
+Return ONLY a valid JSON object. Structure:
 {
   "items": [
-    { "name": "Apple", "grams": 180, "calories": 95, "protein": 0, "carbs": 25, "fat": 0, "sugar": 19, "fiber": 4, "sodium": 2, "iron": 0.2, "saturatedFat": 0, "transFat": 0 },
-    { "name": "Black Coffee", "grams": 250, "calories": 2, "protein": 0, "carbs": 0, "fat": 0, "sugar": 0, "fiber": 0, "sodium": 5, "iron": 0, "saturatedFat": 0, "transFat": 0 }
+    { 
+      "name": "Food Name in ${targetLang}", 
+      "grams": 150, 
+      "calories": 200, 
+      "protein": 15, 
+      "carbs": 20, 
+      "fat": 8, 
+      "sugar": 5, 
+      "fiber": 3, 
+      "sodium": 300, 
+      "iron": 1.2, 
+      "saturatedFat": 2, 
+      "transFat": 0 
+    }
   ]
-}`;
+}
+
+Example mappings:
+- "Una manzana mediana" -> ~180g
+- "Un plato de arroz" -> ~200g
+- "Un vaso de leche" -> ~250ml/g
+- "Una pechuga de pollo" -> ~150g
+
+BE ACCURATE with the calories and macros based on reliable nutritional databases (like USDA).`;
 
   const data = await fetchGroq({
     model: CHAT_MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 1024,
-    temperature: 0.3,
+    temperature: 0.2,
     response_format: { type: 'json_object' },
   });
 
@@ -510,5 +561,41 @@ Return ONLY valid JSON. Structure:
     return parsed.items || [];
   } catch {
     return [];
+  }
+}
+// ─── Estimate Activity Calories ───────────────────────────────────────────────
+export async function estimateActivityCalories(description: string, duration: number, language: string = 'en'): Promise<number> {
+  const langNames: Record<string, string> = {
+    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
+  };
+  const targetLang = langNames[language] || 'English';
+
+  const prompt = `You are a fitness expert. Estimate the total calories burned for this activity: "${description}" for a duration of ${duration} minutes. 
+Provide a realistic estimate based on standard MET values for a person of average weight (70kg/154lbs).
+
+Return ONLY a valid JSON object. Structure:
+{
+  "calories": 250,
+  "reasoning": "Brief explanation in ${targetLang}"
+}
+
+Important: Return ONLY the JSON.`;
+
+  const data = await fetchGroq({
+    model: CHAT_MODEL,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 300,
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+  });
+
+  let content = (data.choices[0]?.message?.content ?? '').trim();
+  content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  try {
+    const parsed = JSON.parse(content);
+    return Math.round(parsed.calories || 0);
+  } catch {
+    return 0;
   }
 }

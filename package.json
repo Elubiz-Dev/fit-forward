@@ -12,7 +12,8 @@
   },
   "overrides": {
     "postcss": "^8.5.10",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "react-native-worklets": "latest"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -26,6 +27,7 @@
     "expo-constants": "~55.0.15",
     "expo-crypto": "~55.0.14",
     "expo-dev-client": "~55.0.32",
+    "expo-file-system": "~55.0.19",
     "expo-image-picker": "~55.0.20",
     "expo-linear-gradient": "~55.0.13",
     "expo-linking": "~55.0.15",
@@ -53,6 +55,7 @@
     "react-native-svg": "15.15.3",
     "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "~0.21.0",
+    "react-native-worklets": "latest",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

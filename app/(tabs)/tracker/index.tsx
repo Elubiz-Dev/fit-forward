@@ -21,8 +21,8 @@ const RADIUS        = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 // We will use an arc instead of a full circle for the calorie ring
-const ARC_ANGLE = 180; // semi-circle
-const ARC_CIRCUMFERENCE = (ARC_ANGLE / 360) * CIRCUMFERENCE;
+const ARC_ANGLE = 360; 
+const ARC_CIRCUMFERENCE = CIRCUMFERENCE;
 
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type Meal = typeof MEALS[number];
@@ -48,21 +48,29 @@ function MacroBar({ label, current, target, color }: { label: string; current: n
   const pct = Math.min(current / Math.max(target, 1), 1);
   return (
     <View style={macro.wrap}>
-      <Text style={[macro.label, { color: colors.textSecondary }]}>{label}</Text>
-      <Text style={[macro.values, { color: colors.textPrimary }]}><Text style={{ color }}>{current}</Text> / {target} g</Text>
-      <View style={[macro.track, { backgroundColor: colors.border }]}>
-        <View style={[macro.fill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+      <Text style={[macro.label, { color: colors.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
+      <View style={macro.valueRow}>
+        <Text style={[macro.values, { color: colors.textPrimary }]}><Text style={{ color, fontWeight: '800' }}>{current}</Text><Text style={{ fontSize: 10, color: colors.textMuted }}> / {target}g</Text></Text>
+      </View>
+      <View style={[macro.track, { backgroundColor: colors.border + '33' }]}>
+        <LinearGradient 
+          colors={[color, color + '99']} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 0 }} 
+          style={[macro.fill, { width: `${pct * 100}%` }]} 
+        />
       </View>
     </View>
   );
 }
 
 const macro = StyleSheet.create({
-  wrap:   { flex: 1, alignItems: 'center', gap: 4 },
-  label:  { fontSize: 13, fontWeight: '500' },
-  values: { fontSize: 12, fontWeight: '600' },
-  track:  { height: 4, borderRadius: 2, width: '100%', overflow: 'hidden', marginTop: 4 },
-  fill:   { height: 4, borderRadius: 2 },
+  wrap:     { flex: 1, gap: 6 },
+  label:    { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  valueRow: { flexDirection: 'row', alignItems: 'baseline' },
+  values:   { fontSize: 13, fontWeight: '600' },
+  track:    { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden', marginTop: 2 },
+  fill:     { height: '100%', borderRadius: 3 },
 });
 
 export default function TrackerScreen() {
@@ -91,6 +99,7 @@ export default function TrackerScreen() {
     cancelText?: string;
     onConfirm: () => void;
     onCancel?: () => void;
+    actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[];
   }>({
     visible: false,
     type: 'info',
@@ -100,29 +109,37 @@ export default function TrackerScreen() {
   });
 
   const showAlert = (
-    type: AlertType, 
-    title: string, 
-    message: string, 
-    onConfirm?: () => void, 
-    onCancel?: () => void,
+    type: AlertType,
+    title: string,
+    message: string,
+    onConfirm: () => void = () => {},
+    onCancel: () => void = () => {},
     confirmText?: string,
-    cancelText?: string
+    cancelText?: string,
+    actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[]
   ) => {
     setAlert({
       visible: true,
       type,
       title,
       message,
-      confirmText,
-      cancelText,
       onConfirm: () => {
-        onConfirm?.();
-        setAlert(prev => ({ ...prev, visible: false }));
+        onConfirm();
+        setAlert(s => ({ ...s, visible: false }));
       },
       onCancel: () => {
-        onCancel?.();
-        setAlert(prev => ({ ...prev, visible: false }));
+        onCancel();
+        setAlert(s => ({ ...s, visible: false }));
       },
+      confirmText,
+      cancelText,
+      actions: actions?.map(a => ({
+        ...a,
+        onPress: () => {
+          a.onPress();
+          setAlert(s => ({ ...s, visible: false }));
+        }
+      }))
     });
   };
 
@@ -131,9 +148,8 @@ export default function TrackerScreen() {
       if (profile?.id) {
         setIsFetching(true);
         try {
-          // Clear current logs to avoid showing old data during fetch
-          setLogs([]);
-          setActivityLogs([]);
+          // No longer clearing logs here to avoid flickering; 
+          // fetchLogs will merge/update the logs for the specific date.
           await fetchLogs(profile.id, selectedDate);
         } catch (err) {
           console.error('[Tracker] Load error:', err);
@@ -154,7 +170,7 @@ export default function TrackerScreen() {
     fat: profile?.macros?.fat || 65,
   };
 
-  const { calories, protein, carbs, fat, sugar, fiber, sodium, iron, saturatedFat, transFat } = totals();
+  const { calories, protein, carbs, fat, sugar, fiber, sodium, iron, calcium, saturatedFat, transFat } = totals();
 
   const allMeals = useMemo(() => {
     const meals = [...MEALS] as string[];
@@ -166,7 +182,7 @@ export default function TrackerScreen() {
   }, [profile?.extraSnacks]);
 
   const grouped = allMeals.reduce((acc, m) => {
-    acc[m] = todayLogs.filter((l) => l.meal === m);
+    acc[m] = todayLogs.filter((l) => l.meal === m && l.loggedAt.startsWith(selectedDate));
     return acc;
   }, {} as Record<string, typeof todayLogs>);
 
@@ -217,13 +233,18 @@ export default function TrackerScreen() {
 
   const handleActivityPress = (act: any) => {
     showAlert(
-      'confirm',
+      'info',
       act.name,
-      t('tracker.holdToRemove'),
-      () => removeActivityLog(act.id),
+      `${act.calories} kcal - ${act.duration} min`,
       () => {},
-      t('common.remove'),
-      t('common.cancel')
+      () => {},
+      undefined,
+      undefined,
+      [
+        { text: t('common.edit', 'Editar'), onPress: () => router.push(`/modals/add-activity?id=${act.id}` as any) },
+        { text: t('common.delete', 'Eliminar'), onPress: () => removeActivityLog(act.id), type: 'destructive' },
+        { text: t('common.cancel', 'Cancelar'), onPress: () => {}, type: 'secondary' }
+      ]
     );
   };
 
@@ -238,6 +259,7 @@ export default function TrackerScreen() {
         cancelText={alert.cancelText}
         onConfirm={alert.onConfirm}
         onCancel={alert.onCancel}
+        actions={alert.actions}
       />
       {/* Header */}
       <View style={s.header}>
@@ -294,40 +316,48 @@ export default function TrackerScreen() {
           }}
         >
           {/* Main Calorie Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: width - 32 }]}>
+          <LinearGradient
+            colors={[colors.surface, colors.surfaceAlt || colors.surface]}
+            style={[s.card, { borderColor: colors.border, width: width - 32, paddingVertical: 24 }]}
+          >
             <View style={s.arcWrap}>
-              <Svg width={RING_SIZE} height={RING_SIZE / 2 + 20}>
-                <Path
-                  d={`M ${STROKE_WIDTH} ${RING_SIZE / 2} A ${RADIUS} ${RADIUS} 0 0 1 ${RING_SIZE - STROKE_WIDTH} ${RING_SIZE / 2}`}
-                  fill="none"
-                  stroke={colors.border}
-                  strokeWidth={STROKE_WIDTH}
-                  strokeLinecap="round"
-                />
-                <Path
-                  d={`M ${STROKE_WIDTH} ${RING_SIZE / 2} A ${RADIUS} ${RADIUS} 0 0 1 ${RING_SIZE - STROKE_WIDTH} ${RING_SIZE / 2}`}
-                  fill="none"
-                  stroke={colors.primary}
-                  strokeWidth={STROKE_WIDTH}
-                  strokeLinecap="round"
-                  strokeDasharray={ARC_CIRCUMFERENCE}
-                  strokeDashoffset={strokeDashoffset}
-                />
+              <Svg width={RING_SIZE} height={RING_SIZE}>
+                <G rotation="-90" origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}>
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke={colors.border + '44'}
+                    strokeWidth={STROKE_WIDTH}
+                  />
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke={colors.primary}
+                    strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeDasharray={CIRCUMFERENCE}
+                    strokeDashoffset={CIRCUMFERENCE - (pct * CIRCUMFERENCE)}
+                  />
+                </G>
               </Svg>
               <View style={s.arcTextWrap}>
-                <Text style={[s.arcVal, { color: colors.textPrimary }]}>{calories} / {target}</Text>
-                <Text style={[s.arcLabel, { color: colors.textSecondary }]}>kcal</Text>
+                <Text style={[s.arcVal, { color: colors.textPrimary }]}>
+                  {calories} <Text style={{ fontSize: 18, color: colors.textSecondary, fontWeight: '400' }}>/ {target}</Text>
+                </Text>
+                <Text style={[s.arcLabel, { color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }]}>kcal</Text>
               </View>
             </View>
 
             <View style={s.macrosWrap}>
               <MacroBar label={t('profile.protein')} current={protein} target={macros.protein} color={colors.protein} />
-              <MacroBar label={t('profile.carbs')} current={carbs} target={macros.carbs} color={colors.carbs} />
+              <MacroBar label={t('profile.carbs').length > 10 ? 'Carbos' : t('profile.carbs')} current={carbs} target={macros.carbs} color={colors.carbs} />
               <MacroBar label={t('profile.fat')} current={fat} target={macros.fat} color={colors.fat} />
             </View>
-
-
-          </View>
+          </LinearGradient>
 
           {/* Other Nutrients Card */}
           <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: width - 32 }]}>
@@ -340,6 +370,7 @@ export default function TrackerScreen() {
               { label: t('tracker.saturatedFat'), val: `${Math.round(saturatedFat)} g` },
               { label: t('tracker.sodium'), val: `${Math.round(sodium)} mg` },
               { label: t('tracker.iron'), val: `${Math.round(iron)} mg` },
+              { label: t('tracker.calcium', 'Calcio'), val: `${Math.round(calcium)} mg` },
             ].map((nut) => (
               <View key={nut.label} style={[s.nutrientRow, { borderBottomColor: colors.border }]}>
                 <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>🔹 {nut.label}</Text>
@@ -430,26 +461,6 @@ export default function TrackerScreen() {
           <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>+ {t('tracker.addSnack', 'Add Snack')}</Text>
         </TouchableOpacity>
 
-        {/* Water */}
-
-        <View style={[s.card, { backgroundColor: colors.surface }]}>
-          <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
-            <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
-            <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
-          </View>
-          <View style={s.waterControls}>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(-250)}>
-              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>-</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(250)}>
-              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Activity Section */}
         <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.cardHeader}>
@@ -501,6 +512,25 @@ export default function TrackerScreen() {
           <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => router.push('/modals/add-activity' as any)}>
             <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Water */}
+        <View style={[s.card, { backgroundColor: colors.surface }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
+            <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
+            <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
+          </View>
+          <View style={s.waterControls}>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(-250)}>
+              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>-</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(250)}>
+              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Steps Section */}
@@ -563,10 +593,10 @@ const s = StyleSheet.create({
   dotIndicator:  { width: 8, height: 8, borderRadius: 4 },
 
   card:          { borderRadius: Radius.xl, padding: 20, borderWidth: 1 },
-  arcWrap:       { alignItems: 'center', marginTop: 10, height: 120 },
-  arcTextWrap:   { position: 'absolute', top: 50, alignItems: 'center' },
-  arcVal:        { fontSize: 24, fontWeight: '800' },
-  arcLabel:      { fontSize: 14 },
+  arcWrap:       { alignItems: 'center', justifyContent: 'center', marginTop: 10, height: RING_SIZE },
+  arcTextWrap:   { position: 'absolute', alignItems: 'center' },
+  arcVal:        { fontSize: 28, fontWeight: '800' },
+  arcLabel:      { fontSize: 14, marginTop: 4 },
   
   macrosWrap:    { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, gap: 20 },
   

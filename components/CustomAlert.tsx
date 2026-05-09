@@ -16,6 +16,7 @@ interface CustomAlertProps {
   cancelText?: string;
   onConfirm: () => void;
   onCancel?: () => void;
+  actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[];
 }
 
 export const CustomAlert: React.FC<CustomAlertProps> = ({ 
@@ -26,7 +27,8 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
   confirmText = 'OK', 
   cancelText = 'Cancel', 
   onConfirm, 
-  onCancel 
+  onCancel,
+  actions
 }) => {
   const colors = useTheme();
   const [scale] = React.useState(new Animated.Value(0));
@@ -102,29 +104,49 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
           <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
           
-          <View style={styles.buttonRow}>
-            {type === 'confirm' && (
-              <TouchableOpacity 
-                style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} 
-                onPress={onCancel} 
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{cancelText}</Text>
-              </TouchableOpacity>
+          <View style={[styles.buttonRow, actions ? { flexDirection: 'column' } : {}]}>
+            {actions ? (
+              actions.map((action, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.button, { width: '100%' }]} 
+                  onPress={action.onPress} 
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={action.type === 'destructive' ? ['#EF4444', '#B91C1C'] : action.type === 'secondary' ? [colors.surfaceAlt, colors.surfaceAlt] : getColors()}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={[styles.buttonText, action.type === 'secondary' && { color: colors.textSecondary }]}>{action.text}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <>
+                {type === 'confirm' && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} 
+                    onPress={onCancel} 
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>{cancelText}</Text>
+                  </TouchableOpacity>
+                )}
+                
+                <TouchableOpacity 
+                  style={[styles.button, type === 'confirm' ? { flex: 1.5 } : { width: '100%' }]} 
+                  onPress={onConfirm} 
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={getColors()}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.buttonText}>{confirmText}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
             )}
-            
-            <TouchableOpacity 
-              style={[styles.button, type === 'confirm' ? { flex: 1.5 } : { width: '100%' }]} 
-              onPress={onConfirm} 
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={getColors()}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>{confirmText}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
           </View>
         </Animated.View>
       </View>

@@ -47,7 +47,7 @@ interface NutritionState {
   removeFavorite: (id: string) => void;
   totals: () => { 
     calories: number; protein: number; carbs: number; fat: number;
-    sugar: number; fiber: number; sodium: number; iron: number; saturatedFat: number; transFat: number;
+    sugar: number; fiber: number; sodium: number; iron: number; calcium: number; saturatedFat: number; transFat: number;
   };
   fetchLogs: (userId: string, date: string) => Promise<void>;
   syncDailyMetrics: () => Promise<void>;
@@ -184,42 +184,42 @@ export const useNutritionStore = create<NutritionState>()(
         todayLogs: s.todayLogs.map((l) => (l.id === id ? { ...l, ...updates } : l)),
       })),
       setLogs:   (logs) => set({ todayLogs: logs }),
-      setWater:  (ml) => {
+      setWater:  async (ml) => {
         const safeml = Math.max(0, ml);
         set((s) => ({ dailyWater: { ...s.dailyWater, [s.selectedDate]: safeml } }));
         if (safeml > 0) get().updateActivity(get().selectedDate);
-        get().syncDailyMetrics();
+        await get().syncDailyMetrics();
       },
-      addWater:  (ml) => {
+      addWater:  async (ml) => {
         const date = get().selectedDate;
         set((s) => ({ 
           dailyWater: { ...s.dailyWater, [date]: Math.max(0, (s.dailyWater[date] || 0) + ml) } 
         }));
         const newVal = get().dailyWater[date] || 0;
         if (newVal > 0) get().updateActivity(date);
-        get().syncDailyMetrics();
+        await get().syncDailyMetrics();
       },
       setDate:   (date) => set({ selectedDate: date }),
       setStreak: (streakDays) => set({ streakDays }),
-      setSteps:  (steps) => {
+      setSteps:  async (steps) => {
         const safeSteps = Math.max(0, steps);
         set((s) => ({ dailySteps: { ...s.dailySteps, [s.selectedDate]: safeSteps } }));
         if (safeSteps > 0) get().updateActivity(get().selectedDate);
-        get().syncDailyMetrics();
+        await get().syncDailyMetrics();
       },
-      addSteps:  (steps) => {
+      addSteps:  async (steps) => {
         const date = get().selectedDate;
         set((s) => ({ 
           dailySteps: { ...s.dailySteps, [date]: Math.max(0, (s.dailySteps[date] || 0) + steps) } 
         }));
         const newVal = get().dailySteps[date] || 0;
         if (newVal > 0) get().updateActivity(date);
-        get().syncDailyMetrics();
+        await get().syncDailyMetrics();
       },
-      setSleep:  (hours) => {
+      setSleep:  async (hours) => {
         set((s) => ({ dailySleep: { ...s.dailySleep, [s.selectedDate]: hours } }));
         if (hours > 0) get().updateActivity(get().selectedDate);
-        get().syncDailyMetrics();
+        await get().syncDailyMetrics();
       },
       setActivity: (activityCals) => set({ activityCals }),
       addActivityLog: async (activity) => {
@@ -230,7 +230,7 @@ export const useNutritionStore = create<NutritionState>()(
         if (profile?.id) {
           try {
             const { supabase } = await import('../services/supabase');
-            await supabase.from('activity_logs').insert({
+            const { error } = await supabase.from('activity_logs').insert({
               id:         activity.id,
               user_id:    profile.id,
               name:       activity.name,
@@ -239,27 +239,47 @@ export const useNutritionStore = create<NutritionState>()(
               duration:   activity.duration,
               logged_at:  activity.loggedAt.split('T')[0]
             });
+            if (error) {
+              console.error('[NutritionStore] addActivityLog Supabase error:', error);
+              throw error;
+            }
+            console.log('[NutritionStore] Activity synced successfully');
           } catch (err) {
             console.error('[NutritionStore] addActivityLog sync error:', err);
+            // We don't remove from local state yet to allow retry or persistence
+            throw err;
           }
         }
       },
       removeActivityLog: async (id) => {
         set((s) => ({ activityLogs: s.activityLogs.filter(a => a.id !== id) }));
-        const { supabase } = await import('../services/supabase');
-        await supabase.from('activity_logs').delete().eq('id', id);
+        try {
+          const { supabase } = await import('../services/supabase');
+          const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+          if (error) {
+            console.error('[NutritionStore] removeActivityLog Supabase error:', error);
+            throw error;
+          }
+        } catch (err) {
+          console.error('[NutritionStore] removeActivityLog sync error:', err);
+          throw err;
+        }
       },
       updateActivityLog: async (id, updates) => {
         set((s) => ({
           activityLogs: s.activityLogs.map(a => a.id === id ? { ...a, ...updates } : a)
         }));
-        const { supabase } = await import('../services/supabase');
-        await supabase.from('activity_logs').update({
-          name:       updates.name,
-          icon:       updates.icon,
-          calories:   updates.calories,
-          duration:   updates.duration,
-        }).eq('id', id);
+        try {
+          const { supabase } = await import('../services/supabase');
+          await supabase.from('activity_logs').update({
+            name:       updates.name,
+            icon:       updates.icon,
+            calories:   updates.calories,
+            duration:   updates.duration,
+          }).eq('id', id);
+        } catch (err) {
+          console.error('[NutritionStore] updateActivityLog sync error:', err);
+        }
       },
       setActivityLogs: (activityLogs) => set({ activityLogs }),
       setNeat:     (level) => {
@@ -280,7 +300,8 @@ export const useNutritionStore = create<NutritionState>()(
       })),
 
       totals: () => {
-        const logs = get().todayLogs;
+        const date = get().selectedDate;
+        const logs = get().todayLogs.filter(l => l.loggedAt.startsWith(date));
         return logs.reduce(
           (acc, l) => ({
             calories: acc.calories + (Number(l.calories) || 0),
@@ -289,12 +310,13 @@ export const useNutritionStore = create<NutritionState>()(
             fat:      acc.fat      + (Number(l.fat) || 0),
             sugar:    acc.sugar    + (Number(l.sugar) || 0),
             fiber:    acc.fiber    + (Number(l.fiber) || 0),
-            sodium:   acc.sodium   + (Number(l.sodium) || 0),
-            iron:     acc.iron     + (Number(l.iron) || 0),
+            sodium:   acc.sodium   + (Number(l.sodium)   || 0),
+            iron:     acc.iron     + (Number(l.iron)     || 0),
+            calcium:  acc.calcium  + (Number(l.calcium)  || 0),
             saturatedFat: acc.saturatedFat + (Number(l.saturatedFat) || 0),
-            transFat:     acc.transFat     + (Number(l.transFat) || 0),
+            transFat:     acc.transFat     + (Number(l.transFat)     || 0),
           }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0, iron: 0, saturatedFat: 0, transFat: 0 }
+          { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0, iron: 0, calcium: 0, saturatedFat: 0, transFat: 0 }
         );
       },
 
@@ -316,13 +338,27 @@ export const useNutritionStore = create<NutritionState>()(
           const actData = actResult.data;
 
           if (metricsData) {
-            set((s) => ({
-              dailyWater:    { ...s.dailyWater,    [date]: metricsData.water_ml || 0 },
-              dailySteps:    { ...s.dailySteps,    [date]: metricsData.steps || 0 },
-              dailySleep:    { ...s.dailySleep,    [date]: Number(metricsData.sleep_hours) || 0 },
-              dailyNeat:     { ...s.dailyNeat,     [date]: metricsData.neat_level },
-              dailyExercise: { ...s.dailyExercise, [date]: metricsData.exercise_level },
-            }));
+            set((s) => {
+              const newWater = { ...s.dailyWater };
+              const newSteps = { ...s.dailySteps };
+              const newSleep = { ...s.dailySleep };
+              const newNeat = { ...s.dailyNeat };
+              const newEx = { ...s.dailyExercise };
+
+              if (metricsData.water_ml !== null) newWater[date] = metricsData.water_ml;
+              if (metricsData.steps !== null) newSteps[date] = metricsData.steps;
+              if (metricsData.sleep_hours !== null) newSleep[date] = Number(metricsData.sleep_hours);
+              if (metricsData.neat_level) newNeat[date] = metricsData.neat_level;
+              if (metricsData.exercise_level) newEx[date] = metricsData.exercise_level;
+
+              return {
+                dailyWater: newWater,
+                dailySteps: newSteps,
+                dailySleep: newSleep,
+                dailyNeat: newNeat,
+                dailyExercise: newEx
+              };
+            });
           }
 
           if (actData) {
@@ -334,7 +370,15 @@ export const useNutritionStore = create<NutritionState>()(
               duration:  a.duration,
               loggedAt:  a.logged_at
             }));
-            set({ activityLogs: formattedActs });
+            
+            // Safety: Only overwrite if we got data or if there's no local unsynced data
+            // (For now, we just replace, but we should verify the sync status)
+            set((s) => ({
+              activityLogs: [
+                ...s.activityLogs.filter(act => !act.loggedAt.startsWith(date)),
+                ...formattedActs
+              ]
+            }));
           }
 
           if (data) {
@@ -351,13 +395,14 @@ export const useNutritionStore = create<NutritionState>()(
                 fiber:    d.grams > 0 ? Math.round((d.fiber    / d.grams) * 100) : d.fiber,
                 sodium:   d.grams > 0 ? Math.round((d.sodium   / d.grams) * 100) : d.sodium,
                 iron:     d.grams > 0 ? Math.round((d.iron     / d.grams) * 100) : d.iron,
+                calcium:  d.grams > 0 ? Math.round((d.calcium  / d.grams) * 100) : d.calcium,
                 saturatedFat: d.grams > 0 ? Math.round((d.saturated_fat / d.grams) * 100) : d.saturated_fat,
                 transFat:     d.grams > 0 ? Math.round((d.trans_fat     / d.grams) * 100) : d.trans_fat,
                 source:   'custom',
               },
               grams:    d.grams,
               meal:     d.meal,
-              loggedAt: d.created_at || d.logged_at,
+              loggedAt: d.logged_at,
               calories: d.calories,
               protein:  d.protein,
               carbs:    d.carbs,
@@ -366,12 +411,18 @@ export const useNutritionStore = create<NutritionState>()(
               fiber:    d.fiber,
               sodium:   d.sodium,
               iron:     d.iron,
+              calcium:  d.calcium,
               saturatedFat: d.saturated_fat,
               transFat:     d.trans_fat,
             }));
-            set({ todayLogs: formattedLogs as any });
-          } else {
-            set({ todayLogs: [] });
+
+            // Merge food logs: keep others, replace current date ones
+            set((s) => ({
+              todayLogs: [
+                ...s.todayLogs.filter(log => !log.loggedAt.startsWith(date)),
+                ...formattedLogs
+              ] as any
+            }));
           }
         } catch (err) {
           console.error('[NutritionStore] fetchLogs error:', err);

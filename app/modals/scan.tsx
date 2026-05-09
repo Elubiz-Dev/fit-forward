@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
-import { getFoodByBarcode } from '../../services/foodDatabase';
+import { getFoodByBarcode, searchFood } from '../../services/foodDatabase';
 import { analyzeFoodPhoto } from '../../services/groq';
 import { useNutritionStore, useSettingsStore, useAuthStore, usePurchaseStore } from '../../store';
 import { supabase } from '../../services/supabase';
@@ -510,14 +510,14 @@ export default function ScanModal() {
             <View style={[s.confidenceDot, { backgroundColor: confidenceColor }]} />
             <Text style={[s.confidenceText, { color: confidenceColor }]}>{photoResult.confidence.toUpperCase()} {t('scan.confidence')}</Text>
           </View>
-          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('scan.detectedFoods')}</Text>
+          <Text style={[s.sectionTitle, { color: colors.primary }]}>{t('scan.detectedFoods')}</Text>
           {editedFoods.map((food, i) => (
             <View key={i} style={[s.foodCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={s.foodCardLeft}>
-                <Text style={[s.foodName, { color: colors.textPrimary }]}>{food.name}</Text>
+                <Text style={[s.foodName, { color: colors.primary }]}>{food.name}</Text>
                 <View style={s.gramInputRow}>
                   <TextInput
-                    style={[s.gramInput, { color: colors.primary, borderColor: colors.border, backgroundColor: colors.background }]}
+                    style={[s.gramInput, { color: colors.primary, borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
                     value={String(food.grams)}
                     onChangeText={(v) => updateGrams(i, v)}
                     keyboardType="numeric"
@@ -527,11 +527,17 @@ export default function ScanModal() {
                 </View>
               </View>
               <View style={s.foodCardRight}>
-                <Text style={[s.foodCal, { color: colors.accent }]}>{food.calories} kcal</Text>
+                <Text style={[s.foodCal, { color: colors.primary }]}>{food.calories} kcal</Text>
                 <View style={s.macroRow}>
-                  <Text style={[s.macroTag, { color: colors.protein }]}>P {food.protein}g</Text>
-                  <Text style={[s.macroTag, { color: colors.carbs }]}>C {food.carbs}g</Text>
-                  <Text style={[s.macroTag, { color: colors.fat }]}>F {food.fat}g</Text>
+                  <View style={[s.macroTag, { backgroundColor: colors.protein + '15' }]}>
+                    <Text style={[s.macroTagText, { color: colors.protein }]}>P {food.protein}g</Text>
+                  </View>
+                  <View style={[s.macroTag, { backgroundColor: colors.carbs + '15' }]}>
+                    <Text style={[s.macroTagText, { color: colors.carbs }]}>C {food.carbs}g</Text>
+                  </View>
+                  <View style={[s.macroTag, { backgroundColor: colors.fat + '15' }]}>
+                    <Text style={[s.macroTagText, { color: colors.fat }]}>F {food.fat}g</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -548,7 +554,11 @@ export default function ScanModal() {
           </TouchableOpacity>
           <TouchableOpacity style={s.addAllBtn} onPress={handleAddAllFoods} activeOpacity={0.85}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.addAllGrad}>
-              <Text style={s.addAllText}>{t('scan.addAll', { meal: t(`tracker.${initialMeal || getAutoMeal()}`) })}</Text>
+              <Text style={s.addAllText}>
+                {language === 'es' 
+                  ? `Registrar en ${t(`tracker.${initialMeal || getAutoMeal()}`)}` 
+                  : t('scan.addAll', { meal: t(`tracker.${initialMeal || getAutoMeal()}`) })}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -625,8 +635,8 @@ export default function ScanModal() {
                 </View>
 
                 <View style={s.photoInstructions}>
-                  <Text style={s.photoHint}>{t('scan.photoHint') || 'Point at your meal'}</Text>
-                  <Text style={s.photoHintSub}>{t('scan.photoHintSub') || 'AI will analyze and estimate nutrition'}</Text>
+                  <Text style={[s.photoHint, { color: colors.primary }]}>{t('scan.photoHint') || 'Point at your meal'}</Text>
+                  <Text style={[s.photoHintSub, { color: colors.primary + 'CC' }]}>{t('scan.photoHintSub') || 'AI will analyze and estimate nutrition'}</Text>
                 </View>
 
                 <View style={s.statusWrap}>
@@ -652,9 +662,9 @@ export default function ScanModal() {
               <ScrollView contentContainerStyle={s.textInputWrap} style={{ width: '100%' }}>
                 <View style={[s.textCard, { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: colors.border }]}>
                   <TextInput
-                    style={[s.textInputArea, { color: '#fff' }]}
+                    style={[s.textInputArea, { color: colors.primary }]}
                     placeholder={t('scan.textPlaceholder') || "Describe what you ate..."}
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholderTextColor={colors.primary + '55'}
                     multiline
                     value={textInput}
                     onChangeText={setTextInput}
@@ -757,20 +767,21 @@ const s = StyleSheet.create({
   confidenceDot:   { width: 8, height: 8, borderRadius: 4 },
   confidenceText:  { fontSize: 12, fontWeight: '700' },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: Spacing.md },
-  foodCard:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: Radius.lg, padding: Spacing.base, marginBottom: 8, borderWidth: 1 },
-  foodCardLeft:  { flex: 1, marginRight: 12 },
-  foodName:      { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  foodCard:      { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderRadius: Radius.lg, marginBottom: 12, borderWidth: 1 },
+  foodCardLeft:  { flex: 1, gap: 10 },
+  foodName:      { fontSize: 17, fontWeight: '700' },
   gramInputRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  gramInput:     { width: 60, height: 28, borderRadius: 6, borderWidth: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', padding: 0 },
-  gramLabel:     { fontSize: 12 },
-  foodCardRight: { alignItems: 'flex-end' },
-  foodCal:       { fontSize: 16, fontWeight: '800', marginBottom: 4 },
-  macroRow:      { flexDirection: 'row', gap: 8 },
-  macroTag:      { fontSize: 11, fontWeight: '600' },
-  totalCard:     { borderRadius: Radius.lg, padding: Spacing.base, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 8, borderWidth: 1 },
-  totalLabel:    { fontSize: 15, fontWeight: '600' },
-  totalValue:    { fontSize: 22, fontWeight: '800' },
-  notesText:     { fontSize: 13, marginTop: 8, lineHeight: 20 },
+  gramInput:     { width: 75, height: 34, borderRadius: 8, textAlign: 'center', fontSize: 15, fontWeight: '800', borderWidth: 1.5, padding: 0 },
+  gramLabel:     { fontSize: 14, fontWeight: '600' },
+  foodCardRight: { alignItems: 'flex-end', gap: 6 },
+  foodCal:       { fontSize: 18, fontWeight: '800' },
+  macroRow:      { flexDirection: 'row', gap: 6 },
+  macroTag:      { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  macroTagText:  { fontSize: 11, fontWeight: '700' },
+  totalCard:     { padding: 20, borderRadius: Radius.xl, borderWidth: 1.5, alignItems: 'center', marginVertical: 20 },
+  totalLabel:    { fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  totalValue:    { fontSize: 28, fontWeight: '800' },
+  notesText:     { fontSize: 14, fontStyle: 'italic', paddingHorizontal: 10, lineHeight: 22 },
   resultFooter:  { flexDirection: 'row', gap: 10, padding: Spacing.base, borderTopWidth: 1, paddingBottom: 36 },
   retryBtn:      { flex: 1, paddingVertical: 14, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center' },
   retryText:     { fontWeight: '600', fontSize: 15 },
@@ -781,7 +792,7 @@ const s = StyleSheet.create({
   galleryBtn:    { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
   textInputWrap: { width: '100%', padding: Spacing.base, gap: 16, paddingTop: 12 },
   textCard:      { borderRadius: Radius.xl, borderWidth: 1, padding: 16, minHeight: 160, flexDirection: 'row', alignItems: 'flex-end' },
-  textInputArea: { flex: 1, height: '100%', fontSize: 17, textAlignVertical: 'top', paddingTop: 0, fontWeight: '500' },
+  textInputArea: { flex: 1, height: '100%', fontSize: 20, textAlignVertical: 'top', paddingTop: 0, fontWeight: '800' },
   voiceBtn:      { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   lockBadge:     { position: 'absolute', top: -2, right: -2, backgroundColor: '#FFD700', borderRadius: 10, padding: 3 },
   analyzeBtn:    { borderRadius: Radius.xl, overflow: 'hidden', marginTop: 8 },

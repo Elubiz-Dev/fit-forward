@@ -28,10 +28,10 @@ export default function SleepModal() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const hours = calculateHours();
     if (hours > 0 && hours <= 24) {
-      setSleep(hours);
+      await setSleep(hours);
       router.back();
     }
   };

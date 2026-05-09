@@ -128,7 +128,7 @@ export default function DashboardScreen() {
   const { todayLogs, dailySleep, selectedDate, totals, fetchLogs } = useNutritionStore();
   const { latest, fetchMeasurements, getForDate } = useBodyStore();
   
-  const totalsData = useMemo(() => totals(), [todayLogs]);
+  const totalsData = useMemo(() => totals(), [todayLogs, selectedDate]);
   const { calories } = totalsData;
   const target = profile?.targetCalories ?? 2000;
   const name = profile?.name?.split(' ')[0] ?? t('dashboard.fallbackName');

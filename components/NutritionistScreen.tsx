@@ -137,26 +137,27 @@ export default function NutritionistScreen() {
     if (!profile?.id) return;
 
     async function loadHistory() {
-      let query = supabase
+      if (isSending) return;
+      
+      // If no sessionId, it's a NEW chat. We just show the welcome message.
+      if (!sessionId) {
+        setMessages([{
+          id:        'welcome',
+          role:      'model',
+          content:   t(`coach.${coachType}.welcome`),
+          timestamp: new Date().toISOString(),
+        }], coachType);
+        return;
+      }
+
+      const { data, error } = await supabase
         .from('coach_conversations')
         .select('id, role, content, created_at')
         .eq('user_id', profile!.id)
-        .eq('coach_type', 'nutritionist')
+        .eq('coach_type', coachType)
+        .eq('session_id', sessionId)
         .order('created_at', { ascending: true })
         .limit(50);
-
-      if (sessionId) {
-        query = query.eq('session_id', sessionId);
-      } else {
-        // If no session is selected, we either show a welcome or the latest session
-        if (sessions.length > 0) {
-          setCurrentSessionId(sessions[0].id, 'nutritionist');
-          return;
-        }
-        query = query.is('session_id', null);
-      }
-
-      const { data, error } = await query;
 
       if (data && !error && data.length > 0) {
         const formatted: CoachMessage[] = data.map((m: any) => ({
@@ -165,26 +166,15 @@ export default function NutritionistScreen() {
           content:   m.content ?? '',
           timestamp: m.created_at,
         }));
-        setMessages(formatted, 'nutritionist');
+        setMessages(formatted, coachType);
       } else {
-        // If no history or if the only message is the welcome message (and language changed), re-init
-        const shouldInit = messages.length === 0 || (messages.length === 1 && messages[0].id === 'welcome');
-        if (shouldInit) {
-          setMessages([{
-            id:        'welcome',
-            role:      'model',
-            content:   t('coach.nutritionist.welcome'),
-            timestamp: new Date().toISOString(),
-          }], 'nutritionist');
-        } else {
-          // If we have messages but they are not for this session, clear them
-          setMessages([{
-            id:        'welcome',
-            role:      'model',
-            content:   t('coach.nutritionist.welcome'),
-            timestamp: new Date().toISOString(),
-          }], 'nutritionist');
-        }
+        // Fallback for empty session
+        setMessages([{
+          id:        'welcome',
+          role:      'model',
+          content:   t(`coach.${coachType}.welcome`),
+          timestamp: new Date().toISOString(),
+        }], coachType);
       }
     }
 
@@ -304,7 +294,6 @@ export default function NutritionistScreen() {
     }
 
     const currentImg = selectedImage;
-
     let activeSessionId = sessionId;
 
     if (!activeSessionId) {
@@ -320,7 +309,6 @@ export default function NutritionistScreen() {
       
       if (newSession) {
         activeSessionId = newSession.id;
-        setCurrentSessionId(activeSessionId, 'nutritionist');
         loadSessions();
       }
     }
@@ -340,14 +328,20 @@ export default function NutritionistScreen() {
     setIsSending(true);
     setTyping(true);
 
-    // Persist user message to Supabase (best-effort, fire-and-forget)
-    void supabase.from('coach_conversations').insert({
+    // Persist user message to Supabase (awaiting to prevent race condition with history loader)
+    await supabase.from('coach_conversations').insert({
       user_id: profile.id,
       role:    'user',
       content: text || '[Image]',
       coach_type: 'nutritionist',
       session_id: activeSessionId,
     });
+
+    // If we just created a session, update the store's ID now.
+    // This will trigger the history useEffect, but now the message IS in the DB.
+    if (!sessionId && activeSessionId) {
+      setCurrentSessionId(activeSessionId, 'nutritionist');
+    }
 
     try {
       // Build valid history:
@@ -426,7 +420,7 @@ export default function NutritionistScreen() {
       setTyping(false);
       setIsSending(false);
     }
-  }, [input, selectedImage, isTyping, isSending, atLimit, profile, messages]);
+  }, [input, selectedImage, isTyping, isSending, atLimit, profile, messages, language]);
 
   const canSend        = (input.trim().length > 0 || !!selectedImage) && !isTyping && !isSending;
   const showSuggestions = messages.length <= 1 && !isTyping;

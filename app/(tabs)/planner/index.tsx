@@ -13,6 +13,7 @@ import { SuccessModal } from '../../../components/SuccessModal';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Download, Sparkles, Utensils, Dumbbell, Coffee, Apple, Pizza, CalendarDays, ChevronRight, Activity, Moon } from 'lucide-react-native';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -231,9 +232,27 @@ export default function PlannerScreen() {
   const handleExportPDF = async () => {
     if (!isProActually) { router.push('/modals/paywall'); return; }
     try {
+      const today = new Date().toISOString().split('T')[0];
+      const weekStart = getStartOfWeek(new Date());
+      const weekEndDate = new Date(weekStart);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      const weekEnd = weekEndDate.toISOString().split('T')[0];
+
+      const filename = `rutina(${today}_${weekEnd}).pdf`;
       const htmlContent = mode === 'nutrition' ? generateNutritionHTML() : generateWorkoutHTML();
+      
       const { uri } = await Print.printToFileAsync({ html: htmlContent, base64: false });
-      await Sharing.shareAsync(uri);
+      
+      // Rename file for sharing
+      const fs = FileSystem as any;
+      const dir = fs.cacheDirectory || fs.documentDirectory || "";
+      const newUri = dir + filename;
+      await fs.moveAsync({
+        from: uri,
+        to: newUri
+      });
+
+      await Sharing.shareAsync(newUri);
     } catch (err) {
       console.error(err);
       showAlert('error', t('common.error'), 'Could not generate PDF');

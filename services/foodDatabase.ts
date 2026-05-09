@@ -21,6 +21,7 @@ export interface FoodItem {
   fiber?:   number;
   sodium?:  number;
   iron?:    number;
+  calcium?: number;
   imageUrl?: string;
   source:   'openfoodfacts' | 'edamam' | 'custom';
 }
@@ -36,29 +37,36 @@ export async function searchFoodOFF(query: string, page = 1): Promise<FoodItem[]
       page_size: 20,
       page,
       fields: 'id,product_name,brands,nutriments,image_front_small_url',
+      lc: 'es',
+      categories_lc: 'es'
     },
     timeout: 8000,
   });
 
   return (data.products ?? [])
     .filter((p: any) => p.product_name && p.nutriments)
-    .map((p: any) => ({
-      id:       p.id ?? p.code,
-      name:     p.product_name,
-      brand:    p.brands,
-      calories: Math.round(p.nutriments['energy-kcal_100g'] ?? 0),
-      protein:  Math.round(p.nutriments['proteins_100g']    ?? 0),
-      carbs:    Math.round(p.nutriments['carbohydrates_100g'] ?? 0),
-      fat:      Math.round(p.nutriments['fat_100g']          ?? 0),
-      saturatedFat: Math.round(p.nutriments['saturated-fat_100g'] ?? 0),
-      transFat:     Math.round(p.nutriments['trans-fat_100g']     ?? 0),
-      fiber:    Math.round(p.nutriments['fiber_100g']        ?? 0),
-      sugar:    Math.round(p.nutriments['sugars_100g']       ?? 0),
-      sodium:   Math.round((p.nutriments['sodium_100g'] ?? 0) * 1000),
-      iron:     Math.round((p.nutriments['iron_100g'] ?? 0) * 1000),
-      imageUrl: p.image_front_small_url,
-      source:   'openfoodfacts' as const,
-    }));
+    .map((p: any) => {
+      const nut = p.nutriments || {};
+      const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
+      return {
+        id:       p.id ?? p.code,
+        name:     p.product_name,
+        brand:    p.brands,
+        calories: Math.round(cal),
+        protein:  Math.round(nut['proteins_100g']    ?? 0),
+        carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
+        fat:      Math.round(nut['fat_100g']          ?? 0),
+        saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
+        transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
+        fiber:    Math.round(nut['fiber_100g']        ?? 0),
+        sugar:    Math.round(nut['sugars_100g']       ?? 0),
+        sodium:   Math.round((nut['sodium_100g'] ?? 0) * 1000),
+        iron:     Math.round((nut['iron_100g'] ?? 0) * 1000),
+        calcium:  Math.round((nut['calcium_100g'] ?? 0) * 1000),
+        imageUrl: p.image_front_small_url,
+        source:   'openfoodfacts' as const,
+      };
+    });
 }
 
 // ─── OpenFoodFacts barcode lookup ──────────────────────────────────────────────
@@ -70,20 +78,24 @@ export async function getFoodByBarcode(barcode: string): Promise<FoodItem | null
   if (data.status !== 1 || !data.product) return null;
   const p = data.product;
 
+  const nut = p.nutriments || {};
+  const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
+
   return {
     id:       barcode,
     name:     p.product_name ?? 'Unknown product',
     brand:    p.brands,
-    calories: Math.round(p.nutriments?.['energy-kcal_100g'] ?? 0),
-    protein:  Math.round(p.nutriments?.['proteins_100g']    ?? 0),
-    carbs:    Math.round(p.nutriments?.['carbohydrates_100g'] ?? 0),
-    fat:      Math.round(p.nutriments?.['fat_100g']          ?? 0),
-    saturatedFat: Math.round(p.nutriments?.['saturated-fat_100g'] ?? 0),
-    transFat:     Math.round(p.nutriments?.['trans-fat_100g']     ?? 0),
-    sugar:    Math.round(p.nutriments?.['sugars_100g']        ?? 0),
-    fiber:    Math.round(p.nutriments?.['fiber_100g']         ?? 0),
-    sodium:   Math.round((p.nutriments?.['sodium_100g']       ?? 0) * 1000),
-    iron:     Math.round((p.nutriments?.['iron_100g']         ?? 0) * 1000),
+    calories: Math.round(cal),
+    protein:  Math.round(nut['proteins_100g']    ?? 0),
+    carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
+    fat:      Math.round(nut['fat_100g']          ?? 0),
+    saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
+    transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
+    sugar:    Math.round(nut['sugars_100g']        ?? 0),
+    fiber:    Math.round(nut['fiber_100g']         ?? 0),
+    sodium:   Math.round((nut['sodium_100g']       ?? 0) * 1000),
+    iron:     Math.round((nut['iron_100g']       ?? 0) * 1000),
+    calcium:  Math.round((nut['calcium_100g']    ?? 0) * 1000),
     imageUrl: p.image_front_small_url,
     source:   'openfoodfacts' as const,
   };
@@ -113,6 +125,7 @@ export async function searchFoodEdamam(query: string): Promise<FoodItem[]> {
       fat:      Math.round(h.food.nutrients?.FAT         ?? 0),
       fiber:    Math.round(h.food.nutrients?.FIBTG       ?? 0),
       iron:     Math.round(h.food.nutrients?.FE          ?? 0),
+      calcium:  Math.round(h.food.nutrients?.CA          ?? 0),
       imageUrl: h.food.image,
       source:   'edamam' as const,
     }));

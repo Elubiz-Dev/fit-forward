@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useCoachStore } from '../store';
 import { Spacing, Radius } from '../constants';
 import { supabase } from '../services/supabase';
+import { CustomAlert } from './CustomAlert';
 
 interface HistoryModalProps {
   visible: boolean;
@@ -24,10 +25,16 @@ export default function CoachHistoryModal({ visible, onClose, coachType }: Histo
     setCurrentSessionId, setSessions, resetMessages
   } = useCoachStore();
 
+  const [alert, setAlert] = React.useState<{
+    visible: boolean;
+    targetId: string | null;
+  }>({ visible: false, targetId: null });
+
   const sessions = coachType === 'nutritionist' ? nutritionistSessions : trainerSessions;
   const currentId = coachType === 'nutritionist' ? currentNutritionistSessionId : currentTrainerSessionId;
 
   const handleSelect = (id: string | null) => {
+    resetMessages(coachType);
     setCurrentSessionId(id, coachType);
     onClose();
   };
@@ -39,27 +46,22 @@ export default function CoachHistoryModal({ visible, onClose, coachType }: Histo
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      t('common.confirm'),
-      t('coach.confirmDeleteSession', 'Are you sure you want to delete this chat?'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.delete'), 
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.from('coach_sessions').delete().eq('id', id);
-            if (!error) {
-              const updated = sessions.filter(s => s.id !== id);
-              setSessions(updated, coachType);
-              if (currentId === id) {
-                setCurrentSessionId(updated.length > 0 ? updated[0].id : null, coachType);
-              }
-            }
-          }
-        }
-      ]
-    );
+    setAlert({ visible: true, targetId: id });
+  };
+
+  const confirmDelete = async () => {
+    const id = alert.targetId;
+    if (!id) return;
+
+    const { error } = await supabase.from('coach_sessions').delete().eq('id', id);
+    if (!error) {
+      const updated = sessions.filter(s => s.id !== id);
+      setSessions(updated, coachType);
+      if (currentId === id) {
+        setCurrentSessionId(updated.length > 0 ? updated[0].id : null, coachType);
+      }
+    }
+    setAlert({ visible: false, targetId: null });
   };
 
   return (
@@ -122,6 +124,17 @@ export default function CoachHistoryModal({ visible, onClose, coachType }: Histo
           />
         </View>
       </View>
+
+      <CustomAlert
+        visible={alert.visible}
+        type="confirm"
+        title={t('common.confirm')}
+        message={t('coach.confirmDeleteSession', 'Are you sure you want to delete this chat?')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={confirmDelete}
+        onCancel={() => setAlert({ visible: false, targetId: null })}
+      />
     </Modal>
   );
 }

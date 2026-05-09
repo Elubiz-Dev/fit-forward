@@ -56,6 +56,7 @@ export interface FoodLog {
   fiber?:     number;
   sodium?:    number;
   iron?:      number;
+  calcium?:   number;
   saturatedFat?: number;
   transFat?:     number;
 }
