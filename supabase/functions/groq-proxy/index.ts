@@ -52,8 +52,15 @@ Deno.serve(async (req) => {
         url = "https://api.groq.com/openai/v1/audio/transcriptions";
         body = await req.formData();
       } else {
-        const jsonBody = await req.json();
-        body = JSON.stringify(jsonBody);
+        // Use text() and then parse to avoid potential stringification issues
+        // and to allow pass-through if needed, but we keep JSON for logging/validation.
+        const rawBody = await req.text();
+        try {
+          JSON.parse(rawBody); // Validate JSON
+          body = rawBody;
+        } catch (e) {
+          throw new Error("Invalid JSON body");
+        }
       }
     } catch (e) {
       console.error("[Groq Proxy] Failed to parse request body:", e);
@@ -69,7 +76,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${GROQ_API_KEY}`,
-        ...(contentType.includes("application/json") ? { "Content-Type": "application/json" } : {}),
+        ...(contentType.includes("application/json") ? { "Content-Type": "application/json" } : { "Content-Type": contentType }),
       },
       body: body,
     });
@@ -83,12 +90,17 @@ Deno.serve(async (req) => {
     }
 
     if (!groqResponse.ok) {
-      console.error(`[Groq Proxy] Groq API error (${groqResponse.status}):`, groqData);
+      console.error(`[Groq Proxy] Groq API error (${groqResponse.status}):`, JSON.stringify(groqData));
+      // Return the actual Groq error to the client
+      return new Response(JSON.stringify(groqData), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: groqResponse.status,
+      });
     }
 
     return new Response(JSON.stringify(groqData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: groqResponse.status,
+      status: 200,
     });
   } catch (error) {
     console.error("[Groq Proxy] Internal Error:", error);

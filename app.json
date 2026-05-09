@@ -28,13 +28,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D0F14"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
         "VIBRATE"
-      ]
+      ],
+      "minSdkVersion": 24
     },
     "web": {
       "bundler": "metro",
@@ -62,8 +62,9 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "b322d830-a5f8-4c68-83b5-8686ce3d38f3"
       }
     }
   }

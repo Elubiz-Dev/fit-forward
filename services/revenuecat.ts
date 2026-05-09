@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, PurchasesOffering } from 'react-native-purchases';
+import Constants from 'expo-constants';
 
 const API_KEYS = {
   apple: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || 'test_hmUiccsdRdsPKSwKGPenankwQgd',
@@ -21,12 +22,28 @@ export class RevenueCatService {
   }
 
   async initialize(userId?: string) {
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+    // Detect Expo Go
+    const isExpoGo = Constants.appOwnership === 'expo';
+    
+    if (isExpoGo) {
+      console.warn('[RevenueCat] Native SDK not supported in Expo Go. Please use a Development Build.');
+      return;
+    }
 
-    if (Platform.OS === 'ios') {
-      Purchases.configure({ apiKey: API_KEYS.apple, appUserID: userId });
-    } else if (Platform.OS === 'android') {
-      Purchases.configure({ apiKey: API_KEYS.google, appUserID: userId });
+    try {
+      Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+
+      const apiKey = Platform.OS === 'ios' ? API_KEYS.apple : API_KEYS.google;
+
+      if (apiKey.startsWith('test_')) {
+        console.warn('[RevenueCat] Using placeholder API key. Ensure you have set the correct keys in .env');
+      }
+
+      Purchases.configure({ apiKey, appUserID: userId });
+      
+      if (__DEV__) console.log('[RevenueCat] Initialized successfully');
+    } catch (e: any) {
+      console.warn('[RevenueCat] Failed to initialize:', e.message);
     }
   }
 

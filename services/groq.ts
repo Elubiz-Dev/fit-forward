@@ -17,8 +17,8 @@
 import { supabase } from './supabase';
 
 // ─── Model IDs ────────────────────────────────────────────────────────────────
-const CHAT_MODEL   = 'llama-3.3-70b-versatile';
-const VISION_MODEL = 'llama-3.2-11b-vision-preview'; // Updated to a more standard Groq vision model
+const CHAT_MODEL   = 'llama-4-scout-17b-instruct';
+const VISION_MODEL = 'llama-4-scout-17b-instruct'; // Based on availability in your dashboard
 const AUDIO_MODEL  = 'whisper-large-v3';
 
 // Helper to use Supabase Edge Function as a proxy
@@ -29,11 +29,24 @@ async function fetchGroq(payload: any) {
 
   if (error) {
     console.error('[Groq Proxy Error]:', error);
-    // Try to extract a more descriptive error from the body if possible
+    
+    // Attempt to extract details from the error response body
     let errorMsg = error.message || 'Unknown error';
+    
     if (error && typeof error === 'object' && 'context' in error) {
-      console.error('[Groq Proxy Error Context]:', (error as any).context);
+      const context = (error as any).context;
+      // If it's a response object, we might not be able to await it here easily
+      // but let's try to see if it has some already parsed data or status
+      if (context.status === 400) {
+        errorMsg = `Bad Request (400) - Check model/params.`;
+      }
     }
+
+    // If data exists despite error (unlikely with invoke), it might contain the error body
+    if (data && data.error) {
+      errorMsg = data.error.message || JSON.stringify(data.error);
+    }
+
     throw new Error(`AI Service Error: ${errorMsg}`);
   }
 
@@ -133,13 +146,17 @@ export async function sendCoachMessage(
 
   // Current user message — with optional image
   if (base64Image) {
+    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '');
     messages.push({
       role: 'user',
       content: [
         { type: 'text', text: userMessage || 'Analyze this image.' },
         {
           type: 'image_url',
-          image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+          image_url: { 
+            url: `data:image/jpeg;base64,${cleanBase64}`,
+            detail: 'low'
+          },
         },
       ],
     });
@@ -176,36 +193,30 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
   };
   const targetLang = langNames[language] || 'English';
 
-  const prompt = `Analyze this food image and estimate the nutritional content.
-IMPORTANT: Return ONLY a valid JSON object. Do not include markdown blocks or extra text.
-Structure:
-{
-  "foods": [
-    { "name": "food name", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8, "sugar": 5, "fiber": 3, "sodium": 120, "iron": 2, "saturatedFat": 2, "transFat": 0 }
-  ],
-  "totalCalories": 250,
-  "confidence": "high",
-  "notes": "brief note about the estimation"
-}
-IMPORTANT: The "name" and "notes" fields MUST be in ${targetLang}.`;
+  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "food name", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
 
   try {
+    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '');
+    
     const data = await fetchGroq({
       model: VISION_MODEL,
       messages: [
         {
           role: 'user',
           content: [
-            { type: 'text', text: prompt },
+            { type: 'text', text: `You are a nutrition expert that analyzes food images and returns data in JSON format.\n\n${prompt}` },
             {
               type: 'image_url',
-              image_url: { url: `data:image/jpeg;base64,${base64Image.replace(/\n|\r/g, '')}` },
+              image_url: { 
+                url: `data:image/jpeg;base64,${cleanBase64}`,
+                detail: 'low'
+              },
             },
           ],
         },
       ],
       max_tokens: 1024,
-      temperature: 0.4,
+      temperature: 0.2,
     });
 
     let text = (data.choices[0]?.message?.content ?? '').trim();

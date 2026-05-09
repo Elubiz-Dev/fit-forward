@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { revenueCat, ENTITLEMENT_ID } from '../services/revenuecat';
 import Purchases, { PurchasesOffering, CustomerInfo } from 'react-native-purchases';
+import Constants from 'expo-constants';
 
 interface PurchaseState {
   isPro: boolean;
@@ -25,14 +26,25 @@ export const usePurchaseStore = create<PurchaseState>((set, get) => ({
     try {
       await revenueCat.initialize(userId);
       
-      // Setup listener for customer info changes
-      Purchases.addCustomerInfoUpdateListener((info) => {
-        get().updateCustomerInfo(info);
-      });
+      const isExpoGo = Constants.appOwnership === 'expo';
+      if (isExpoGo) {
+        set({ isLoading: false });
+        return;
+      }
 
-      const info = await Purchases.getCustomerInfo();
-      get().updateCustomerInfo(info);
-      await get().fetchOfferings();
+      // Only attempt native features if not in Expo Go
+      try {
+        // Setup listener for customer info changes
+        Purchases.addCustomerInfoUpdateListener((info) => {
+          get().updateCustomerInfo(info);
+        });
+
+        const info = await Purchases.getCustomerInfo();
+        get().updateCustomerInfo(info);
+        await get().fetchOfferings();
+      } catch (innerError) {
+        if (__DEV__) console.warn('[PurchaseStore] Native store features unavailable');
+      }
     } catch (error) {
       console.error('Failed to initialize RevenueCat:', error);
     } finally {

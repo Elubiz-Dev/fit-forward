@@ -304,7 +304,7 @@ export default function ScanModal() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.3,
+        quality: 0.1,
         base64: true,
       });
 
@@ -346,7 +346,7 @@ export default function ScanModal() {
     try {
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.2,
+        quality: 0.1,
         exif: false,
       });
 
