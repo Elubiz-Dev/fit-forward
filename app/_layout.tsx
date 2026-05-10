@@ -3,7 +3,7 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { supabase } from '../services/supabase';
 import { useAuthStore, useSettingsStore } from '../store';
 import { Colors } from '../constants';
@@ -90,7 +90,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={[styles.root, { backgroundColor: colors.background }]}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
       <NavigationGuard />
       <Stack screenOptions={{ 
@@ -144,7 +144,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

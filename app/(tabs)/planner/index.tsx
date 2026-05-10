@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore } from '../../../store';
+import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore, usePlannerStore, PlanItem, WorkoutRoutine } from '../../../store';
 import { generateMealPlan, generateWeeklyAnalysis } from '../../../services/groq';
 import { supabase } from '../../../services/supabase';
 import { useTranslation } from 'react-i18next';
@@ -15,24 +15,12 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Download, Sparkles, Utensils, Dumbbell, Coffee, Apple, Pizza, CalendarDays, ChevronRight, Activity, Moon } from 'lucide-react-native';
+import { AnimatedCard } from '../../../components/AnimatedCard';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-interface PlanItem {
-  meal: string;
-  name: string;
-  calories: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-}
-
+// PlanItem and WorkoutRoutine types are imported from plannerStore via the store barrel export.
 type PlannerMode = 'nutrition' | 'workouts';
-
-interface WorkoutRoutine {
-  name: string;
-  exercises: { name: string; sets: number; reps: string; rest: string }[];
-}
 
 function getStartOfWeek(date: Date) {
   const d = new Date(date);
@@ -49,9 +37,11 @@ export default function PlannerScreen() {
   const [activeDay, setActiveDay] = useState('Mon');
   const [loading, setLoading]     = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [mealPlans, setMealPlans] = useState<Record<string, PlanItem[]>>({});
-  const [workoutPlans, setWorkoutPlans] = useState<Record<string, WorkoutRoutine>>({});
-  const [analysis, setAnalysis]   = useState<string | null>(null);
+  // Plans and analysis are in the persistent store to survive tab switches
+  const {
+    mealPlans, workoutPlans, weeklyAnalysis: analysis, weekStart,
+    setMealPlans, setWorkoutPlans, setWeeklyAnalysis: setAnalysis, clearPlans,
+  } = usePlannerStore();
   const [analyzing, setAnalyzing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const { profile }               = useAuthStore();
@@ -96,9 +86,13 @@ export default function PlannerScreen() {
               protein: item.protein, carbs: item.carbs, fat: item.fat,
             });
           });
-          setMealPlans(grouped);
+          // Write to persistent store
+          setMealPlans(grouped, currentWeekStart);
+        } else if (Object.keys(mealPlans).length > 0 && weekStart === currentWeekStart) {
+          // Already have cached plans for THIS week — skip DB overwrite
         } else {
-          setMealPlans({});
+          // No DB data or stale cache: clear to show empty state
+          clearPlans();
         }
 
         const { data: wData } = await supabase
@@ -117,9 +111,14 @@ export default function PlannerScreen() {
               exercises: item.exercises || []
             };
           });
-          setWorkoutPlans(grouped);
+          // Write to persistent store
+          setWorkoutPlans(grouped, currentWeekStart);
+        } else if (Object.keys(workoutPlans).length > 0 && weekStart === currentWeekStart) {
+          // Already have cached plans for this week — skip overwrite
         } else {
-          setWorkoutPlans({});
+          // Important: only clear if we haven't already cleared via meal logic 
+          // or if the week actually mismatch.
+          if (weekStart !== currentWeekStart) clearPlans();
         }
       } catch (err) {
         console.error('[Planner] Load error:', err);
@@ -135,6 +134,8 @@ export default function PlannerScreen() {
     if (!isProActually) { router.push('/modals/paywall'); return; }
 
     setLoading(true);
+    // Clear cached plans when regenerating so stale data is not shown
+    clearPlans();
     const currentWeekStart = getStartOfWeek(new Date());
 
     try {
@@ -148,7 +149,7 @@ export default function PlannerScreen() {
           medicationsSupplements: profile.medicationsSupplements,
         }, language);
 
-        setMealPlans(parsedPlan);
+        setMealPlans(parsedPlan, currentWeekStart);
         await supabase.from('meal_plans').delete().eq('user_id', profile.id);
         const { data: planData } = await supabase.from('meal_plans').insert({
           user_id: profile.id, title: t('planner.weekPlan', 'Weekly AI Plan'), week_start: currentWeekStart,
@@ -168,7 +169,7 @@ export default function PlannerScreen() {
           weight: profile.weight, height: profile.height, sex: profile.sex, medicalConditions: profile.medicalConditions,
         }, language);
 
-        setWorkoutPlans(parsedPlan);
+        setWorkoutPlans(parsedPlan, currentWeekStart);
         await supabase.from('workout_plans').delete().eq('user_id', profile.id);
         const { data: planData } = await supabase.from('workout_plans').insert({
           user_id: profile.id, title: t('planner.workoutsTab', 'Weekly AI Workout'), week_start: currentWeekStart,
@@ -294,7 +295,7 @@ export default function PlannerScreen() {
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>{t('planner.weekPlan')}</Text>
         </View>
         <TouchableOpacity style={s.genBtn} activeOpacity={0.8} onPress={handleGenerate} disabled={loading}>
-          <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.genGrad} start={{x:0,y:0}} end={{x:1,y:1}}>
+          <LinearGradient colors={colors.gradientPrimary} style={s.genGrad} start={{x:0,y:0}} end={{x:1,y:1}}>
             {loading ? <ActivityIndicator size="small" color="#fff" /> : 
              <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
                <Sparkles size={16} color="#fff" />
@@ -377,7 +378,9 @@ export default function PlannerScreen() {
           {mode === 'nutrition' ? (
             meals.length > 0 ? (
               meals.map((m, i) => (
-                <MealCard key={i} name={m.name} meal={m.meal} cal={m.calories} protein={m.protein} carbs={m.carbs} fat={m.fat} />
+                <AnimatedCard key={i} index={i} direction="up">
+                  <MealCard name={m.name} meal={m.meal} cal={m.calories} protein={m.protein} carbs={m.carbs} fat={m.fat} />
+                </AnimatedCard>
               ))
             ) : (
               <EmptyState title={t('planner.noMeals')} loading={loading} isPro={isProActually} onUnlock={() => router.push('/modals/paywall')} />
@@ -394,24 +397,26 @@ export default function PlannerScreen() {
                       </View>
                     </View>
                     {workout.exercises.map((ex, i) => (
-                      <View key={i} style={[s.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <View style={s.exerciseHeader}>
-                          <Text style={[s.exerciseName, { color: colors.textPrimary }]}>{ex.name}</Text>
-                          <View style={[s.exerciseBadge, { backgroundColor: colors.primary + '15' }]}>
-                            <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>{ex.sets} SETS</Text>
+                      <AnimatedCard key={i} index={i} direction="up">
+                        <View style={[s.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                          <View style={s.exerciseHeader}>
+                            <Text style={[s.exerciseName, { color: colors.textPrimary }]}>{ex.name}</Text>
+                            <View style={[s.exerciseBadge, { backgroundColor: colors.primary + '15' }]}>
+                              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>{ex.sets} SETS</Text>
+                            </View>
+                          </View>
+                          <View style={s.exerciseMeta}>
+                            <View style={s.metaItem}>
+                              <Text style={[s.metaLabel, { color: colors.textMuted }]}>Reps</Text>
+                              <Text style={[s.metaValue, { color: colors.textSecondary }]}>{ex.reps}</Text>
+                            </View>
+                            <View style={s.metaItem}>
+                              <Text style={[s.metaLabel, { color: colors.textMuted }]}>Rest</Text>
+                              <Text style={[s.metaValue, { color: colors.textSecondary }]}>{ex.rest}</Text>
+                            </View>
                           </View>
                         </View>
-                        <View style={s.exerciseMeta}>
-                          <View style={s.metaItem}>
-                            <Text style={[s.metaLabel, { color: colors.textMuted }]}>Reps</Text>
-                            <Text style={[s.metaValue, { color: colors.textSecondary }]}>{ex.reps}</Text>
-                          </View>
-                          <View style={s.metaItem}>
-                            <Text style={[s.metaLabel, { color: colors.textMuted }]}>Rest</Text>
-                            <Text style={[s.metaValue, { color: colors.textSecondary }]}>{ex.rest}</Text>
-                          </View>
-                        </View>
-                      </View>
+                      </AnimatedCard>
                     ))}
                   </>
                 ) : (

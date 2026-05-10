@@ -23,3 +23,13 @@ export function formatDisplayDate(dateStr: string, language: string = 'en'): str
     month: 'long' 
   });
 }
+/**
+ * Adds or subtracts days from a YYYY-MM-DD date string.
+ * @param dateStr Current date string.
+ * @param days Number of days to add (can be negative).
+ */
+export function addDays(dateStr: string, days: number): string {
+  const date = new Date(dateStr + 'T12:00:00');
+  date.setDate(date.getDate() + days);
+  return getLocalDateString(date);
+}

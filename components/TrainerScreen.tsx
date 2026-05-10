@@ -92,6 +92,7 @@ export default function TrainerScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSending, setIsSending]       = useState(false); // local send guard
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false); // true while Whisper processes audio
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   const isRecording   = recorderState.isRecording;
@@ -226,6 +227,11 @@ export default function TrainerScreen() {
   }, []);
 
   // ─── Voice Recording ────────────────────────────────────────────────────────
+  /**
+   * Configures the audio session, prepares the recorder, then starts capture.
+   * prepareToRecordAsync() MUST be called before record() so recorder.uri
+   * is populated after stopping.
+   */
   const startRecording = async () => {
     try {
       const permission = await requestRecordingPermissionsAsync();
@@ -233,41 +239,46 @@ export default function TrainerScreen() {
         Alert.alert('Permission needed', 'Please allow microphone access to use voice features.');
         return;
       }
-
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-
+      // Required on iOS: configure audio session before recording
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      // Prepare must precede record()
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (err: any) {
-      console.error('Failed to start recording', err);
+      console.error('[TrainerScreen] Failed to start recording:', err);
     }
   };
 
+  /** Stops recording, transcribes via Whisper, and populates the text input. */
   const stopRecording = async () => {
     if (!isRecording) return;
-    
     try {
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
-
       if (uri) {
-        setTyping(true);
+        setIsTranscribing(true);
         try {
           const text = await transcribeAudio(uri);
-          if (text.trim()) {
-            setInput(text);
-          }
+          if (text.trim()) setInput(text);
         } catch (err) {
           Alert.alert('Transcription failed', 'Could not convert voice to text.');
         } finally {
-          setTyping(false);
+          setIsTranscribing(false);
+          // Restore audio session for normal playback after recording
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false }).catch(() => {});
         }
       }
     } catch (err) {
-      console.error('Failed to stop recording', err);
+      console.error('[TrainerScreen] Failed to stop recording:', err);
+    }
+  };
+
+  /** Toggle voice recording */
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -553,12 +564,15 @@ export default function TrainerScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPressIn={startRecording}
-                onPressOut={stopRecording}
-                style={[s.micBtn, isRecording && s.micBtnActive]}
+                onPress={toggleRecording}
+                style={[s.micBtn, (isRecording || isTranscribing) && s.micBtnActive]}
                 activeOpacity={0.7}
+                disabled={isTranscribing}
               >
-                <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
+                {isTranscribing
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
+                }
               </TouchableOpacity>
 
               <TextInput

@@ -110,11 +110,22 @@ export const useCoachStore = create<CoachState>()(
     {
       name: 'ff-coach',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({ 
-        msgCount: s.msgCount, 
+      /**
+       * Persist messages (capped at last 50 per coach) so history survives
+       * app close, tab switches, and offline scenarios without a DB call.
+       * Sessions and session IDs are also persisted so the correct thread
+       * is restored automatically on next launch.
+       */
+      partialize: (s) => ({
+        msgCount:    s.msgCount,
         lastResetDate: s.lastResetDate,
         currentNutritionistSessionId: s.currentNutritionistSessionId,
-        currentTrainerSessionId: s.currentTrainerSessionId,
+        currentTrainerSessionId:      s.currentTrainerSessionId,
+        // Keep last 50 messages per coach to bound storage usage
+        nutritionistMessages: s.nutritionistMessages.slice(-50),
+        trainerMessages:      s.trainerMessages.slice(-50),
+        nutritionistSessions: s.nutritionistSessions,
+        trainerSessions:      s.trainerSessions,
       }),
     }
   )

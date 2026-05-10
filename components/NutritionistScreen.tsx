@@ -92,6 +92,7 @@ export default function NutritionistScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSending, setIsSending]       = useState(false); // local send guard
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false); // true while Whisper processes audio
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   const isRecording   = recorderState.isRecording;
@@ -226,6 +227,11 @@ export default function NutritionistScreen() {
   }, []);
 
   // ─── Voice Recording ────────────────────────────────────────────────────────
+  /**
+   * Configures the audio session, prepares the recorder, then starts capture.
+   * IMPORTANT: prepareToRecordAsync() MUST be called before record() —
+   * without it, expo-audio never populates recorder.uri after stopping.
+   */
   const startRecording = async () => {
     try {
       const permission = await requestRecordingPermissionsAsync();
@@ -234,27 +240,27 @@ export default function NutritionistScreen() {
         return;
       }
 
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
+      // Required on iOS: set audio session to recording mode
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
 
+      // Must prepare before calling record()
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (err: any) {
-      console.error('Failed to start recording', err);
+      console.error('[NutritionistScreen] Failed to start recording:', err);
     }
   };
 
+  /** Stops recording, transcribes via Whisper, and populates the text input. */
   const stopRecording = async () => {
     if (!isRecording) return;
-    
+
     try {
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
 
       if (uri) {
-        setTyping(true);
+        setIsTranscribing(true);
         try {
           const text = await transcribeAudio(uri);
           if (text.trim()) {
@@ -263,15 +269,26 @@ export default function NutritionistScreen() {
         } catch (err) {
           Alert.alert('Transcription failed', 'Could not convert voice to text.');
         } finally {
-          setTyping(false);
+          setIsTranscribing(false);
+          // Restore audio session for normal playback
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false }).catch(() => {});
         }
       }
     } catch (err) {
-      console.error('Failed to stop recording', err);
+      console.error('[NutritionistScreen] Failed to stop recording:', err);
     }
   };
 
   // ─── Send message ─────────────────────────────────────────────────────────────
+  /** Toggle voice recording */
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
   const handleSend = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
 
@@ -556,12 +573,15 @@ export default function NutritionistScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPressIn={startRecording}
-                onPressOut={stopRecording}
-                style={[s.micBtn, isRecording && s.micBtnActive]}
+                onPress={toggleRecording}
+                style={[s.micBtn, (isRecording || isTranscribing) && s.micBtnActive]}
                 activeOpacity={0.7}
+                disabled={isTranscribing}
               >
-                <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
+                {isTranscribing
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
+                }
               </TouchableOpacity>
 
               <TextInput

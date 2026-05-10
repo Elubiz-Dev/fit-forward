@@ -16,10 +16,23 @@
 
 import { supabase } from './supabase';
 
+// ─── Shared language map ──────────────────────────────────────────────────────
+/** Maps language codes to full language names used in AI prompts. */
+const LANG_NAMES: Record<string, string> = {
+  en: 'English', es: 'Spanish', fr: 'French',
+  pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
+};
+
+/** Resolves a language code to a full name, defaulting to English. */
+const getLang = (code: string) => LANG_NAMES[code] || 'English';
+
 // ─── Model IDs ────────────────────────────────────────────────────────────────
-const CHAT_MODEL   = 'meta-llama/llama-4-scout-17b-16e-instruct'; //no cambiar en proximos
+const CHAT_MODEL   = 'llama-3.3-70b-versatile'; //no cambiar en proximos
 const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; //no cambiar en proximos
 const AUDIO_MODEL  = 'whisper-large-v3';
+const IMAGE_MODEL  = 'openai/gpt-4o-mini';
+const VIDEO_MODEL  = 'openai/gpt-4o-mini';
+const VOICE_MODEL  = 'canopylabs/orpheus-v1-english';
 
 // Helper to use Supabase Edge Function as a proxy
 async function fetchGroq(payload: any) {
@@ -77,10 +90,7 @@ export function buildCoachSystemPrompt(userProfile: {
   medicationsSupplements?: string[];
   preferences?: string[];
 }, language: string = 'en', coachType: 'nutritionist' | 'trainer' = 'nutritionist') {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const basicStats = `- Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
 - Activity Level: ${userProfile.activityLevel ?? 'Unknown'}
@@ -207,10 +217,7 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
     throw new Error('Image data is missing or empty.');
   }
 
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
   const exampleName = targetLang === 'Spanish' ? 'Ensalada de pollo' : 'Chicken salad';
 
   const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
@@ -271,10 +278,7 @@ export async function generateMealPlan(userProfile: {
   medicalConditions?: string[];
   medicationsSupplements?: string[];
 }, language: string = 'en'): Promise<Record<string, { meal: string; name: string; calories: number; protein: number; carbs: number; fat: number }[]>> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `Create a 7-day meal plan for someone with these parameters:
 - Daily calories: ${userProfile.targetCalories} kcal
@@ -336,10 +340,7 @@ export async function generateWorkoutPlan(userProfile: {
   sex?: 'male' | 'female';
   medicalConditions?: string[];
 }, language: string = 'en'): Promise<Record<string, { name: string; exercises: { name: string; sets: number; reps: string; rest: string }[] }>> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `Create a 7-day workout plan for someone with these parameters:
 - Goal: ${userProfile.goal}
@@ -398,10 +399,7 @@ export async function generateWeeklyAnalysis(data: {
   goal: string;
   daysLogged: number;
 }, language: string = 'en'): Promise<string> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `Provide a concise weekly nutrition analysis (max 150 words) for this user:
 - Goal: ${data.goal}
@@ -458,10 +456,7 @@ export async function transcribeAudio(uri: string): Promise<string> {
 
 // ─── Generate Recipes ─────────────────────────────────────────────────────────
 export async function generateRecipes(userGoal: string, language: string = 'en', count: number = 3): Promise<any[]> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `Generate ${count} healthy recipe ideas for someone with the goal: ${userGoal}.
 IMPORTANT: All recipe names, descriptions, and instructions MUST be in ${targetLang}.
@@ -505,10 +500,7 @@ IMPORTANT: All text MUST be in ${targetLang}.`;
 
 // ─── Parse Voice/Text Log ─────────────────────────────────────────────────────
 export async function parseVoiceLog(text: string, language: string = 'en'): Promise<any[]> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `You are a professional nutritionist. Extract food items and estimated portions from this description: "${text}"
 IMPORTANT: Extract the food names in ${targetLang}.
@@ -565,10 +557,7 @@ BE ACCURATE with the calories and macros based on reliable nutritional databases
 }
 // ─── Estimate Activity Calories ───────────────────────────────────────────────
 export async function estimateActivityCalories(description: string, duration: number, language: string = 'en'): Promise<number> {
-  const langNames: Record<string, string> = {
-    en: 'English', es: 'Spanish', fr: 'French', pt: 'Portuguese', it: 'Italian', de: 'German', ru: 'Russian'
-  };
-  const targetLang = langNames[language] || 'English';
+  const targetLang = getLang(language);
 
   const prompt = `You are a fitness expert. Estimate the total calories burned for this activity: "${description}" for a duration of ${duration} minutes. 
 Provide a realistic estimate based on standard MET values for a person of average weight (70kg/154lbs).

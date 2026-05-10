@@ -12,8 +12,11 @@ import { useAuthStore, useNutritionStore, useSettingsStore } from '../../../stor
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
-import { getLocalDateString } from '../../../utils/date';
+import { getLocalDateString, addDays } from '../../../utils/date';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
+import { AnimatedCard } from '../../../components/AnimatedCard';
+// import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+// import Animated, { FadeIn, FadeInUp, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 const RING_SIZE     = 220;
 const STROKE_WIDTH  = 12;
@@ -248,8 +251,20 @@ export default function TrackerScreen() {
     );
   };
 
+/*
+  const gesture = Gesture.Pan()
+    .onEnd((e) => {
+      if (Math.abs(e.velocityX) > 500) {
+        const direction = e.velocityX > 0 ? -1 : 1;
+        setDate(addDays(selectedDate, direction));
+      }
+    });
+*/
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* GestureDetector disabled for stability */}
+      <View style={{ flex: 1 }}>
       <CustomAlert 
         visible={alert.visible}
         type={alert.type}
@@ -316,10 +331,11 @@ export default function TrackerScreen() {
           }}
         >
           {/* Main Calorie Card */}
-          <LinearGradient
-            colors={[colors.surface, colors.surfaceAlt || colors.surface]}
-            style={[s.card, { borderColor: colors.border, width: width - 32, paddingVertical: 24 }]}
-          >
+          <AnimatedCard index={0} style={{ width: width - 32 }}>
+            <LinearGradient
+              colors={colors.gradientCard}
+              style={[s.card, { borderColor: colors.border, paddingVertical: 24 }]}
+            >
             <View style={s.arcWrap}>
               <Svg width={RING_SIZE} height={RING_SIZE}>
                 <G rotation="-90" origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}>
@@ -357,10 +373,12 @@ export default function TrackerScreen() {
               <MacroBar label={t('profile.carbs').length > 10 ? 'Carbos' : t('profile.carbs')} current={carbs} target={macros.carbs} color={colors.carbs} />
               <MacroBar label={t('profile.fat')} current={fat} target={macros.fat} color={colors.fat} />
             </View>
-          </LinearGradient>
+            </LinearGradient>
+          </AnimatedCard>
 
           {/* Other Nutrients Card */}
-          <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, width: width - 32 }]}>
+          <AnimatedCard index={1} style={{ width: width - 32 }}>
+            <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={s.cardHeader}>
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.otherNutrients')}</Text>
             </View>
@@ -382,6 +400,7 @@ export default function TrackerScreen() {
               </View>
             ))}
           </View>
+          </AnimatedCard>
         </ScrollView>
 
         {/* Carousel Indicators */}
@@ -407,14 +426,15 @@ export default function TrackerScreen() {
         )}
 
         {/* Meals */}
-        {!isFetching && allMeals.map((m) => {
+        {!isFetching && allMeals.map((m, idx) => {
           const mealLogs = grouped[m] || [];
           const mealCals = Math.round(mealLogs.reduce((s, l) => s + (l.calories || 0), 0));
           const isExtraSnack = m.startsWith('snack') && m !== 'snack';
           const snackNumber = isExtraSnack ? m.replace('snack', '') : '';
           
           return (
-            <View key={m} style={[s.mealCard, { backgroundColor: colors.surface }]}>
+            <AnimatedCard key={m} index={idx + 2}>
+              <View style={[s.mealCard, { backgroundColor: colors.surface }]}>
               <View style={s.cardHeader}>
                 <Text style={[s.cardTitle, { color: colors.textPrimary }]}>
                   {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
@@ -450,7 +470,8 @@ export default function TrackerScreen() {
               <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => handleAddMeal(m as Meal)}>
                 <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
               </TouchableOpacity>
-            </View>
+              </View>
+            </AnimatedCard>
           );
         })}
 
@@ -562,6 +583,8 @@ export default function TrackerScreen() {
         </View>
 
       </ScrollView>
+      </View>
+      {/* </GestureDetector> */}
     </SafeAreaView>
   );
 }

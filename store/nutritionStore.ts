@@ -450,6 +450,7 @@ export const useNutritionStore = create<NutritionState>()(
       name: 'ff-nutrition',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
+        todayLogs:     s.todayLogs,
         streakDays:    s.streakDays,
         dailyWater:    s.dailyWater,
         dailySteps:    s.dailySteps,

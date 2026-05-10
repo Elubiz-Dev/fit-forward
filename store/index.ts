@@ -2,6 +2,7 @@ export * from './types';
 export * from './authStore';
 export * from './nutritionStore';
 export * from './coachStore';
+export * from './plannerStore';
 export * from './bodyStore';
 export * from './recipesStore';
 export * from './progressStore';

@@ -10,8 +10,8 @@ function TabIcon({ Icon, label, focused }: { Icon: any; label: string; focused: 
   const colors = useTheme();
   return (
     <View style={styles.tabItem}>
-      <View style={[styles.iconPill, focused && { backgroundColor: '#7C5CFC' }]}>
-        <Icon size={24} color={focused ? '#000000' : colors.tabInactive} strokeWidth={focused ? 2.5 : 2} />
+      <View style={[styles.iconPill, focused && { backgroundColor: colors.primary + '22' }]}>
+        <Icon size={24} color={focused ? colors.primary : colors.tabInactive} strokeWidth={focused ? 2.5 : 2} />
       </View>
       <Text 
         style={[styles.tabLabel, { color: focused ? colors.tabActive : colors.tabInactive }]}

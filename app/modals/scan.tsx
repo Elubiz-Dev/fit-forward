@@ -125,6 +125,7 @@ export default function ScanModal() {
     return true;
   };
 
+  const [isRecording, setIsRecording] = useState(false);
   const recordingStatus = useRef<'idle' | 'starting' | 'recording' | 'stopping'>('idle');
 
   const startRecording = async () => {
@@ -147,6 +148,7 @@ export default function ScanModal() {
       });
 
       recordingStatus.current = 'starting';
+      setIsRecording(true);
       if (__DEV__) console.log('[Audio] Preparing...');
       await recorder.prepareToRecordAsync();
       if (__DEV__) console.log('[Audio] Starting...');
@@ -155,6 +157,7 @@ export default function ScanModal() {
       if (__DEV__) console.log('[Audio] Recording active');
     } catch (err) {
       recordingStatus.current = 'idle';
+      setIsRecording(false);
       console.error('Start error:', err);
     }
   };
@@ -171,10 +174,12 @@ export default function ScanModal() {
 
     if (recordingStatus.current !== 'recording') {
       recordingStatus.current = 'idle';
+      setIsRecording(false);
       return;
     }
 
     recordingStatus.current = 'stopping';
+    setIsRecording(false);
     try {
       setLoading(true);
       if (__DEV__) console.log('[Audio] Stopping...');
@@ -204,6 +209,15 @@ export default function ScanModal() {
     } finally {
       recordingStatus.current = 'idle';
       setLoading(false);
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false }).catch(() => {});
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -670,15 +684,14 @@ export default function ScanModal() {
                     onChangeText={setTextInput}
                   />
                   <TouchableOpacity 
-                    style={[s.voiceBtn, recorderState.isRecording && { backgroundColor: colors.error }]} 
-                    onPressIn={startRecording}
-                    onPressOut={stopRecording}
+                    style={[s.voiceBtn, isRecording && { backgroundColor: colors.error }]} 
+                    onPress={toggleRecording}
                   >
-                    <Text style={{ fontSize: 24 }}>{recorderState.isRecording ? '🛑' : '🎤'}</Text>
+                    <Text style={{ fontSize: 24 }}>{isRecording ? '🛑' : '🎤'}</Text>
                     {!isProActually && <View style={s.lockBadge}><Text style={{ fontSize: 10 }}>🔒</Text></View>}
                   </TouchableOpacity>
                 </View>
-                {recorderState.isRecording && <Text style={[s.recordingStatus, { color: colors.error }]}>{t('scan.recording') || 'Recording...'}</Text>}
+                {isRecording && <Text style={[s.recordingStatus, { color: colors.error }]}>{t('scan.recording') || 'Recording...'}</Text>}
                 <TouchableOpacity style={s.analyzeBtn} onPress={handleTextAnalyze} disabled={loading || !textInput.trim()}>
                   <LinearGradient colors={[colors.tabActive, colors.tabActive + 'CC']} style={s.analyzeGrad}>
                     {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.analyzeText}>{t('scan.analyze') || 'Analyze with AI'}</Text>}

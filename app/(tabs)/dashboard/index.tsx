@@ -12,7 +12,10 @@ import { useAuthStore, useNutritionStore, useSettingsStore, useBodyStore } from 
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
-import { getLocalDateString } from '../../../utils/date';
+import { getLocalDateString, addDays } from '../../../utils/date';
+// import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+// import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { AnimatedCard } from '../../../components/AnimatedCard';
 
 const { width } = Dimensions.get('window');
 const WIDGET_WIDTH = (width - Spacing.base * 2 - Spacing.md) / 2;
@@ -63,46 +66,49 @@ const ring = StyleSheet.create({
 });
 
 // ─── Widget Card ────────────────────────────────────────────────────────────────
-function WidgetCard({ title, value, subValue, icon, onPress, customContent, onLongPress, isEditing, onMoveLeft, onMoveRight, canMoveLeft, canMoveRight }: any) {
+function WidgetCard({ title, value, subValue, icon, onPress, customContent, onLongPress, isEditing, onMoveLeft, onMoveRight, canMoveLeft, canMoveRight, index }: any) {
   const colors = useTheme();
+  
   return (
-    <TouchableOpacity 
-      style={[w.card, { backgroundColor: colors.surface }, isEditing && { borderColor: colors.primary, borderWidth: 2 }]} 
-      onPress={isEditing ? undefined : onPress} 
-      activeOpacity={0.8} 
-      delayLongPress={500} 
-      onLongPress={onLongPress}
-    >
-      <View style={w.header}>
-        <Text style={w.icon}>{icon}</Text>
-        <Text style={[w.title, { color: colors.textPrimary }]}>{title}</Text>
-      </View>
-      {customContent ? customContent : (
-        <View style={w.content}>
-          <Text style={[w.value, { color: colors.textPrimary }]}>{value}</Text>
-          {subValue && <Text style={[w.subValue, { color: colors.textSecondary }]}>{subValue}</Text>}
+    <AnimatedCard index={index} direction="up" style={{ width: WIDGET_WIDTH }}>
+      <TouchableOpacity 
+        style={[w.card, { backgroundColor: colors.surface }, isEditing && { borderColor: colors.primary, borderWidth: 2 }]} 
+        onPress={isEditing ? undefined : onPress} 
+        activeOpacity={0.8} 
+        delayLongPress={500} 
+        onLongPress={onLongPress}
+      >
+        <View style={w.header}>
+          <Text style={w.icon}>{icon}</Text>
+          <Text style={[w.title, { color: colors.textPrimary }]}>{title}</Text>
         </View>
-      )}
-      
-      {isEditing && (
-        <View style={[StyleSheet.absoluteFill, w.editOverlay]}>
-          <TouchableOpacity 
-            style={[w.moveBtn, !canMoveLeft && { opacity: 0.3 }]} 
-            onPress={onMoveLeft} 
-            disabled={!canMoveLeft}
-          >
-            <Text style={w.moveIcon}>←</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[w.moveBtn, !canMoveRight && { opacity: 0.3 }]} 
-            onPress={onMoveRight} 
-            disabled={!canMoveRight}
-          >
-            <Text style={w.moveIcon}>→</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </TouchableOpacity>
+        {customContent ? customContent : (
+          <View style={w.content}>
+            <Text style={[w.value, { color: colors.textPrimary }]}>{value}</Text>
+            {subValue && <Text style={[w.subValue, { color: colors.textSecondary }]}>{subValue}</Text>}
+          </View>
+        )}
+        
+        {isEditing && (
+          <View style={[StyleSheet.absoluteFill, w.editOverlay]}>
+            <TouchableOpacity 
+              style={[w.moveBtn, !canMoveLeft && { opacity: 0.3 }]} 
+              onPress={onMoveLeft} 
+              disabled={!canMoveLeft}
+            >
+              <Text style={w.moveIcon}>←</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[w.moveBtn, !canMoveRight && { opacity: 0.3 }]} 
+              onPress={onMoveRight} 
+              disabled={!canMoveRight}
+            >
+              <Text style={w.moveIcon}>→</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    </AnimatedCard>
   );
 }
 
@@ -125,7 +131,7 @@ export default function DashboardScreen() {
   const colors = useTheme();
   const { language } = useSettingsStore();
   const { profile, setProfile } = useAuthStore();
-  const { todayLogs, dailySleep, selectedDate, totals, fetchLogs } = useNutritionStore();
+  const { todayLogs, dailySleep, selectedDate, totals, fetchLogs, setDate } = useNutritionStore();
   const { latest, fetchMeasurements, getForDate } = useBodyStore();
   
   const totalsData = useMemo(() => totals(), [todayLogs, selectedDate]);
@@ -215,6 +221,7 @@ export default function DashboardScreen() {
 
   const renderWidget = (id: string, index: number) => {
     const commonProps = {
+      index,
       isEditing,
       onLongPress: () => setIsEditing(true),
       onMoveLeft: () => moveWidget(index, -1),
@@ -312,9 +319,21 @@ export default function DashboardScreen() {
     }
   };
 
+/*
+  const gesture = Gesture.Pan()
+    .onEnd((e) => {
+      if (Math.abs(e.velocityX) > 500) {
+        const direction = e.velocityX > 0 ? -1 : 1;
+        setDate(addDays(selectedDate, direction));
+      }
+    });
+*/
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      {/* GestureDetector disabled */}
+      <View style={{ flex: 1 }}>
+        <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={s.header}>
           <View>
@@ -378,6 +397,8 @@ export default function DashboardScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      </View>
+      {/* </GestureDetector> */}
     </SafeAreaView>
   );
 }

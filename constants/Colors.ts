@@ -5,41 +5,41 @@
 
 const Palette = {
   // Common brand colors
-  primary:      '#7C5CFC',  // purple
-  primaryLight: '#A78BFA',
-  primaryDark:  '#4338CA',
-  secondary:    '#22D3EE',  // cyan
-  accent:       '#7C5CFC',  // purple
+  primary:      '#8B5CF6',  // More vibrant violet
+  primaryLight: '#C4B5FD',
+  primaryDark:  '#6D28D9',
+  secondary:    '#06B6D4',  // Better cyan
+  accent:       '#F43F5E',  // Rose accent for better contrast
   
-  success:      '#22C55E',
+  success:      '#10B981',
   warning:      '#F59E0B',
   error:        '#EF4444',
-  info:         '#7C5CFC',
+  info:         '#3B82F6',
 
-  protein:      '#7C5CFC',  // purple
-  carbs:        '#22D3EE',  // cyan
-  fat:          '#4338CA',  // dark purple
-  calories:     '#EF4444',  // red-ish
+  protein:      '#8B5CF6',  // violet
+  carbs:        '#06B6D4',  // cyan
+  fat:          '#F59E0B',  // amber
+  calories:     '#F43F5E',  // rose
 };
 
 export const Colors = {
   dark: {
     ...Palette,
-    background:   '#000000',
-    surface:      '#1C1C1E',
-    surfaceAlt:   '#2C2C2E',
-    border:       '#3A3A3C',
-    textPrimary:  '#F1F5F9',
+    background:   '#0F172A', // Slate 900
+    surface:      '#1E293B', // Slate 800
+    surfaceAlt:   '#334155', // Slate 700
+    border:       '#475569', // Slate 600
+    textPrimary:  '#F8FAFC',
     textSecondary:'#94A3B8',
     textMuted:    '#64748B',
-    textInverse:  '#000000',
-    tabActive:    '#7C5CFC',
+    textInverse:  '#0F172A',
+    tabActive:    '#8B5CF6',
     tabInactive:  '#64748B',
-    gradientPrimary: ['#7C5CFC', '#4338CA'] as const,
-    gradientCard:    ['#1C1C1E', '#000000'] as const,
-    gradientBurn:    ['#EF4444', '#7C5CFC'] as const,
-    pro:          '#7C5CFC',
-    proGradient:  ['#7C5CFC', '#4338CA'] as const,
+    gradientPrimary: ['#8B5CF6', '#6D28D9'] as const,
+    gradientCard:    ['#1E293B', '#0F172A'] as const,
+    gradientBurn:    ['#F43F5E', '#8B5CF6'] as const,
+    pro:          '#F59E0B',
+    proGradient:  ['#F59E0B', '#D97706'] as const,
   },
   light: {
     ...Palette,
@@ -51,13 +51,13 @@ export const Colors = {
     textSecondary:'#475569',
     textMuted:    '#94A3B8',
     textInverse:  '#FFFFFF',
-    tabActive:    '#7C5CFC',
+    tabActive:    '#8B5CF6',
     tabInactive:  '#94A3B8',
-    gradientPrimary: ['#7C5CFC', '#4338CA'] as const,
+    gradientPrimary: ['#8B5CF6', '#6D28D9'] as const,
     gradientCard:    ['#FFFFFF', '#F8FAFC'] as const,
-    gradientBurn:    ['#EF4444', '#7C5CFC'] as const,
-    pro:          '#7C5CFC',
-    proGradient:  ['#7C5CFC', '#4338CA'] as const,
+    gradientBurn:    ['#F43F5E', '#8B5CF6'] as const,
+    pro:          '#F59E0B',
+    proGradient:  ['#F59E0B', '#D97706'] as const,
   }
 };
 
