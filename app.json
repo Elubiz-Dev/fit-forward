@@ -32,7 +32,12 @@
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "minSdkVersion": 24
     },
@@ -56,7 +61,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
@@ -64,7 +70,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b322d830-a5f8-4c68-83b5-8686ce3d38f3"
+        "projectId": "c7070968-231a-43c2-a62e-37108264a8db"
       }
     }
   }
