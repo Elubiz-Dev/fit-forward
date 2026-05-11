@@ -951,39 +951,75 @@ export default function ProfileScreen() {
 
         {/* Progress Chart */}
         <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border, padding: Spacing.base }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={[s.sectionTitle, { padding: 0, color: colors.textMuted }]}>{t('profile.weightTrend', 'Tendencia de Peso')}</Text>
             <TouchableOpacity onPress={() => router.push('/modals/body-measurements' as any)}>
               <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('common.viewAll', 'Ver Todo')} ›</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={{ marginLeft: -20 }}>
-            <LineChart
-              data={weightData}
-              height={160}
-              width={SCREEN_WIDTH - 64}
-              initialSpacing={20}
-              color={colors.primary}
-              thickness={3}
-              hideRules
-              hideYAxisText
-              yAxisThickness={0}
-              xAxisThickness={0}
-              areaChart
-              startFillColor={colors.primary}
-              startOpacity={0.4}
-              endFillColor={colors.primary}
-              endOpacity={0.1}
-              curved
-              dataPointsColor={colors.primary}
-              dataPointsRadius={4}
-              focusedDataPointColor={colors.accent}
-              showTextOnPress
-              textColor={colors.textPrimary}
-              textFontSize={10}
-            />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.current', 'Actual')}</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', marginTop: 4 }}>{profile?.weight ?? '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text></Text>
+            </View>
+            <View style={{ width: 1, backgroundColor: colors.border }} />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.target', 'Meta')}</Text>
+              <Text style={{ color: colors.primary, fontSize: 20, fontWeight: '800', marginTop: 4 }}>{profile?.targetWeight ?? '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text></Text>
+            </View>
+            <View style={{ width: 1, backgroundColor: colors.border }} />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.diff', 'Diferencia')}</Text>
+              <Text style={{ color: profile?.targetWeight && profile?.weight && profile.weight > profile.targetWeight ? '#EF4444' : '#10B981', fontSize: 20, fontWeight: '800', marginTop: 4 }}>
+                {profile?.targetWeight && profile?.weight ? `${(profile.weight - profile.targetWeight).toFixed(1)}` : '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text>
+              </Text>
+            </View>
           </View>
+
+          {weightData.length >= 2 ? (
+            <View style={{ marginLeft: -20 }}>
+              <LineChart
+                data={weightData}
+                height={140}
+                width={SCREEN_WIDTH - 64}
+                initialSpacing={20}
+                color={colors.primary}
+                thickness={3}
+                hideRules
+                hideYAxisText
+                yAxisThickness={0}
+                xAxisThickness={0}
+                areaChart
+                startFillColor={colors.primary}
+                startOpacity={0.35}
+                endFillColor={colors.primary}
+                endOpacity={0.05}
+                curved
+                dataPointsColor={colors.primary}
+                dataPointsRadius={5}
+                focusedDataPointColor={colors.accent}
+                showTextOnPress
+                textColor={colors.textPrimary}
+                textFontSize={10}
+                xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
+              />
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 24, gap: 8 }}>
+              <Text style={{ fontSize: 32 }}>📊</Text>
+              <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>{t('profile.noWeightData', 'Sin historial aún')}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', maxWidth: 220 }}>
+                {t('profile.noWeightDataHint', 'Registra tu peso periódicamente para ver tu evolución aquí.')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/modals/body-measurements' as any)}
+                style={{ marginTop: 8, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>+ {t('profile.addMeasurement', 'Añadir Medición')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Configuración */}
