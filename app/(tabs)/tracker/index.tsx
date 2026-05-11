@@ -6,9 +6,10 @@ import {
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, G, Path } from 'react-native-svg';
+import Svg, { Circle, G, Path, Polygon, Line, Text as SvgText } from 'react-native-svg';
+import { BarChart } from 'react-native-gifted-charts';
 import { Spacing, Radius } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore } from '../../../store';
+import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
@@ -251,6 +252,72 @@ export default function TrackerScreen() {
     );
   };
 
+  // ── Heatmap: last 28 days ──────────────────────────────────────────────────
+  const heatmapDays = useMemo(() => {
+    const result = [];
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const hasLogs = todayLogs.some(l => l.loggedAt.startsWith(dateStr));
+      const dayLabel = d.getDay(); // 0=Sun
+      result.push({ dateStr, hasLogs, dayLabel, dayNum: d.getDate() });
+    }
+    return result;
+  }, [todayLogs]);
+
+  // ── Radar: macros vs targets ─────────────────────────────────────────────
+  const radarData = useMemo(() => {
+    const axes = [
+      { label: 'Proteína', current: protein, target: macros.protein, color: colors.protein },
+      { label: 'Carbos',   current: carbs,   target: macros.carbs,   color: colors.carbs },
+      { label: 'Grasas',   current: fat,     target: macros.fat,     color: colors.fat },
+      { label: 'Fibra',    current: fiber,   target: 30,             color: '#06B6D4' },
+      { label: 'Azúcar',   current: Math.max(0, 50 - sugar), target: 50, color: '#8B5CF6' },
+    ];
+    return axes.map(a => ({ ...a, pct: Math.min(a.current / Math.max(a.target, 1), 1) }));
+  }, [protein, carbs, fat, fiber, sugar, macros, colors]);
+
+  const stackData = useMemo(() => {
+    const data = [];
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+
+    const mealColors: Record<string, string> = {
+      breakfast: '#7C5CFC',
+      lunch: '#3B82F6',
+      dinner: '#10B981',
+      snack: '#F59E0B',
+    };
+
+    return days.map(date => {
+      const dayLogs = todayLogs.filter(l => l.loggedAt.startsWith(date));
+      const stacks = MEALS.map(meal => {
+        const mealCals = dayLogs
+          .filter(l => l.meal === meal || (meal === 'snack' && l.meal.startsWith('snack')))
+          .reduce((sum, l) => sum + (l.calories || 0), 0);
+        return { 
+          value: Math.round(mealCals), 
+          color: mealColors[meal],
+          marginBottom: 2
+        };
+      }).filter(s => s.value > 0);
+
+      const d = new Date(date + 'T12:00:00');
+      const label = d.toLocaleDateString(language, { weekday: 'narrow' });
+
+      return {
+        stacks: stacks.length > 0 ? stacks : [{ value: 0, color: 'transparent' }],
+        label: label,
+        labelTextStyle: { color: colors.textSecondary, fontSize: 10 },
+      };
+    });
+  }, [todayLogs, language, colors]);
+
 /*
   const gesture = Gesture.Pan()
     .onEnd((e) => {
@@ -401,11 +468,47 @@ export default function TrackerScreen() {
             ))}
           </View>
           </AnimatedCard>
+          {/* Weekly Calories Chart Card */}
+          <AnimatedCard index={2} style={{ width: width - 32 }}>
+            <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 10 }]}>
+              <View style={s.cardHeader}>
+                <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('dashboard.weeklyAvg', 'Resumen Semanal')}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>kcal</Text>
+              </View>
+              
+              <View style={{ alignItems: 'center', marginTop: 10 }}>
+                <BarChart
+                  stackData={stackData}
+                  barWidth={22}
+                  spacing={18}
+                  roundedTop
+                  roundedBottom
+                  hideRules
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+                  noOfSections={4}
+                  maxValue={target * 1.2}
+                  isAnimated
+                  animationDuration={800}
+                />
+              </View>
+
+              <View style={s.chartLegend}>
+                {MEALS.map(m => (
+                  <View key={m} style={s.legendItem}>
+                    <View style={[s.legendDot, { backgroundColor: m === 'breakfast' ? '#7C5CFC' : m === 'lunch' ? '#3B82F6' : m === 'dinner' ? '#10B981' : '#F59E0B' }]} />
+                    <Text style={[s.legendText, { color: colors.textSecondary }]}>{t(`tracker.${m}`)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </AnimatedCard>
         </ScrollView>
 
         {/* Carousel Indicators */}
         <View style={s.dotsRow}>
-          {[0, 1].map(i => (
+          {[0, 1, 2].map(i => (
             <View 
               key={i} 
               style={[
@@ -582,6 +685,106 @@ export default function TrackerScreen() {
           </View>
         </View>
 
+        {/* ── Consistency Heatmap ──────────────────────────────────── */}
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
+          </View>
+          <View style={s.heatmapGrid}>
+            {heatmapDays.map((day, idx) => (
+              <View
+                key={idx}
+                style={[
+                  s.heatCell,
+                  {
+                    backgroundColor: day.hasLogs
+                      ? colors.primary + (day.dayNum % 3 === 0 ? 'FF' : day.dayNum % 2 === 0 ? 'CC' : '88')
+                      : colors.border,
+                    borderRadius: 4,
+                  }
+                ]}
+              />
+            ))}
+          </View>
+          <View style={s.heatLegend}>
+            <View style={s.heatLegendRow}>
+              <View style={[s.heatCell, { backgroundColor: colors.border, borderRadius: 3 }]} />
+              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.noActivity', 'Sin actividad')}</Text>
+            </View>
+            <View style={s.heatLegendRow}>
+              <View style={[s.heatCell, { backgroundColor: colors.primary, borderRadius: 3 }]} />
+              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.active', 'Activo')}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Radar / Macro Balance ─────────────────────────────────── */}
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🎯 {t('tracker.macroBalance', 'Balance de Macros')}</Text>
+          </View>
+          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+            <Svg width={220} height={200}>
+              {/* Background pentagon grid */}
+              {[0.25, 0.5, 0.75, 1].map((scale, gi) => {
+                const cx = 110, cy = 100, r = 80 * scale;
+                const pts = radarData.map((_, i) => {
+                  const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                  return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ');
+                return <Polygon key={gi} points={pts} fill="none" stroke={colors.border} strokeWidth={1} />;
+              })}
+              {/* Axis lines */}
+              {radarData.map((_, i) => {
+                const cx = 110, cy = 100, r = 80;
+                const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                return <Line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke={colors.border} strokeWidth={1} />;
+              })}
+              {/* Data polygon */}
+              <Polygon
+                points={radarData.map((d, i) => {
+                  const cx = 110, cy = 100, r = 80 * d.pct;
+                  const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                  return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ')}
+                fill={colors.primary + '44'}
+                stroke={colors.primary}
+                strokeWidth={2}
+              />
+              {/* Data points */}
+              {radarData.map((d, i) => {
+                const cx = 110, cy = 100, r = 80 * d.pct;
+                const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                const lx = cx + 92 * Math.cos(angle);
+                const ly = cy + 92 * Math.sin(angle);
+                return (
+                  <G key={i}>
+                    <Circle cx={x} cy={y} r={4} fill={d.color} />
+                    <SvgText x={lx} y={ly} fill={colors.textSecondary} fontSize={9} textAnchor="middle" alignmentBaseline="middle">{d.label}</SvgText>
+                  </G>
+                );
+              })}
+            </Svg>
+          </View>
+          {/* Percentage bars */}
+          <View style={{ gap: 10, marginTop: 4 }}>
+            {radarData.map(d => (
+              <View key={d.label} style={{ gap: 4 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>{d.label}</Text>
+                  <Text style={{ color: d.color, fontSize: 12, fontWeight: '700' }}>{Math.round(d.current)}/{d.target}g</Text>
+                </View>
+                <View style={[s.progressBar, { backgroundColor: colors.border }]}>
+                  <View style={[s.progressFill, { width: `${Math.min(d.pct * 100, 100)}%`, backgroundColor: d.color }]} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
       </ScrollView>
       </View>
       {/* </GestureDetector> */}
@@ -658,4 +861,14 @@ const s = StyleSheet.create({
   stepsControls: { flexDirection: 'row', gap: 12, marginTop: 20 },
   stepBtn: { flex: 1, height: 44, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
   stepBtnText: { fontSize: 14, fontWeight: '700' },
+
+  chartLegend: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, paddingHorizontal: 10 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 10, fontWeight: '600' },
+
+  heatmapGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 12 },
+  heatCell:    { width: 18, height: 18 },
+  heatLegend:  { flexDirection: 'row', gap: 20, marginTop: 14, paddingLeft: 2 },
+  heatLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

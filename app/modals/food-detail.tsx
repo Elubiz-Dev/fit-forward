@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { PieChart } from 'react-native-gifted-charts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
@@ -103,6 +104,12 @@ export default function FoodDetailModal() {
   const iron   = food.iron ? Math.round(food.iron * factor) : 0;
   const satFat = food.saturatedFat ? Math.round(food.saturatedFat * factor) : 0;
   const transFat = food.transFat ? Math.round(food.transFat * factor) : 0;
+
+  const pieData = [
+    { value: pro,  color: colors.protein, text: 'P' },
+    { value: carb, color: colors.carbs,   text: 'C' },
+    { value: fat,  color: colors.fat,     text: 'F' },
+  ].filter(d => d.value > 0);
 
   const handleSave = async () => {
     if (!g || g <= 0) {
@@ -218,17 +225,43 @@ export default function FoodDetailModal() {
         </View>
 
         <View style={[s.macroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[s.macroTitle, { color: colors.textMuted }]}>{t('foodDetail.per')} {grams || '?'}g</Text>
-          <View style={s.macroRow}>
+          <View style={s.macroCardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.macroTitle, { color: colors.textMuted }]}>{t('foodDetail.per')} {grams || '?'}g</Text>
+              <Text style={[s.caloriesVal, { color: colors.textPrimary }]}>{cal} <Text style={s.caloriesUnit}>kcal</Text></Text>
+            </View>
+            <View style={s.pieWrap}>
+              {pieData.length > 0 ? (
+                <PieChart
+                  data={pieData}
+                  donut
+                  radius={40}
+                  innerRadius={30}
+                  innerCircleColor={colors.surface}
+                  centerLabelComponent={() => (
+                    <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
+                      {Math.round(((pro + carb + fat) > 0 ? (pro / (pro + carb + fat)) * 100 : 0))}%
+                    </Text>
+                  )}
+                />
+              ) : (
+                <View style={[s.emptyPie, { borderColor: colors.border }]} />
+              )}
+            </View>
+          </View>
+
+          <View style={s.macroGrid}>
             {[
-              { label: t('profile.calories'), val: cal, color: colors.accent },
               { label: t('profile.protein'),  val: `${pro}g`,  color: colors.protein },
               { label: t('profile.carbs'),    val: `${carb}g`, color: colors.carbs },
               { label: t('profile.fat'),      val: `${fat}g`,  color: colors.fat },
             ].map(({ label, val, color }) => (
               <View key={label} style={s.macroItem}>
-                <Text style={[s.macroVal, { color }]}>{val}</Text>
-                <Text style={[s.macroLabel, { color: colors.textSecondary }]}>{label}</Text>
+                <View style={[s.macroDot, { backgroundColor: color }]} />
+                <View>
+                  <Text style={[s.macroLabel, { color: colors.textSecondary }]}>{label}</Text>
+                  <Text style={[s.macroVal, { color: colors.textPrimary }]}>{val}</Text>
+                </View>
               </View>
             ))}
           </View>
@@ -321,11 +354,17 @@ const s = StyleSheet.create({
   sourcePill:       { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
   sourceText:       { fontSize: 11, textTransform: 'capitalize' },
   macroCard:        { margin: Spacing.base, borderRadius: Radius.xl, padding: Spacing.base, borderWidth: 1 },
-  macroTitle:       { fontSize: 13, marginBottom: 14, fontWeight: '500' },
-  macroRow:         { flexDirection: 'row', justifyContent: 'space-around' },
-  macroItem:        { alignItems: 'center', gap: 4 },
-  macroVal:         { fontSize: 22, fontWeight: '800' },
-  macroLabel:       { fontSize: 12 },
+  macroCardHeader:  { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  caloriesVal:      { fontSize: 32, fontWeight: '900', marginTop: 4 },
+  caloriesUnit:     { fontSize: 16, fontWeight: '500', opacity: 0.6 },
+  pieWrap:          { width: 80, height: 80, justifyContent: 'center', alignItems: 'center' },
+  emptyPie:         { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderStyle: 'dashed' },
+  macroGrid:        { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(150,150,150,0.1)', paddingTop: 16 },
+  macroTitle:       { fontSize: 13, fontWeight: '500' },
+  macroItem:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  macroDot:         { width: 8, height: 8, borderRadius: 4 },
+  macroVal:         { fontSize: 15, fontWeight: '700' },
+  macroLabel:       { fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
   section:          { paddingHorizontal: Spacing.base, marginBottom: Spacing.base },
   sectionLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8, letterSpacing: 0.5 },
   gramsInput:       { borderRadius: Radius.md, borderWidth: 1.5, padding: Spacing.base, fontSize: 20, fontWeight: '700', textAlign: 'center' },

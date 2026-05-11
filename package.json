@@ -47,6 +47,7 @@
     "react-i18next": "^17.0.6",
     "react-native": "0.83.6",
     "react-native-gesture-handler": "~2.30.0",
+    "react-native-gifted-charts": "^1.4.76",
     "react-native-purchases": "^10.1.0",
     "react-native-purchases-ui": "^10.1.0",
     "react-native-reanimated": "4.2.1",

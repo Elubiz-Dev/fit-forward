@@ -22,7 +22,9 @@ import { useTheme } from '../../../hooks/useTheme';
 import LanguageModal from '../../../components/LanguageModal';
 import { Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, Activity, Scale, ChevronLeft, ChevronRight, Construction, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
-import { Animated } from 'react-native';
+import { Animated, Dimensions } from 'react-native';
+import { LineChart } from 'react-native-gifted-charts';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ACTIVITY_TO_EXERCISE: Record<string, string> = {
   'sedentary':   'none',
@@ -796,9 +798,23 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleEditLanguage = () => {
     setLangModalVisible(true);
   };
+
+  const { measurements } = useBodyStore();
+  const weightData = useMemo(() => {
+    if (!measurements || measurements.length === 0) {
+      return [{ value: profile?.weight || 0, label: t('tracker.today') }];
+    }
+    return measurements
+      .slice(0, 7) // Last 7 entries
+      .reverse()   // Chronological order
+      .map(m => ({
+        value: m.weight,
+        label: new Date(m.date + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' }),
+        dataPointText: `${m.weight}kg`,
+      }));
+  }, [measurements, profile?.weight, language]);
 
   const handleNotImplemented = () => {
     showAlert('info', t('common.comingSoon'), t('common.notImplemented'));
@@ -931,6 +947,43 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
         </LinearGradient>
+
+        {/* Progress Chart */}
+        <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border, padding: Spacing.base }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={[s.sectionTitle, { padding: 0, color: colors.textMuted }]}>{t('profile.weightTrend', 'Tendencia de Peso')}</Text>
+            <TouchableOpacity onPress={() => router.push('/modals/body-measurements' as any)}>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('common.viewAll', 'Ver Todo')} ›</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={{ marginLeft: -20 }}>
+            <LineChart
+              data={weightData}
+              height={160}
+              width={SCREEN_WIDTH - 64}
+              initialSpacing={20}
+              color={colors.primary}
+              thickness={3}
+              hideRules
+              hideYAxisText
+              yAxisThickness={0}
+              xAxisThickness={0}
+              areaChart
+              startFillColor={colors.primary}
+              startOpacity={0.4}
+              endFillColor={colors.primary}
+              endOpacity={0.1}
+              curved
+              dataPointsColor={colors.primary}
+              dataPointsRadius={4}
+              focusedDataPointColor={colors.accent}
+              showTextOnPress
+              textColor={colors.textPrimary}
+              textFontSize={10}
+            />
+          </View>
+        </View>
 
         {/* Configuración */}
         <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
