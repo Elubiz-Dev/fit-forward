@@ -45,4 +45,4 @@ Se agregaron al `package.json`:
 3. **Perfil:** Ir a la pestaña de progreso para ver la tendencia de peso.
 
 ---
-*Generado por Antigravity AI para el equipo de FitGO.*
+* para el equipo de FitGO(axel y yo jajaj).*
