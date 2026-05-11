@@ -798,6 +798,7 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleEditLanguage = () => {
     setLangModalVisible(true);
   };
 
