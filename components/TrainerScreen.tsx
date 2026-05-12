@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
-import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore } from '../store';
+import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore, usePlannerStore } from '../store';
 import { sendCoachMessage, buildCoachSystemPrompt, transcribeAudio } from '../services/groq';
 import { supabase } from '../services/supabase';
 import { Spacing, Radius } from '../constants';
@@ -151,24 +151,30 @@ export default function TrainerScreen() {
         return;
       }
 
+      // If we already have messages for this session, don't re-fetch unless it's empty
+      if (messages.length > 1) {
+        return; 
+      }
+
       const { data, error } = await supabase
         .from('coach_conversations')
-        .select('id, role, content, created_at')
+        .select('id, role, content, image_url, created_at')
         .eq('user_id', profile!.id)
         .eq('coach_type', coachType)
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(100);
 
       if (data && !error && data.length > 0) {
         const formatted: CoachMessage[] = data.map((m: any) => ({
           id:        String(m.id),
           role:      m.role as 'user' | 'model',
           content:   m.content ?? '',
+          imageUrl:  m.image_url,
           timestamp: m.created_at,
         }));
         setMessages(formatted, coachType);
-      } else {
+      } else if (messages.length === 0) {
         // Fallback for empty session
         setMessages([{
           id:        'welcome',
@@ -345,6 +351,7 @@ export default function TrainerScreen() {
       user_id: profile.id,
       role:    'user',
       content: text || '[Image]',
+      image_url: currentImg ? `data:image/jpeg;base64,${currentImg}` : undefined,
       coach_type: 'trainer',
       session_id: activeSessionId,
     });
@@ -382,6 +389,8 @@ export default function TrainerScreen() {
         }
       }
 
+      const { mealPlans, workoutPlans } = usePlannerStore.getState();
+
       const systemPrompt = buildCoachSystemPrompt({
         name:           profile.name           ?? 'User',
         goal:           profile.goal           ?? 'maintain',
@@ -398,6 +407,8 @@ export default function TrainerScreen() {
         medicalConditions: profile.medicalConditions,
         medicationsSupplements: profile.medicationsSupplements,
         preferences:    profile.preferences,
+        mealPlans,
+        workoutPlans,
       }, language, coachType);
 
       const reply = await sendCoachMessage(history, text, systemPrompt, currentImg ?? undefined);
@@ -410,8 +421,8 @@ export default function TrainerScreen() {
       };
       addMessage(botMsg, 'trainer');
 
-      // Persist bot response (best-effort, fire-and-forget)
-      void supabase.from('coach_conversations').insert({
+      // Persist bot response
+      await supabase.from('coach_conversations').insert({
         user_id: profile.id,
         role:    'model',
         content: reply,

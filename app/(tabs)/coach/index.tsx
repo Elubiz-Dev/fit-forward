@@ -6,14 +6,15 @@ import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams } from 'expo-router';
 import NutritionistScreen from '../../../components/NutritionistScreen';
 import TrainerScreen from '../../../components/TrainerScreen';
+import DoctorScreen from '../../../components/DoctorScreen';
 
 export default function CoachIndex() {
   const params = useLocalSearchParams();
-  const [activeCoach, setActiveCoach] = useState<'nutritionist' | 'trainer'>((params.initialTab as 'nutritionist' | 'trainer') || 'nutritionist');
+  const [activeCoach, setActiveCoach] = useState<'nutritionist' | 'trainer' | 'doctor'>((params.initialTab as 'nutritionist' | 'trainer' | 'doctor') || 'nutritionist');
 
   useEffect(() => {
-    if (params.initialTab && (params.initialTab === 'nutritionist' || params.initialTab === 'trainer')) {
-      setActiveCoach(params.initialTab as 'nutritionist' | 'trainer');
+    if (params.initialTab && (params.initialTab === 'nutritionist' || params.initialTab === 'trainer' || params.initialTab === 'doctor')) {
+      setActiveCoach(params.initialTab as 'nutritionist' | 'trainer' | 'doctor');
     }
   }, [params.initialTab]);
 
@@ -44,11 +45,21 @@ export default function CoachIndex() {
                 {t('tabs.trainer', 'Trainer')}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[s.toggleBtn, activeCoach === 'doctor' && { backgroundColor: colors.primary }]}
+              onPress={() => setActiveCoach('doctor')}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.toggleText, activeCoach === 'doctor' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+                {t('tabs.doctor', 'Doctor')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
       <View style={{ flex: 1 }}>
-        {activeCoach === 'nutritionist' ? <NutritionistScreen /> : <TrainerScreen />}
+        {activeCoach === 'nutritionist' ? <NutritionistScreen /> : activeCoach === 'trainer' ? <TrainerScreen /> : <DoctorScreen />}
       </View>
     </View>
   );

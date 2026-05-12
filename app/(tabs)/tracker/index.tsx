@@ -273,7 +273,7 @@ export default function TrackerScreen() {
       { label: 'Carbos',   current: carbs,   target: macros.carbs,   color: colors.carbs },
       { label: 'Grasas',   current: fat,     target: macros.fat,     color: colors.fat },
       { label: 'Fibra',    current: fiber,   target: 30,             color: '#06B6D4' },
-      { label: 'Azúcar',   current: Math.max(0, 50 - sugar), target: 50, color: '#8B5CF6' },
+      { label: 'Azúcar',   current: sugar, target: 50, color: '#8B5CF6' },
     ];
     return axes.map(a => ({ ...a, pct: Math.min(a.current / Math.max(a.target, 1), 1) }));
   }, [protein, carbs, fat, fiber, sugar, macros, colors]);
@@ -596,11 +596,11 @@ export default function TrackerScreen() {
           </View>
           
           <TouchableOpacity style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => router.push('/modals/select-activity-level' as any)}>
-            <View style={s.nutrientRowLeft}>
+            <View style={[s.nutrientRowLeft, { flex: 1, paddingRight: 8 }]}>
               <Text style={{ fontSize: 24 }}>🔥</Text>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{t('tracker.activity')}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t(`exercise.${currentExercise}`)}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={2}>{t(`exercise.${currentExercise}`)}</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -610,11 +610,11 @@ export default function TrackerScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => router.push('/modals/select-neat' as any)}>
-            <View style={s.nutrientRowLeft}>
+            <View style={[s.nutrientRowLeft, { flex: 1, paddingRight: 8 }]}>
               <Text style={{ fontSize: 24 }}>🏃</Text>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{t('tracker.lifestyle')}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t(`neat.${currentNeat}`)}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={2}>{t(`neat.${currentNeat}`)}</Text>
               </View>
             </View>
             <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{NEAT_CALORIES[currentNeat] || 0} kcal</Text>
@@ -622,10 +622,10 @@ export default function TrackerScreen() {
 
           {dayActivities.map(act => (
             <TouchableOpacity key={act.id} style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => handleActivityPress(act)}>
-              <View style={s.nutrientRowLeft}>
+              <View style={[s.nutrientRowLeft, { flex: 1, paddingRight: 8 }]}>
                 <Text style={{ fontSize: 24 }}>{act.icon}</Text>
-                <View>
-                  <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{act.name}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.nutrientLabel, { color: colors.textPrimary }]} numberOfLines={2}>{act.name}</Text>
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{act.duration} min</Text>
                 </View>
               </View>
@@ -638,86 +638,7 @@ export default function TrackerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Water */}
-        <View style={[s.card, { backgroundColor: colors.surface }]}>
-          <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
-            <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
-            <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
-          </View>
-          <View style={s.waterControls}>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(-250)}>
-              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>-</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(250)}>
-              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Steps Section */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.steps')}</Text>
-            <TouchableOpacity onPress={() => setSteps(0)}>
-              <Text style={{ color: colors.textMuted }}>{t('tracker.reset')}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.stepsRow}>
-            <Text style={{ fontSize: 24 }}>👟</Text>
-            <Text style={[s.stepsVal, { color: colors.textPrimary }]}>
-              {steps} <Text style={{ fontSize: 16, color: colors.textSecondary }}>/ 6000 {t('tracker.steps').toLowerCase()}</Text>
-            </Text>
-          </View>
-          <View style={[s.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[s.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%`, backgroundColor: colors.primary }]} />
-          </View>
-          
-          <View style={s.stepsControls}>
-            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addSteps(-100)}>
-              <Text style={[s.stepBtnText, { color: colors.textPrimary }]}>- 100</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.primary }]} onPress={() => addSteps(100)}>
-              <Text style={[s.stepBtnText, { color: colors.background }]}>+ 100</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── Consistency Heatmap ──────────────────────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
-          </View>
-          <View style={s.heatmapGrid}>
-            {heatmapDays.map((day, idx) => (
-              <View
-                key={idx}
-                style={[
-                  s.heatCell,
-                  {
-                    backgroundColor: day.hasLogs
-                      ? colors.primary + (day.dayNum % 3 === 0 ? 'FF' : day.dayNum % 2 === 0 ? 'CC' : '88')
-                      : colors.border,
-                    borderRadius: 4,
-                  }
-                ]}
-              />
-            ))}
-          </View>
-          <View style={s.heatLegend}>
-            <View style={s.heatLegendRow}>
-              <View style={[s.heatCell, { backgroundColor: colors.border, borderRadius: 3 }]} />
-              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.noActivity', 'Sin actividad')}</Text>
-            </View>
-            <View style={s.heatLegendRow}>
-              <View style={[s.heatCell, { backgroundColor: colors.primary, borderRadius: 3 }]} />
-              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.active', 'Activo')}</Text>
-            </View>
-          </View>
-        </View>
 
         {/* ── Radar / Macro Balance ─────────────────────────────────── */}
         <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -782,6 +703,87 @@ export default function TrackerScreen() {
                 </View>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* ── Consistency Heatmap ──────────────────────────────────── */}
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
+          </View>
+          <View style={s.heatmapGrid}>
+            {heatmapDays.map((day, idx) => (
+              <View
+                key={idx}
+                style={[
+                  s.heatCell,
+                  {
+                    backgroundColor: day.hasLogs
+                      ? colors.primary + (day.dayNum % 3 === 0 ? 'FF' : day.dayNum % 2 === 0 ? 'CC' : '88')
+                      : colors.border,
+                    borderRadius: 4,
+                  }
+                ]}
+              />
+            ))}
+          </View>
+          <View style={s.heatLegend}>
+            <View style={s.heatLegendRow}>
+              <View style={[s.heatCell, { backgroundColor: colors.border, borderRadius: 3 }]} />
+              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.noActivity', 'Sin actividad')}</Text>
+            </View>
+            <View style={s.heatLegendRow}>
+              <View style={[s.heatCell, { backgroundColor: colors.primary, borderRadius: 3 }]} />
+              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.active', 'Activo')}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Water */}
+        <View style={[s.card, { backgroundColor: colors.surface }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
+            <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
+            <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
+          </View>
+          <View style={s.waterControls}>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(-250)}>
+              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>-</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(250)}>
+              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Steps Section */}
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={s.cardHeader}>
+            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.steps')}</Text>
+            <TouchableOpacity onPress={() => setSteps(0)}>
+              <Text style={{ color: colors.textMuted }}>{t('tracker.reset')}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.stepsRow}>
+            <Text style={{ fontSize: 24 }}>👟</Text>
+            <Text style={[s.stepsVal, { color: colors.textPrimary }]}>
+              {steps} <Text style={{ fontSize: 16, color: colors.textSecondary }}>/ 6000 {t('tracker.steps').toLowerCase()}</Text>
+            </Text>
+          </View>
+          <View style={[s.progressBar, { backgroundColor: colors.border }]}>
+            <View style={[s.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%`, backgroundColor: colors.primary }]} />
+          </View>
+          
+          <View style={s.stepsControls}>
+            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addSteps(-100)}>
+              <Text style={[s.stepBtnText, { color: colors.textPrimary }]}>- 100</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.primary }]} onPress={() => addSteps(100)}>
+              <Text style={[s.stepBtnText, { color: colors.background }]}>+ 100</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

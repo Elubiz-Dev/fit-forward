@@ -114,6 +114,7 @@
     "tracker": "Principal",
     "nutritionist": "Nutricionista",
     "trainer": "Entrenador",
+    "doctor": "Médico",
     "planner": "Planificador",
     "profile": "Perfil",
     "coach": "Coach"
@@ -397,6 +398,14 @@
       "suggest2": "¿Cómo mejorar mi sentadilla? 🏋️",
       "suggest3": "Plan de entrenamiento para ganar músculo 💪",
       "suggest4": "¿Qué estiramientos hacer después de correr? 🏃"
+    },
+    "doctor": {
+      "label": "Médico Personal",
+      "welcome": "¡Hola! Soy tu Médico Personal IA. ¿En qué te puedo ayudar con tu salud hoy?",
+      "suggest1": "¿Qué debo hacer si me siento mareado tras entrenar? 😵‍💫",
+      "suggest2": "¿Hay interacciones con mis medicamentos? 💊",
+      "suggest3": "¿Cómo puedo mejorar mi calidad de sueño? 🛌",
+      "suggest4": "¿Cuáles son los signos de deshidratación? 💧"
     }
   },
   "onboarding": {

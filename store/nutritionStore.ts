@@ -336,8 +336,12 @@ export const useNutritionStore = create<NutritionState>()(
 
           const metricsData = metricsResult.data;
           const actData = actResult.data;
+          let hasActivityThisDay = false;
 
           if (metricsData) {
+            if ((metricsData.water_ml ?? 0) > 0 || (metricsData.steps ?? 0) > 0 || (metricsData.sleep_hours ?? 0) > 0) {
+              hasActivityThisDay = true;
+            }
             set((s) => {
               const newWater = { ...s.dailyWater };
               const newSteps = { ...s.dailySteps };
@@ -361,7 +365,8 @@ export const useNutritionStore = create<NutritionState>()(
             });
           }
 
-          if (actData) {
+          if (actData && actData.length > 0) {
+            hasActivityThisDay = true;
             const formattedActs = actData.map((a: any) => ({
               id:        a.id,
               name:      a.name,
@@ -381,7 +386,8 @@ export const useNutritionStore = create<NutritionState>()(
             }));
           }
 
-          if (data) {
+          if (data && data.length > 0) {
+            hasActivityThisDay = true;
             const formattedLogs = data.map((d: any) => ({
               id:        d.id,
               foodItem:  {
@@ -424,6 +430,28 @@ export const useNutritionStore = create<NutritionState>()(
               ] as any
             }));
           }
+
+          if (hasActivityThisDay) {
+            get().updateActivity(date);
+          }
+
+          // Force recalculate streak to avoid stale UI
+          const { activeDays } = get();
+          let streak = 0;
+          const todayStr = getLocalDateString();
+          const checkDate = new Date();
+          if (!activeDays[todayStr]) checkDate.setDate(checkDate.getDate() - 1);
+          
+          let safety = 0;
+          while (safety < 365) {
+            safety++;
+            const dStr = getLocalDateString(checkDate);
+            if (!activeDays[dStr]) break;
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+          if (get().streakDays !== streak) set({ streakDays: streak });
+
         } catch (err) {
           console.error('[NutritionStore] fetchLogs error:', err);
           set({ todayLogs: [] });

@@ -13,15 +13,15 @@ import { CustomAlert } from './CustomAlert';
 interface HistoryModalProps {
   visible: boolean;
   onClose: () => void;
-  coachType: 'nutritionist' | 'trainer';
+  coachType: 'nutritionist' | 'trainer' | 'doctor';
 }
 
 export default function CoachHistoryModal({ visible, onClose, coachType }: HistoryModalProps) {
   const colors = useTheme();
   const { t } = useTranslation();
   const {
-    nutritionistSessions, trainerSessions,
-    currentNutritionistSessionId, currentTrainerSessionId,
+    nutritionistSessions, trainerSessions, doctorSessions,
+    currentNutritionistSessionId, currentTrainerSessionId, currentDoctorSessionId,
     setCurrentSessionId, setSessions, resetMessages
   } = useCoachStore();
 
@@ -30,12 +30,14 @@ export default function CoachHistoryModal({ visible, onClose, coachType }: Histo
     targetId: string | null;
   }>({ visible: false, targetId: null });
 
-  const sessions = coachType === 'nutritionist' ? nutritionistSessions : trainerSessions;
-  const currentId = coachType === 'nutritionist' ? currentNutritionistSessionId : currentTrainerSessionId;
+  const sessions = coachType === 'nutritionist' ? nutritionistSessions : coachType === 'trainer' ? trainerSessions : doctorSessions;
+  const currentId = coachType === 'nutritionist' ? currentNutritionistSessionId : coachType === 'trainer' ? currentTrainerSessionId : currentDoctorSessionId;
 
   const handleSelect = (id: string | null) => {
-    resetMessages(coachType);
-    setCurrentSessionId(id, coachType);
+    if (id !== currentId) {
+      resetMessages(coachType);
+      setCurrentSessionId(id, coachType);
+    }
     onClose();
   };
 

@@ -805,13 +805,14 @@ export default function ProfileScreen() {
   const { measurements } = useBodyStore();
   const weightData = useMemo(() => {
     if (!measurements || measurements.length === 0) {
-      return [{ value: profile?.weight || 0, label: t('tracker.today') }];
+      return [{ value: profile?.weight || 0, label: t('tracker.today'), dataPointText: `${profile?.weight || 0}kg` }];
     }
     return measurements
+      .filter(m => m.weight !== undefined)
       .slice(0, 7) // Last 7 entries
       .reverse()   // Chronological order
       .map(m => ({
-        value: m.weight,
+        value: m.weight!,
         label: new Date(m.date + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' }),
         dataPointText: `${m.weight}kg`,
       }));
@@ -999,9 +1000,9 @@ export default function ProfileScreen() {
                 dataPointsColor={colors.primary}
                 dataPointsRadius={5}
                 focusedDataPointColor={colors.accent}
-                showTextOnPress
-                textColor={colors.textPrimary}
-                textFontSize={10}
+                focusEnabled
+                showStripOnFocus
+                showDataPointOnFocus
                 xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
               />
             </View>

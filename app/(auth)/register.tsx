@@ -70,7 +70,7 @@ export default function RegisterScreen() {
     // because the profile record in 'users' table won't exist yet.
   };
 
-  const handleOAuth = async (provider: 'google' | 'facebook') => {
+  const handleOAuth = async (provider: 'google') => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -175,13 +175,6 @@ export default function RegisterScreen() {
             <Text style={[s.socialText, { color: colors.textPrimary }]}>Google</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-            activeOpacity={0.8}
-            onPress={() => handleOAuth('facebook')}
-          >
-            <Text style={[s.socialText, { color: colors.textPrimary }]}>Facebook</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={s.footer}>

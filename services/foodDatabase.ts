@@ -123,6 +123,7 @@ export async function searchFoodEdamam(query: string): Promise<FoodItem[]> {
       protein:  Math.round(h.food.nutrients?.PROCNT      ?? 0),
       carbs:    Math.round(h.food.nutrients?.CHOCDF      ?? 0),
       fat:      Math.round(h.food.nutrients?.FAT         ?? 0),
+      sugar:    Math.round(h.food.nutrients?.SUGAR       ?? 0),
       fiber:    Math.round(h.food.nutrients?.FIBTG       ?? 0),
       iron:     Math.round(h.food.nutrients?.FE          ?? 0),
       calcium:  Math.round(h.food.nutrients?.CA          ?? 0),

@@ -89,19 +89,32 @@ export function buildCoachSystemPrompt(userProfile: {
   medicalConditions?: string[];
   medicationsSupplements?: string[];
   preferences?: string[];
-}, language: string = 'en', coachType: 'nutritionist' | 'trainer' = 'nutritionist') {
+  mealPlans?: Record<string, any[]>;
+  workoutPlans?: Record<string, any>;
+}, language: string = 'en', coachType: 'nutritionist' | 'trainer' | 'doctor' = 'nutritionist') {
   const targetLang = getLang(language);
 
-  const basicStats = `- Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
+  const allProfileData = `
+User profile:
+- Name: ${userProfile.name}
+- Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
 - Activity Level: ${userProfile.activityLevel ?? 'Unknown'}
-- Goal: ${userProfile.goal}`;
+- Goal: ${userProfile.goal}
 
-  const healthData = `
+Nutrition Profile:
+- TDEE: ${userProfile.tdee} kcal/day
+- Daily calorie target: ${userProfile.targetCalories} kcal
+- Macro targets: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
+${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
+
 Health Profile (CRITICAL):
 - Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None reported'}
 - Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None reported'}
 - Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None reported'}
-- Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}`;
+- Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
+
+${userProfile.mealPlans && Object.keys(userProfile.mealPlans).length > 0 ? `Current Weekly Meal Plan:\n${JSON.stringify(userProfile.mealPlans)}` : ''}
+${userProfile.workoutPlans && Object.keys(userProfile.workoutPlans).length > 0 ? `Current Weekly Workout Plan:\n${JSON.stringify(userProfile.workoutPlans)}` : ''}`;
 
   const roles: Record<string, Record<string, string>> = {
     trainer: {
@@ -111,50 +124,24 @@ Health Profile (CRITICAL):
     nutritionist: {
       en: 'nutritionist', es: 'nutricionista', fr: 'nutritionniste',
       pt: 'nutricionista', it: 'nutrizionista', de: 'Ernährungsberater', ru: 'диетолог'
+    },
+    doctor: {
+      en: 'personal doctor', es: 'médico personal', fr: 'médecin personnel',
+      pt: 'médico pessoal', it: 'medico personale', de: 'Leibarzt', ru: 'личный врач'
     }
   };
 
-  const role = roles[coachType][language] || roles[coachType]['en'];
-  
-  if (coachType === 'trainer') {
-    return `You are Fitz, an expert AI ${role} inside the FitGO app.
-IMPORTANT: You MUST respond in ${targetLang}. You should also understand and process all user inputs in ${targetLang} or English.
-
-User profile:
-- Name: ${userProfile.name}
-${basicStats}
-${healthData}
-
-Guidelines:
-1. Act exclusively as a ${role}. Focus entirely on workouts, exercises, physical conditioning, and training routines.
-2. Always tailor advice specifically to the user's fitness goal (${userProfile.goal}), adjusting exercise selection, volume, and intensity accordingly.
-3. CRITICAL: Take into account any medical conditions or physical limitations mentioned in the Health Profile when suggesting exercises or intensities to avoid injury.
-4. When suggesting routines, provide clear structure: warm-up, exercises (with sets, reps, and rest times), and cool-down.
-5. Keep responses concise and action-oriented (under 200 words unless a detailed plan is requested).
-6. Be highly motivating and encouraging, like a professional real-life ${role}.
-7. If the user asks about diets, macros, or nutrition, gently remind them that you are currently in "${role}" mode and they should switch to the other coach for dietary advice.`;
-  }
+  const role = roles[coachType]?.[language] || roles[coachType]?.['en'] || 'coach';
 
   return `You are Fitz, an expert AI ${role} inside the FitGO app.
 IMPORTANT: You MUST respond in ${targetLang}. You should also understand and process all user inputs in ${targetLang} or English.
 
-User profile:
-- Name: ${userProfile.name}
-${basicStats}
-- TDEE: ${userProfile.tdee} kcal/day
-- Daily calorie target: ${userProfile.targetCalories} kcal
-- Macro targets: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat
-${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
-${healthData}
+${allProfileData}
 
 Guidelines:
-1. Act exclusively as a ${role}. Focus on food, calories, macros, recipes, digestion, and dietary habits.
-2. Always tailor advice strictly to the user's goal (${userProfile.goal}) and their specific calorie/macro targets.
-3. CRITICAL: You MUST strictly adhere to the user's Dietary Restrictions, Medical Conditions, and Diet Type Preference. Never suggest foods that conflict with these constraints.
-4. When suggesting meals or foods, include rough macronutrient estimates to help them hit their daily goals.
-5. Keep responses concise, practical, and science-backed (under 200 words unless a detailed meal plan is requested).
-6. Be empathetic, supportive, and non-judgmental regarding their dietary journey.
-7. If the user asks about workout routines or physical exercises, gently remind them that you are currently in "${role}" mode and they should switch to the other coach for workout advice.`;
+1. Act exclusively as a ${role}, but you are completely FREE to answer ANY question the user has, regardless of the topic (nutrition, training, medical, general, etc.). Do NOT reject questions outside your primary field.
+2. Provide the best possible advice using all the user profile data provided above. Ensure that your advice respects their medical conditions and dietary restrictions. If they ask about their current meal or workout plans, reference the plans provided in the context. Provide ingredients and preparation instructions if asked.
+3. Keep responses concise, practical, and empathetic (under 200 words unless a detailed plan is requested).`;
 }
 
 // ─── Send coach message ───────────────────────────────────────────────────────
@@ -220,7 +207,7 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
   const targetLang = getLang(language);
   const exampleName = targetLang === 'Spanish' ? 'Ensalada de pollo' : 'Chicken salad';
 
-  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
+  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8, "sugar": 5, "fiber": 3, "sodium": 300, "iron": 1.2, "saturatedFat": 2, "transFat": 0}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
 
   try {
     const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '');
@@ -287,12 +274,14 @@ export async function generateMealPlan(userProfile: {
 - Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
 ${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
 
+The meal plan must be HIGHLY precise and tailored specifically to this user's profile, including their exact daily calorie target, macro distribution, and preferences.
+
 CRITICAL HEALTH CONSTRAINTS:
 - Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
 - Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None'}
 - Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None'}
 
-IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include any ingredients that conflict with their medical conditions or dietary restrictions.
+IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include any ingredients that conflict with their medical conditions or dietary restrictions. Ensure the portions make sense for the calorie target.
 
 IMPORTANT: All meal names, descriptions, and instructions MUST be in ${targetLang}.
 
@@ -347,10 +336,12 @@ export async function generateWorkoutPlan(userProfile: {
 - Activity Level: ${userProfile.activityLevel}
 - Age: ${userProfile.age ?? 'Unknown'}, Sex: ${userProfile.sex ?? 'Unknown'}, Weight: ${userProfile.weight ?? 'Unknown'}kg, Height: ${userProfile.height ?? 'Unknown'}cm
 
+The workout plan must be HIGHLY precise and tailored specifically to this user's goals, activity level, and body profile.
+
 CRITICAL HEALTH CONSTRAINTS:
 - Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
 
-IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include exercises that could exacerbate their medical conditions. Modify intensity and selection accordingly.
+IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include exercises that could exacerbate their medical conditions. Modify intensity and selection accordingly. Ensure a logical progression and adequate rest.
 
 IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targetLang}.
 
@@ -587,4 +578,33 @@ Important: Return ONLY the JSON.`;
   } catch {
     return 0;
   }
+}
+
+// ─── Generate Shopping List ───────────────────────────────────────────────────
+export async function generateShoppingList(mealPlans: Record<string, any[]>, language: string = 'en'): Promise<string> {
+  const targetLang = getLang(language);
+  
+  const prompt = `Based on the following weekly meal plan, create a comprehensive and beautiful shopping list.
+Group the items by category (e.g., Produce, Meat, Dairy, Pantry).
+For each item, estimate the total quantity needed for the entire week based on the meals provided.
+CRITICAL: Include an estimated total price for the shopping list based on average prices in USD. Always display the final estimated price in USD (e.g. "$45.00 USD").
+Format the output as a clean, visually appealing, modern HTML document (NO markdown blocks, just raw HTML).
+Use beautiful inline CSS with colors like #7C5CFC (primary), clean fonts (sans-serif), and neat tables or lists.
+Make sure all text, categories, and items are translated to ${targetLang}.
+
+Meal Plan Data:
+${JSON.stringify(mealPlans)}
+
+Return ONLY the raw HTML string, nothing else. No markdown formatting.`;
+
+  const data = await fetchGroq({
+    model: CHAT_MODEL,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 3000,
+    temperature: 0.5,
+  });
+
+  let text = (data.choices[0]?.message?.content ?? '').trim();
+  text = text.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  return text;
 }

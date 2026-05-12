@@ -614,6 +614,57 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
     }
   }, [data.goal]);
 
+  const heightM = (data.height ?? 170) / 100;
+  const currentVal = data.targetWeight ?? data.weight ?? 70;
+  const targetBMI = currentVal / (heightM * heightM);
+  const idealMin = Math.round(18.5 * heightM * heightM);
+  const idealMax = Math.round(24.9 * heightM * heightM);
+
+  let statusColor = '#10B981';
+  let statusIcon = <Sparkles size={16} color={statusColor} />;
+  let statusText = '';
+
+  if (data.goal === 'lose') {
+    if (targetBMI < 18.5) {
+      statusColor = '#EF4444';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.warningUnderweight', `Este objetivo es demasiado bajo. Tu rango ideal es ${idealMin}-${idealMax} kg.`);
+    } else if (targetBMI > 24.9) {
+      statusColor = '#F59E0B';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.recOverweightStep', `Buen paso inicial. Recuerda que tu peso ideal a largo plazo es ${idealMin}-${idealMax} kg.`);
+    } else {
+      statusText = t('onboarding.loseHealthy', `¡Excelente meta! Alcanzarás un peso muy saludable para tu estatura.`);
+    }
+  } else if (data.goal === 'gain') {
+    if (targetBMI > 27.5) {
+      statusColor = '#F59E0B';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.warningOverweightGain', `Cuidado con subir demasiada grasa. Tu rango saludable base es ${idealMin}-${idealMax} kg.`);
+    } else if (targetBMI < 18.5) {
+      statusColor = '#EF4444';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.warningUnderweight', `Este objetivo sigue siendo bajo. Tu rango ideal es ${idealMin}-${idealMax} kg.`);
+    } else {
+      statusText = t('onboarding.gainHealthy', `¡Perfecto para ganar masa muscular manteniendo un peso saludable!`);
+    }
+  } else {
+    if (targetBMI < 18.5) {
+      statusColor = '#F59E0B';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.warningUnderweightMaintain', `Actualmente tienes bajo peso. Te recomendamos cambiar tu meta a ganar masa muscular.`);
+    } else if (targetBMI > 24.9) {
+      statusColor = '#F59E0B';
+      statusIcon = <AlertCircle size={16} color={statusColor} />;
+      statusText = t('onboarding.warningOverweightMaintain', `Tu peso actual es alto. Te sugerimos considerar la meta de pérdida de peso.`);
+    } else {
+      statusText = t('onboarding.maintainHealthy', `¡Excelente! Estás en un peso ideal para mantenerte en forma y saludable.`);
+    }
+  }
+
+  const minAllowedWeight = Math.max(30, Math.floor(15.0 * heightM * heightM));
+  const maxAllowedWeight = Math.min(250, Math.ceil(40.0 * heightM * heightM));
+
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
@@ -640,53 +691,63 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
         </TouchableOpacity>
 
         {/* Target Weight */}
-        <View style={[step.optionCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 8 }]}>
-          <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
-            <Target size={22} color={colors.primary} />
+        <View style={{ gap: 8 }}>
+          <View style={[step.optionCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 8 }]}>
+            <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
+              <Target size={22} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{t('onboarding.targetWeight')}</Text>
+            </View>
+            <View style={step.miniNumRow}>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (data.goal === 'lose' && currentVal - 1 >= minAllowedWeight) {
+                    onChange({ targetWeight: currentVal - 1 });
+                  } else if (data.goal === 'gain' && currentVal > (data.weight ?? 0) + 1 && currentVal - 1 >= minAllowedWeight) {
+                    onChange({ targetWeight: currentVal - 1 });
+                  }
+                }}
+                style={[
+                  step.miniNumBtn, 
+                  { borderColor: colors.border },
+                  (data.goal === 'maintain' || (data.goal === 'gain' && currentVal <= (data.weight ?? 0) + 1) || currentVal <= minAllowedWeight) && { opacity: 0.3 }
+                ]}
+                disabled={data.goal === 'maintain' || (data.goal === 'gain' && currentVal <= (data.weight ?? 0) + 1) || currentVal <= minAllowedWeight}
+              >
+                <Text style={{ color: colors.primary }}>-</Text>
+              </TouchableOpacity>
+              
+              <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{currentVal} kg</Text>
+              
+              <TouchableOpacity 
+                onPress={() => {
+                  if (data.goal === 'gain' && currentVal + 1 <= maxAllowedWeight) {
+                    onChange({ targetWeight: currentVal + 1 });
+                  } else if (data.goal === 'lose' && currentVal < (data.weight ?? 0) - 1 && currentVal + 1 <= maxAllowedWeight) {
+                    onChange({ targetWeight: currentVal + 1 });
+                  }
+                }}
+                style={[
+                  step.miniNumBtn, 
+                  { borderColor: colors.border },
+                  (data.goal === 'maintain' || (data.goal === 'lose' && currentVal >= (data.weight ?? 0) - 1) || currentVal >= maxAllowedWeight) && { opacity: 0.3 }
+                ]}
+                disabled={data.goal === 'maintain' || (data.goal === 'lose' && currentVal >= (data.weight ?? 0) - 1) || currentVal >= maxAllowedWeight}
+              >
+                <Text style={{ color: colors.primary }}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{t('onboarding.targetWeight')}</Text>
-          </View>
-          <View style={step.miniNumRow}>
-            <TouchableOpacity 
-              onPress={() => {
-                const currentVal = data.targetWeight ?? data.weight ?? 70;
-                if (data.goal === 'lose') {
-                  onChange({ targetWeight: currentVal - 1 });
-                } else if (data.goal === 'gain' && currentVal > (data.weight ?? 0) + 1) {
-                  onChange({ targetWeight: currentVal - 1 });
-                }
-              }}
-              style={[
-                step.miniNumBtn, 
-                { borderColor: colors.border },
-                (data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight ?? 0) <= (data.weight ?? 0) + 1)) && { opacity: 0.3 }
-              ]}
-              disabled={data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight ?? 0) <= (data.weight ?? 0) + 1)}
-            >
-              <Text style={{ color: colors.primary }}>-</Text>
-            </TouchableOpacity>
-            
-            <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{data.targetWeight ?? data.weight ?? 70} kg</Text>
-            
-            <TouchableOpacity 
-              onPress={() => {
-                const currentVal = data.targetWeight ?? data.weight ?? 70;
-                if (data.goal === 'gain') {
-                  onChange({ targetWeight: currentVal + 1 });
-                } else if (data.goal === 'lose' && currentVal < (data.weight ?? 0) - 1) {
-                  onChange({ targetWeight: currentVal + 1 });
-                }
-              }}
-              style={[
-                step.miniNumBtn, 
-                { borderColor: colors.border },
-                (data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight ?? 0) >= (data.weight ?? 0) - 1)) && { opacity: 0.3 }
-              ]}
-              disabled={data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight ?? 0) >= (data.weight ?? 0) - 1)}
-            >
-              <Text style={{ color: colors.primary }}>+</Text>
-            </TouchableOpacity>
+          
+          {/* Health Recommendation / Warning Box */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: statusColor + '15', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: statusColor + '30' }}>
+            <View style={{ marginRight: 10 }}>
+              {statusIcon}
+            </View>
+            <Text style={{ color: statusColor, fontSize: 13, flex: 1, fontWeight: '500', lineHeight: 18 }}>
+              {statusText}
+            </Text>
           </View>
         </View>
 

@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
-import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore, usePlannerStore } from '../store';
+import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore } from '../store';
 import { sendCoachMessage, buildCoachSystemPrompt, transcribeAudio } from '../services/groq';
 import { supabase } from '../services/supabase';
 import { Spacing, Radius } from '../constants';
@@ -85,10 +85,10 @@ function TypingIndicator() {
   );
 }
 
-// ─── Nutritionist Screen ─────────────────────────────────────────────────────────────
-export default function NutritionistScreen() {
+// ─── doctor Screen ─────────────────────────────────────────────────────────────
+export default function DoctorScreen() {
   const [input, setInput]               = useState('');
-  const coachType = 'nutritionist';
+  const coachType = 'doctor';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSending, setIsSending]       = useState(false); // local send guard
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -102,8 +102,8 @@ export default function NutritionistScreen() {
   const colors = useTheme();
   const { language } = useSettingsStore();
   const {
-    nutritionistMessages: messages, isTyping, msgCount, nutritionistSessions: sessions,
-    currentNutritionistSessionId: sessionId,
+    doctorMessages: messages, isTyping, msgCount, doctorSessions: sessions,
+    currentDoctorSessionId: sessionId,
     addMessage, setMessages, setTyping, incrementCount, checkAndResetDaily,
     setCurrentSessionId, setSessions, removeLastPair,
   } = useCoachStore();
@@ -126,9 +126,9 @@ export default function NutritionistScreen() {
       .from('coach_sessions')
       .select('*')
       .eq('user_id', profile.id)
-      .eq('coach_type', 'nutritionist')
+      .eq('coach_type', 'doctor')
       .order('created_at', { ascending: false });
-    if (data) setSessions(data, 'nutritionist');
+    if (data) setSessions(data, 'doctor');
   };
 
   useEffect(() => { loadSessions(); }, [profile?.id]);
@@ -253,7 +253,7 @@ export default function NutritionistScreen() {
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (err: any) {
-      console.error('[NutritionistScreen] Failed to start recording:', err);
+      console.error('[DoctorScreen] Failed to start recording:', err);
     }
   };
 
@@ -281,7 +281,7 @@ export default function NutritionistScreen() {
         }
       }
     } catch (err) {
-      console.error('[NutritionistScreen] Failed to stop recording:', err);
+      console.error('[DoctorScreen] Failed to stop recording:', err);
     }
   };
 
@@ -312,7 +312,7 @@ export default function NutritionistScreen() {
         role:      'model',
         content:   'Profile not loaded yet. Please wait a moment and try again.',
         timestamp: new Date().toISOString(),
-      }, 'nutritionist');
+      }, 'doctor');
       return;
     }
 
@@ -320,16 +320,24 @@ export default function NutritionistScreen() {
     let activeSessionId = sessionId;
 
     if (!activeSessionId) {
-      const { data: newSession } = await supabase
+      const { data: newSession, error: sessionError } = await supabase
         .from('coach_sessions')
         .insert({
           user_id: profile.id,
           title: text.slice(0, 30) || 'New Chat',
-          coach_type: 'nutritionist'
+          coach_type: 'doctor'
         })
         .select()
         .single();
       
+      if (sessionError) {
+        console.error('Session Insert Error:', sessionError);
+        Alert.alert('Database Error', `Failed to create session: ${sessionError.message}`);
+        setIsSending(false);
+        setTyping(false);
+        return;
+      }
+
       if (newSession) {
         activeSessionId = newSession.id;
         loadSessions();
@@ -344,7 +352,7 @@ export default function NutritionistScreen() {
       imageUrl:  currentImg ? `data:image/jpeg;base64,${currentImg}` : undefined,
       timestamp: new Date().toISOString(),
     };
-    addMessage(userMsg, 'nutritionist');
+    addMessage(userMsg, 'doctor');
     incrementCount();
     setInput('');
     setSelectedImage(null);
@@ -352,19 +360,24 @@ export default function NutritionistScreen() {
     setTyping(true);
 
     // Persist user message to Supabase (awaiting to prevent race condition with history loader)
-    await supabase.from('coach_conversations').insert({
+    const { error: insertError } = await supabase.from('coach_conversations').insert({
       user_id: profile.id,
       role:    'user',
       content: text || '[Image]',
       image_url: currentImg ? `data:image/jpeg;base64,${currentImg}` : undefined,
-      coach_type: 'nutritionist',
+      coach_type: 'doctor',
       session_id: activeSessionId,
     });
+
+    if (insertError) {
+      console.error('Conversation Insert Error:', insertError);
+      Alert.alert('Database Error', `Failed to save message: ${insertError.message}`);
+    }
 
     // If we just created a session, update the store's ID now.
     // This will trigger the history useEffect, but now the message IS in the DB.
     if (!sessionId && activeSessionId) {
-      setCurrentSessionId(activeSessionId, 'nutritionist');
+      setCurrentSessionId(activeSessionId, 'doctor');
     }
 
     try {
@@ -395,8 +408,6 @@ export default function NutritionistScreen() {
         }
       }
 
-      const { mealPlans, workoutPlans } = usePlannerStore.getState();
-
       const systemPrompt = buildCoachSystemPrompt({
         name:           profile.name           ?? 'User',
         goal:           profile.goal           ?? 'maintain',
@@ -413,8 +424,6 @@ export default function NutritionistScreen() {
         medicalConditions: profile.medicalConditions,
         medicationsSupplements: profile.medicationsSupplements,
         preferences:    profile.preferences,
-        mealPlans,
-        workoutPlans,
       }, language, coachType);
 
       const reply = await sendCoachMessage(history, text, systemPrompt, currentImg ?? undefined);
@@ -425,16 +434,20 @@ export default function NutritionistScreen() {
         content:   reply,
         timestamp: new Date().toISOString(),
       };
-      addMessage(botMsg, 'nutritionist');
+      addMessage(botMsg, 'doctor');
 
       // Persist bot response
-      await supabase.from('coach_conversations').insert({
+      const { error: botInsertError } = await supabase.from('coach_conversations').insert({
         user_id: profile.id,
         role:    'model',
         content: reply,
-        coach_type: 'nutritionist',
+        coach_type: 'doctor',
         session_id: activeSessionId,
       });
+
+      if (botInsertError) {
+        console.error('Bot Conversation Insert Error:', botInsertError);
+      }
 
     } catch (err: any) {
       console.error('[Coach] Error:', err?.message ?? err);
@@ -443,7 +456,7 @@ export default function NutritionistScreen() {
         role:      'model',
         content:   `Sorry, I couldn't connect right now. ${err?.message ?? 'Please try again.'}`,
         timestamp: new Date().toISOString(),
-      }, 'nutritionist');
+      }, 'doctor');
     } finally {
       setTyping(false);
       setIsSending(false);
@@ -459,7 +472,7 @@ export default function NutritionistScreen() {
       <View style={[s.header, { borderBottomColor: colors.border }]}>
         <Image source={require('../assets/fitgo.jpeg')} style={s.headerAvatar} resizeMode="cover" />
         <View style={{ flex: 1 }}>
-          <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.nutritionist.label', 'Nutritionist')}</Text>
+          <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.doctor.label', 'Personal Doctor')}</Text>
           <View style={s.onlineRow}>
             <View style={[s.onlineDot, { backgroundColor: colors.success }]} />
             <Text style={[s.onlineText, { color: colors.success }]}>{t('coach.online')}</Text>
@@ -501,7 +514,7 @@ export default function NutritionistScreen() {
                 isLastUser={isLastUser}
                 onEdit={(m) => {
                   setInput(m.content);
-                  removeLastPair('nutritionist');
+                  removeLastPair('doctor');
                   // Optional: Delete from Supabase as well?
                   // For simplicity, we just "continue" by sending a new one and the app logic will handle history.
                   // But the user said "se vuelva a cargar la respuesta", so we'll just remove from local and Supabase.
@@ -527,10 +540,10 @@ export default function NutritionistScreen() {
                     <TouchableOpacity
                       key={i}
                       style={[s.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                      onPress={() => handleSend(t(`coach.nutritionist.suggest${i}`))}
+                      onPress={() => handleSend(t(`coach.doctor.suggest${i}`))}
                       activeOpacity={0.75}
                     >
-                      <Text style={[s.chipText, { color: colors.textSecondary }]}>{t(`coach.nutritionist.suggest${i}`)}</Text>
+                      <Text style={[s.chipText, { color: colors.textSecondary }]}>{t(`coach.doctor.suggest${i}`)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -627,7 +640,7 @@ export default function NutritionistScreen() {
       <CoachHistoryModal 
         visible={historyVisible} 
         onClose={() => setHistoryVisible(false)} 
-        coachType="nutritionist" 
+        coachType="doctor" 
       />
     </View>
   );

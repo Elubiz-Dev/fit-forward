@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../../constants';
 import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore, usePlannerStore, PlanItem, WorkoutRoutine } from '../../../store';
-import { generateMealPlan, generateWeeklyAnalysis } from '../../../services/groq';
+import { generateMealPlan, generateWeeklyAnalysis, generateShoppingList } from '../../../services/groq';
 import { supabase } from '../../../services/supabase';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
@@ -14,7 +14,7 @@ import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Download, Sparkles, Utensils, Dumbbell, Coffee, Apple, Pizza, CalendarDays, ChevronRight, Activity, Moon } from 'lucide-react-native';
+import { Download, Sparkles, Utensils, Dumbbell, Coffee, Apple, Pizza, CalendarDays, ChevronRight, Activity, Moon, ShoppingCart } from 'lucide-react-native';
 import { AnimatedCard } from '../../../components/AnimatedCard';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -43,6 +43,7 @@ export default function PlannerScreen() {
     setMealPlans, setWorkoutPlans, setWeeklyAnalysis: setAnalysis, clearPlans,
   } = usePlannerStore();
   const [analyzing, setAnalyzing] = useState(false);
+  const [generatingShoppingList, setGeneratingShoppingList] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const { profile }               = useAuthStore();
 
@@ -260,6 +261,32 @@ export default function PlannerScreen() {
     }
   };
 
+  const handleExportShoppingList = async () => {
+    if (!isProActually) { router.push('/modals/paywall'); return; }
+    setGeneratingShoppingList(true);
+    try {
+      const htmlContent = await generateShoppingList(mealPlans, language);
+      const filename = `Shopping_List_${getStartOfWeek(new Date())}.pdf`;
+      
+      const { uri } = await Print.printToFileAsync({ html: htmlContent, base64: false });
+      
+      const fs = FileSystem as any;
+      const dir = fs.cacheDirectory || fs.documentDirectory || "";
+      const newUri = dir + filename;
+      await fs.moveAsync({
+        from: uri,
+        to: newUri
+      });
+
+      await Sharing.shareAsync(newUri);
+    } catch (err) {
+      console.error(err);
+      showAlert('error', t('common.error'), 'Could not generate Shopping List PDF');
+    } finally {
+      setGeneratingShoppingList(false);
+    }
+  };
+
   const handleWeeklyAnalysis = async () => {
     if (!isProActually) { router.push('/modals/paywall'); return; }
     setAnalyzing(true);
@@ -437,12 +464,22 @@ export default function PlannerScreen() {
         </View>
 
         {hasData && (
-          <TouchableOpacity style={s.exportBtn} onPress={handleExportPDF} activeOpacity={0.8}>
-            <LinearGradient colors={['#10B981', '#059669']} style={s.exportGrad} start={{x:0,y:0}} end={{x:1,y:1}}>
-              <Download size={20} color="#fff" />
-              <Text style={s.exportText}>Export PDF</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={{ gap: 12, marginHorizontal: Spacing.base, marginTop: 20 }}>
+            {mode === 'nutrition' && (
+              <TouchableOpacity style={[s.exportBtn, { marginHorizontal: 0, marginTop: 0 }]} onPress={handleExportShoppingList} activeOpacity={0.8} disabled={generatingShoppingList}>
+                <LinearGradient colors={['#F59E0B', '#D97706']} style={s.exportGrad} start={{x:0,y:0}} end={{x:1,y:1}}>
+                  {generatingShoppingList ? <ActivityIndicator color="#fff" /> : <ShoppingCart size={20} color="#fff" />}
+                  <Text style={s.exportText}>{t('planner.exportShoppingList', 'Shopping List PDF')}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[s.exportBtn, { marginHorizontal: 0, marginTop: 0 }]} onPress={handleExportPDF} activeOpacity={0.8}>
+              <LinearGradient colors={['#10B981', '#059669']} style={s.exportGrad} start={{x:0,y:0}} end={{x:1,y:1}}>
+                <Download size={20} color="#fff" />
+                <Text style={s.exportText}>{mode === 'nutrition' ? t('planner.exportMenu', 'Menu PDF') : 'Export PDF'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
 
       </ScrollView>

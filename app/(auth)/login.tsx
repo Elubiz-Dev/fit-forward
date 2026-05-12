@@ -59,7 +59,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'facebook') => {
+  const handleOAuth = async (provider: 'google') => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -162,13 +162,6 @@ export default function LoginScreen() {
               <Text style={[styles.socialText, { color: colors.textPrimary }]}>Google</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-              activeOpacity={0.8}
-              onPress={() => handleOAuth('facebook')}
-            >
-              <Text style={[styles.socialText, { color: colors.textPrimary }]}>Facebook</Text>
-            </TouchableOpacity>
           </View>
         </View>
 

@@ -114,6 +114,7 @@
     "tracker": "Main",
     "nutritionist": "Nutritionist",
     "trainer": "Trainer",
+    "doctor": "Doctor",
     "planner": "Planner",
     "profile": "Profile"
   },
@@ -405,6 +406,14 @@
       "suggest2": "How to improve my squat form? 🏋️",
       "suggest3": "Workout plan for muscle gain 💪",
       "suggest4": "What stretches to do after running? 🏃"
+    },
+    "doctor": {
+      "label": "Personal Doctor",
+      "welcome": "Hello! I am your AI Personal Doctor. How can I assist you with your health today?",
+      "suggest1": "What should I do if I feel dizzy after working out? 😵‍💫",
+      "suggest2": "Are there any interactions with my medications? 💊",
+      "suggest3": "How can I improve my sleep quality? 🛌",
+      "suggest4": "What are the signs of dehydration? 💧"
     }
   },
   "onboarding": {
