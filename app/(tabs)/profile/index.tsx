@@ -13,7 +13,7 @@ import {
   useNutritionStore, useCoachStore, useRecipesStore, useProgressStore,
   usePurchaseStore, UserProfile 
 } from '../../../store';
-import RevenueCatUI from 'react-native-purchases-ui';
+// import RevenueCatUI from 'react-native-purchases-ui';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../../services/supabase';
 import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
@@ -824,10 +824,10 @@ export default function ProfileScreen() {
 
   const handleManageSubscription = async () => {
     try {
-      await RevenueCatUI.presentCustomerCenter();
+      // await RevenueCatUI.presentCustomerCenter();
+      router.push('/modals/paywall');
     } catch (e) {
       console.error('Error presenting Customer Center', e);
-      // Fallback if Customer Center is not configured or fails
       router.push('/modals/paywall');
     }
   };

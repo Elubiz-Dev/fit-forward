@@ -50,6 +50,7 @@ interface NutritionState {
     sugar: number; fiber: number; sodium: number; iron: number; calcium: number; saturatedFat: number; transFat: number;
   };
   fetchLogs: (userId: string, date: string) => Promise<void>;
+  fetchHistory: (userId: string) => Promise<void>;
   syncDailyMetrics: () => Promise<void>;
   reset: () => void;
   
@@ -456,6 +457,60 @@ export const useNutritionStore = create<NutritionState>()(
           console.error('[NutritionStore] fetchLogs error:', err);
           set({ todayLogs: [] });
           throw err; // Re-throw so UI can handle it
+        }
+      },
+
+      fetchHistory: async (userId) => {
+        try {
+          const { supabase } = await import('../services/supabase');
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+          const { data, error } = await supabase
+            .from('food_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('logged_at', startDate);
+
+          if (error) throw error;
+
+          if (data) {
+            const formattedLogs = data.map((d: any) => ({
+              id: d.id,
+              foodItem: {
+                id: d.food_id ?? d.id,
+                name: d.food_name,
+                calories: d.grams > 0 ? Math.round((d.calories / d.grams) * 100) : d.calories,
+                protein: d.grams > 0 ? Math.round((d.protein / d.grams) * 100) : d.protein,
+                carbs: d.grams > 0 ? Math.round((d.carbs / d.grams) * 100) : d.carbs,
+                fat: d.grams > 0 ? Math.round((d.fat / d.grams) * 100) : d.fat,
+                source: 'custom',
+              },
+              grams: d.grams,
+              meal: d.meal,
+              loggedAt: d.logged_at,
+              calories: d.calories,
+              protein: d.protein,
+              carbs: d.carbs,
+              fat: d.fat,
+            }));
+
+            set(s => {
+              const existingIds = new Set(s.todayLogs.map(l => l.id));
+              const newLogs = formattedLogs.filter(l => !existingIds.has(l.id));
+              return { todayLogs: [...s.todayLogs, ...newLogs] as any };
+            });
+            
+            const activeDays: Record<string, boolean> = {};
+            data.forEach((log: any) => {
+              const day = log.logged_at.split('T')[0];
+              activeDays[day] = true;
+            });
+            set(s => ({ activeDays: { ...s.activeDays, ...activeDays } }));
+          }
+        } catch (err) {
+          console.error('[NutritionStore] fetchHistory error:', err);
         }
       },
       reset: () => set({

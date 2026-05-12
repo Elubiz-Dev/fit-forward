@@ -69,7 +69,7 @@ export default function RootLayout() {
       } else {
         setProfile(null);
         // Logout from RevenueCat
-        await revenueCat.logout();
+        // await revenueCat.logout();
       }
       
       // Only hide splash/set loading false once we have tried to get the profile

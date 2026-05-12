@@ -84,7 +84,7 @@ export default function TrackerScreen() {
   const { profile, setProfile } = useAuthStore();
   const { width } = useWindowDimensions();
   const { 
-    todayLogs, fetchLogs, selectedDate, setDate, streakDays, 
+    todayLogs, fetchLogs, fetchHistory, selectedDate, setDate, streakDays, 
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
     removeActivityLog, updateActivityLog,
     addSteps, dailyNeat, dailyExercise, activityLogs, totals,
@@ -148,12 +148,16 @@ export default function TrackerScreen() {
   };
 
   useEffect(() => {
+    if (profile?.id) {
+      fetchHistory(profile.id);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
     const load = async () => {
       if (profile?.id) {
         setIsFetching(true);
         try {
-          // No longer clearing logs here to avoid flickering; 
-          // fetchLogs will merge/update the logs for the specific date.
           await fetchLogs(profile.id, selectedDate);
         } catch (err) {
           console.error('[Tracker] Load error:', err);
@@ -706,39 +710,51 @@ export default function TrackerScreen() {
           </View>
         </View>
 
-        {/* ── Consistency Heatmap ──────────────────────────────────── */}
+        {/* ── Consistency Heatmap (Premium Redesign) ────────────────── */}
         <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
+            <View>
+              <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
+            </View>
+            <View style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+            </View>
           </View>
+
           <View style={s.heatmapGrid}>
-            {heatmapDays.map((day, idx) => (
-              <View
-                key={idx}
-                style={[
-                  s.heatCell,
-                  {
-                    backgroundColor: day.hasLogs
-                      ? colors.primary + (day.dayNum % 3 === 0 ? 'FF' : day.dayNum % 2 === 0 ? 'CC' : '88')
-                      : colors.border,
-                    borderRadius: 4,
-                  }
-                ]}
-              />
-            ))}
+            {heatmapDays.map((day, idx) => {
+              // Intensity logic: more logs = more opaque color
+              const intensity = todayLogs.filter(l => l.loggedAt.startsWith(day.dateStr)).length;
+              const opacity = intensity === 0 ? '15' : intensity === 1 ? '40' : intensity === 2 ? '70' : 'FF';
+              
+              return (
+                <View
+                  key={idx}
+                  style={[
+                    s.heatCell,
+                    {
+                      backgroundColor: day.hasLogs ? colors.primary + opacity : colors.border + '40',
+                      borderRadius: 4,
+                      borderWidth: 1,
+                      borderColor: day.hasLogs ? colors.primary + '30' : 'transparent',
+                    }
+                  ]}
+                />
+              );
+            })}
           </View>
-          <View style={s.heatLegend}>
-            <View style={s.heatLegendRow}>
-              <View style={[s.heatCell, { backgroundColor: colors.border, borderRadius: 3 }]} />
-              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.noActivity', 'Sin actividad')}</Text>
-            </View>
-            <View style={s.heatLegendRow}>
-              <View style={[s.heatCell, { backgroundColor: colors.primary, borderRadius: 3 }]} />
-              <Text style={[s.legendText, { color: colors.textMuted }]}>{t('tracker.active', 'Activo')}</Text>
-            </View>
+
+          <View style={[s.heatLegend, { justifyContent: 'flex-end', marginTop: 16 }]}>
+            <Text style={{ color: colors.textMuted, fontSize: 10, marginRight: 6 }}>Menos</Text>
+            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.border + '40', borderRadius: 2 }]} />
+            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '40', borderRadius: 2, marginLeft: 3 }]} />
+            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '70', borderRadius: 2, marginLeft: 3 }]} />
+            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary, borderRadius: 2, marginLeft: 3 }]} />
+            <Text style={{ color: colors.textMuted, fontSize: 10, marginLeft: 6 }}>Más</Text>
           </View>
         </View>
+
 
         {/* Water */}
         <View style={[s.card, { backgroundColor: colors.surface }]}>
