@@ -4,7 +4,7 @@
     "slug": "fitgo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon.jpg",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "scheme": "fitgo",
@@ -25,7 +25,7 @@
     "android": {
       "package": "com.fitgo.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.jpg",
         "backgroundColor": "#0D0F14"
       },
       "predictiveBackGestureEnabled": false,
