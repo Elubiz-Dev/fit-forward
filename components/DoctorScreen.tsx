@@ -33,7 +33,7 @@ function MessageBubble({ msg, isLastUser, onEdit }: { msg: CoachMessage; isLastU
   return (
     <View style={[bubble.row, isUser && bubble.rowUser]}>
       {!isUser && (
-        <Image source={require('../assets/fitgo.jpeg')} style={bubble.avatar} resizeMode="cover" />
+        <Image source={require('../assets/doctor_badge.jpg')} style={bubble.avatar} resizeMode="cover" />
       )}
       <View style={[bubble.box, isUser ? { backgroundColor: colors.primary, borderBottomRightRadius: 4 } : { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 }]}>
         {msg.imageUrl && (
@@ -470,7 +470,7 @@ export default function DoctorScreen() {
     <View style={[s.safe, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[s.header, { borderBottomColor: colors.border }]}>
-        <Image source={require('../assets/fitgo.jpeg')} style={s.headerAvatar} resizeMode="cover" />
+        <Image source={require('../assets/doctor_badge.jpg')} style={s.headerAvatar} resizeMode="cover" />
         <View style={{ flex: 1 }}>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.doctor.label', 'Personal Doctor')}</Text>
           <View style={s.onlineRow}>

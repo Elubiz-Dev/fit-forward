@@ -3,7 +3,7 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { supabase } from '../services/supabase';
 import { useAuthStore, useSettingsStore } from '../store';
 import { Colors } from '../constants';
@@ -22,24 +22,33 @@ function NavigationGuard() {
   const segments = useSegments();
 
   useEffect(() => {
-    // Wait until auth state is fully resolved
-    if (isLoading) return;
+    const inAuthGroup   = segments[0] === '(auth)';
+    const inOnboarding  = segments[0] === 'onboarding';
+    const allSegments   = segments as string[];
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
-    const inTabs = segments[0] === '(tabs)';
+    // ── Fast-path: if we already have a cached profile + session, navigate
+    //    immediately WITHOUT waiting for isLoading to resolve. This eliminates
+    //    the ~3-second flash of the onboarding screen on app resume.
+    if (session && profile?.onboardingDone && profile?.id) {
+      if (inAuthGroup || inOnboarding || allSegments.length === 0) {
+        router.replace('/(tabs)/tracker');
+      }
+      return;
+    }
+
+    // ── Slow-path: wait for the network fetch to complete before deciding
+    if (isLoading) return;
 
     if (!session) {
       if (!inAuthGroup) {
         router.replace('/(auth)/welcome');
       }
     } else if (!profile || !profile.onboardingDone || !profile.id) {
-      // Session exists but profile is invalid or incomplete
+      // Session exists but profile is invalid or incomplete → onboarding
       if (!inOnboarding) {
         router.replace('/onboarding');
       }
     } else {
-      const allSegments = segments as string[];
       if (inAuthGroup || inOnboarding || allSegments.length === 0) {
         router.replace('/(tabs)/tracker');
       }
@@ -50,7 +59,7 @@ function NavigationGuard() {
 }
 
 export default function RootLayout() {
-  const { setSession, setLoading, setProfile, fetchProfile } = useAuthStore();
+  const { setSession, setLoading, setProfile, fetchProfile, isLoading } = useAuthStore();
   const { initialize: initPurchases } = usePurchaseStore();
   const { language, theme } = useSettingsStore();
   const colors = useTheme();
@@ -89,8 +98,19 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── IMPORTANT: Keep the splash screen or a blank view while loading
+  //    to prevent "flashes" of the wrong screens.
+  if (isLoading) {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <GestureHandlerRootView style={[styles.root, { backgroundColor: colors.background }]}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
       <NavigationGuard />
       <Stack screenOptions={{ 
@@ -144,7 +164,7 @@ export default function RootLayout() {
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

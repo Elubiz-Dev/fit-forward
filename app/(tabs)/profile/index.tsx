@@ -24,6 +24,8 @@ import { Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, Activity, Sca
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { Animated, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
+import { GlassCard } from '../../../components/GlassCard';
+import { WeightProgressPath } from '../../../components/WeightProgressPath';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ACTIVITY_TO_EXERCISE: Record<string, string> = {
@@ -950,36 +952,47 @@ export default function ProfileScreen() {
           )}
         </LinearGradient>
 
-        {/* Progress Chart */}
-        <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border, padding: Spacing.base }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={[s.sectionTitle, { padding: 0, color: colors.textMuted }]}>{t('profile.weightTrend', 'Tendencia de Peso')}</Text>
+        {/* ── Progress Chart ── Gamified Weight Journey */}
+        <GlassCard
+          noPadding
+          showStripe
+          accentColor={colors.primary}
+          style={{ margin: Spacing.base, marginTop: 0 }}
+        >
+        <View style={{ padding: Spacing.base }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <View>
+              <Text style={[s.sectionTitle, { padding: 0, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }]}>
+                {t('profile.weightTrend', 'Ruta de Progreso')}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>Tu camino hacia la meta</Text>
+            </View>
             <TouchableOpacity onPress={() => router.push('/modals/body-measurements' as any)}>
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('common.viewAll', 'Ver Todo')} ›</Text>
+              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('common.viewAll', 'Historial')} ›</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.current', 'Actual')}</Text>
-              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800', marginTop: 4 }}>{profile?.weight ?? '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text></Text>
-            </View>
-            <View style={{ width: 1, backgroundColor: colors.border }} />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.target', 'Meta')}</Text>
-              <Text style={{ color: colors.primary, fontSize: 20, fontWeight: '800', marginTop: 4 }}>{profile?.targetWeight ?? '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text></Text>
-            </View>
-            <View style={{ width: 1, backgroundColor: colors.border }} />
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{t('profile.diff', 'Diferencia')}</Text>
-              <Text style={{ color: profile?.targetWeight && profile?.weight && profile.weight > profile.targetWeight ? '#EF4444' : '#10B981', fontSize: 20, fontWeight: '800', marginTop: 4 }}>
-                {profile?.targetWeight && profile?.weight ? `${(profile.weight - profile.targetWeight).toFixed(1)}` : '--'} <Text style={{ fontSize: 13, color: colors.textSecondary }}>kg</Text>
-              </Text>
-            </View>
-          </View>
+          {/* Gamified progress path */}
+          {profile?.startingWeight && profile?.weight && profile?.targetWeight ? (
+            <WeightProgressPath
+              startingWeight={profile.startingWeight}
+              currentWeight={profile.weight}
+              targetWeight={profile.targetWeight}
+              width={SCREEN_WIDTH - 72}
+            />
+          ) : (
+            <WeightProgressPath
+              startingWeight={profile?.weight ?? 80}
+              currentWeight={profile?.weight ?? 80}
+              targetWeight={profile?.targetWeight ?? 70}
+              width={SCREEN_WIDTH - 72}
+            />
+          )}
 
-          {weightData.length >= 2 ? (
-            <View style={{ marginLeft: -20 }}>
+          {/* Existing weight trend line chart */}
+          {weightData.length >= 2 && (
+            <View style={{ marginLeft: -20, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border + '40', paddingTop: 16 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 20, marginBottom: 8 }}>Historial reciente</Text>
               <LineChart
                 data={weightData}
                 height={140}
@@ -1006,13 +1019,9 @@ export default function ProfileScreen() {
                 xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
               />
             </View>
-          ) : (
-            <View style={{ alignItems: 'center', paddingVertical: 24, gap: 8 }}>
-              <Text style={{ fontSize: 32 }}>📊</Text>
-              <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>{t('profile.noWeightData', 'Sin historial aún')}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center', maxWidth: 220 }}>
-                {t('profile.noWeightDataHint', 'Registra tu peso periódicamente para ver tu evolución aquí.')}
-              </Text>
+          )}
+          {weightData.length < 2 && (
+            <View style={{ alignItems: 'center', paddingVertical: 16, gap: 8 }}>
               <TouchableOpacity
                 onPress={() => router.push('/modals/body-measurements' as any)}
                 style={{ marginTop: 8, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 }}
@@ -1022,6 +1031,7 @@ export default function ProfileScreen() {
             </View>
           )}
         </View>
+        </GlassCard>
 
         {/* Configuración */}
         <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>

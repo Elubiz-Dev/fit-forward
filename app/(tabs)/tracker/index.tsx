@@ -1,7 +1,7 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, Alert, useWindowDimensions, ActivityIndicator
+  TouchableOpacity, Image, useWindowDimensions, ActivityIndicator
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,12 +12,12 @@ import { Spacing, Radius } from '../../../constants';
 import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../../services/supabase';
 import { getLocalDateString, addDays } from '../../../utils/date';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { AnimatedCard } from '../../../components/AnimatedCard';
-// import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-// import Animated, { FadeIn, FadeInUp, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { GlassCard } from '../../../components/GlassCard';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 
 const RING_SIZE     = 220;
 const STROKE_WIDTH  = 12;
@@ -322,19 +322,41 @@ export default function TrackerScreen() {
     });
   }, [todayLogs, language, colors]);
 
-/*
+  // ── Swipe gesture for date navigation ──────────────────────────────────────
+  const swipeX        = useSharedValue(0);
+  const swipeOpacity  = useSharedValue(1);
+
+  const changeDate = (direction: 1 | -1) => {
+    setDate(addDays(selectedDate, direction));
+  };
+
   const gesture = Gesture.Pan()
+    .activeOffsetX([-15, 15])  // only activate for horizontal intent
+    .onUpdate((e) => {
+      // Subtle rubber-band resistance: feel of dragging the day
+      swipeX.value = e.translationX * 0.18;
+    })
     .onEnd((e) => {
-      if (Math.abs(e.velocityX) > 500) {
-        const direction = e.velocityX > 0 ? -1 : 1;
-        setDate(addDays(selectedDate, direction));
+      if (Math.abs(e.velocityX) > 400 || Math.abs(e.translationX) > 60) {
+        const dir = e.velocityX > 0 ? -1 : 1;
+        // Flash out, change, flash in
+        swipeOpacity.value = withTiming(0.5, { duration: 80 }, () => {
+          runOnJS(changeDate)(dir as 1 | -1);
+          swipeOpacity.value = withSpring(1, { damping: 14, stiffness: 200 });
+        });
       }
+      swipeX.value = withSpring(0, { damping: 18, stiffness: 250 });
     });
-*/
+
+  const swipeAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: swipeX.value }],
+    opacity:   swipeOpacity.value,
+  }));
+
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* GestureDetector disabled for stability */}
+      <GestureDetector gesture={gesture}>
       <View style={{ flex: 1 }}>
       <CustomAlert 
         visible={alert.visible}
@@ -369,6 +391,7 @@ export default function TrackerScreen() {
         <View style={{ width: 36 }} />
       </View>
 
+      <Animated.View style={[swipeAnimStyle]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
         {/* Date Picker */}
         <View style={s.datePicker}>
@@ -379,10 +402,10 @@ export default function TrackerScreen() {
               onPress={() => setDate(d.full)}
             >
               <Text style={[s.dateLabel, { color: colors.textSecondary }]}>{d.label}</Text>
-              <View style={[s.dateNumWrap, selectedDate === d.full && { backgroundColor: colors.textPrimary }]}>
-                <Text style={[s.dateNum, { color: selectedDate === d.full ? colors.background : colors.textPrimary }]}>{d.dayNum}</Text>
+              <View style={[s.dateNumWrap, selectedDate === d.full && { backgroundColor: colors.primary }]}>
+                <Text style={[s.dateNum, { color: selectedDate === d.full ? '#fff' : colors.textPrimary }]}>{d.dayNum}</Text>
               </View>
-              {selectedDate === d.full && <View style={[s.dateDot, { backgroundColor: colors.textSecondary }]} />}
+              {selectedDate === d.full && <View style={[s.dateDot, { backgroundColor: colors.primary }]} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -401,23 +424,23 @@ export default function TrackerScreen() {
             setCarouselIndex(index);
           }}
         >
-          {/* Main Calorie Card */}
+          {/* Main Calorie Card — GlassCard */}
           <AnimatedCard index={0} style={{ width: width - 32 }}>
-            <LinearGradient
-              colors={colors.gradientCard}
-              style={[s.card, { borderColor: colors.border, paddingVertical: 24 }]}
-            >
+            <GlassCard showStripe accentColor={colors.primary} noPadding style={{ borderRadius: 24 }}>
+            <View style={[s.card, { borderWidth: 0, paddingVertical: 24 }]}>
             <View style={s.arcWrap}>
               <Svg width={RING_SIZE} height={RING_SIZE}>
                 <G rotation="-90" origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}>
+                  {/* Ghost ring */}
                   <Circle
                     cx={RING_SIZE / 2}
                     cy={RING_SIZE / 2}
                     r={RADIUS}
                     fill="none"
-                    stroke={colors.border + '44'}
+                    stroke={colors.border + '55'}
                     strokeWidth={STROKE_WIDTH}
                   />
+                  {/* Progress ring with glow */}
                   <Circle
                     cx={RING_SIZE / 2}
                     cy={RING_SIZE / 2}
@@ -425,6 +448,18 @@ export default function TrackerScreen() {
                     fill="none"
                     stroke={colors.primary}
                     strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    strokeDasharray={CIRCUMFERENCE}
+                    strokeDashoffset={CIRCUMFERENCE - (pct * CIRCUMFERENCE)}
+                  />
+                  {/* Inner glow ring */}
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke={colors.primary + '40'}
+                    strokeWidth={STROKE_WIDTH + 6}
                     strokeLinecap="round"
                     strokeDasharray={CIRCUMFERENCE}
                     strokeDashoffset={CIRCUMFERENCE - (pct * CIRCUMFERENCE)}
@@ -444,12 +479,14 @@ export default function TrackerScreen() {
               <MacroBar label={t('profile.carbs').length > 10 ? 'Carbos' : t('profile.carbs')} current={carbs} target={macros.carbs} color={colors.carbs} />
               <MacroBar label={t('profile.fat')} current={fat} target={macros.fat} color={colors.fat} />
             </View>
-            </LinearGradient>
+            </View>
+            </GlassCard>
           </AnimatedCard>
 
-          {/* Other Nutrients Card */}
+          {/* Other Nutrients Card — GlassCard */}
           <AnimatedCard index={1} style={{ width: width - 32 }}>
-            <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <GlassCard noPadding>
+            <View style={[s.card, { borderWidth: 0 }]}>
             <View style={s.cardHeader}>
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.otherNutrients')}</Text>
             </View>
@@ -471,10 +508,13 @@ export default function TrackerScreen() {
               </View>
             ))}
           </View>
+          </GlassCard>
           </AnimatedCard>
-          {/* Weekly Calories Chart Card */}
+
+          {/* Weekly Calories Chart Card — GlassCard */}
           <AnimatedCard index={2} style={{ width: width - 32 }}>
-            <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border, paddingBottom: 10 }]}>
+            <GlassCard noPadding showStripe accentColor={colors.carbs}>
+            <View style={[s.card, { borderWidth: 0, paddingBottom: 10 }]}>
               <View style={s.cardHeader}>
                 <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('dashboard.weeklyAvg', 'Resumen Semanal')}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12 }}>kcal</Text>
@@ -507,6 +547,7 @@ export default function TrackerScreen() {
                 ))}
               </View>
             </View>
+          </GlassCard>
           </AnimatedCard>
         </ScrollView>
 
@@ -541,7 +582,8 @@ export default function TrackerScreen() {
           
           return (
             <AnimatedCard key={m} index={idx + 2}>
-              <View style={[s.mealCard, { backgroundColor: colors.surface }]}>
+              <GlassCard noPadding showStripe accentColor={mealCals > 0 ? colors.primary : colors.border}>
+              <View style={[s.mealCard]}>
               <View style={s.cardHeader}>
                 <Text style={[s.cardTitle, { color: colors.textPrimary }]}>
                   {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
@@ -578,6 +620,7 @@ export default function TrackerScreen() {
                 <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
               </TouchableOpacity>
               </View>
+              </GlassCard>
             </AnimatedCard>
           );
         })}
@@ -589,8 +632,9 @@ export default function TrackerScreen() {
           <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>+ {t('tracker.addSnack', 'Add Snack')}</Text>
         </TouchableOpacity>
 
-        {/* Activity Section */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Activity Section — GlassCard */}
+        <GlassCard noPadding showStripe accentColor={colors.accent}>
+        <View style={[s.card, { borderWidth: 0 }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.activity')}</Text>
           </View>
@@ -637,88 +681,198 @@ export default function TrackerScreen() {
             </TouchableOpacity>
           ))}
 
-          <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => router.push('/modals/add-activity' as any)}>
+          <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt + '88' }]} onPress={() => router.push('/modals/add-activity' as any)}>
             <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
           </TouchableOpacity>
         </View>
+        </GlassCard>
 
 
 
-        {/* ── Radar / Macro Balance ─────────────────────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={s.cardHeader}>
-            <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🎯 {t('tracker.macroBalance', 'Balance de Macros')}</Text>
+        {/* ── Radar / Macro Balance ── */}
+        <GlassCard noPadding showStripe accentColor={colors.primary}>
+        <View style={[s.card, { borderWidth: 0, overflow: 'hidden' }]}>
+          {/* Header */}
+          <View style={[s.cardHeader, { marginBottom: 0 }]}>
+            <View>
+              <Text style={[s.cardTitle, { color: colors.textPrimary }]}>⬡ {t('tracker.macroBalance', 'Balance de Macros')}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>vs. tus metas diarias</Text>
+            </View>
+            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '40' }}>
+              <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>HOY</Text>
+            </View>
           </View>
-          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-            <Svg width={220} height={200}>
-              {/* Background pentagon grid */}
-              {[0.25, 0.5, 0.75, 1].map((scale, gi) => {
-                const cx = 110, cy = 100, r = 80 * scale;
+
+          {/* SVG Radar */}
+          <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+            <Svg width={260} height={240}>
+              {/* ── Subtle grid rings (dashed) ── */}
+              {[0.25, 0.5, 0.75].map((scale, gi) => {
+                const cx = 130, cy = 120, r = 95 * scale;
                 const pts = radarData.map((_, i) => {
                   const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
                   return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
                 }).join(' ');
-                return <Polygon key={gi} points={pts} fill="none" stroke={colors.border} strokeWidth={1} />;
+                return (
+                  <Polygon
+                    key={gi}
+                    points={pts}
+                    fill="none"
+                    stroke={colors.border}
+                    strokeWidth={gi === 2 ? 1.5 : 1}
+                    strokeOpacity={gi === 2 ? 0.6 : 0.35}
+                    strokeDasharray={gi === 0 ? '3,4' : gi === 1 ? '4,4' : '5,4'}
+                  />
+                );
               })}
-              {/* Axis lines */}
-              {radarData.map((_, i) => {
-                const cx = 110, cy = 100, r = 80;
+
+              {/* ── GHOST border at 100% ── */}
+              {(() => {
+                const cx = 130, cy = 120, r = 95;
+                const ghostPts = radarData.map((_, i) => {
+                  const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                  return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ');
+                return (
+                  <Polygon
+                    points={ghostPts}
+                    fill={colors.border + '0A'}
+                    stroke={colors.border + 'CC'}
+                    strokeWidth={1.5}
+                  />
+                );
+              })()}
+
+              {/* ── Axis lines ── */}
+              {radarData.map((d, i) => {
+                const cx = 130, cy = 120, r = 95;
                 const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
-                return <Line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke={colors.border} strokeWidth={1} />;
+                return (
+                  <Line
+                    key={i}
+                    x1={cx} y1={cy}
+                    x2={cx + r * Math.cos(angle)}
+                    y2={cy + r * Math.sin(angle)}
+                    stroke={colors.border}
+                    strokeWidth={1}
+                    strokeOpacity={0.5}
+                  />
+                );
               })}
-              {/* Data polygon */}
+
+              {/* ── Filled data polygon (glow base) ── */}
               <Polygon
                 points={radarData.map((d, i) => {
-                  const cx = 110, cy = 100, r = 80 * d.pct;
+                  const cx = 130, cy = 120, r = 95 * Math.max(d.pct, 0.03);
                   const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
                   return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
                 }).join(' ')}
-                fill={colors.primary + '44'}
-                stroke={colors.primary}
-                strokeWidth={2}
+                fill={colors.primary + '18'}
+                stroke="none"
               />
-              {/* Data points */}
+              {/* ── Filled data polygon (sharp border) ── */}
+              <Polygon
+                points={radarData.map((d, i) => {
+                  const cx = 130, cy = 120, r = 95 * Math.max(d.pct, 0.03);
+                  const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
+                  return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+                }).join(' ')}
+                fill="none"
+                stroke={colors.primary + 'CC'}
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+
+              {/* ── Data nodes + outer label badges ── */}
               {radarData.map((d, i) => {
-                const cx = 110, cy = 100, r = 80 * d.pct;
+                const cx = 130, cy = 120;
+                const r = 95 * Math.max(d.pct, 0.03);
+                const rOuter = 95;
                 const angle = (Math.PI * 2 * i) / radarData.length - Math.PI / 2;
                 const x = cx + r * Math.cos(angle);
                 const y = cy + r * Math.sin(angle);
-                const lx = cx + 92 * Math.cos(angle);
-                const ly = cy + 92 * Math.sin(angle);
+                // label position — push slightly beyond the ghost ring
+                const lx = cx + (rOuter + 18) * Math.cos(angle);
+                const ly = cy + (rOuter + 18) * Math.sin(angle);
+                const pctVal = Math.round(d.pct * 100);
+
                 return (
                   <G key={i}>
-                    <Circle cx={x} cy={y} r={4} fill={d.color} />
-                    <SvgText x={lx} y={ly} fill={colors.textSecondary} fontSize={9} textAnchor="middle" alignmentBaseline="middle">{d.label}</SvgText>
+                    {/* Glow halo */}
+                    <Circle cx={x} cy={y} r={9} fill={d.color} fillOpacity={0.2} />
+                    {/* Main dot */}
+                    <Circle cx={x} cy={y} r={5} fill={d.color} />
+                    {/* White center */}
+                    <Circle cx={x} cy={y} r={2} fill="#FFFFFF" fillOpacity={0.9} />
+                    {/* Label */}
+                    <SvgText
+                      x={lx}
+                      y={ly - 5}
+                      fill={colors.textSecondary}
+                      fontSize={8.5}
+                      fontWeight="700"
+                      textAnchor="middle"
+                      alignmentBaseline="middle"
+                    >
+                      {d.label.toUpperCase()}
+                    </SvgText>
+                    {/* Pct badge */}
+                    <SvgText
+                      x={lx}
+                      y={ly + 6}
+                      fill={d.color}
+                      fontSize={9}
+                      fontWeight="800"
+                      textAnchor="middle"
+                      alignmentBaseline="middle"
+                    >
+                      {pctVal}%
+                    </SvgText>
                   </G>
                 );
               })}
             </Svg>
           </View>
-          {/* Percentage bars */}
-          <View style={{ gap: 10, marginTop: 4 }}>
-            {radarData.map(d => (
-              <View key={d.label} style={{ gap: 4 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>{d.label}</Text>
-                  <Text style={{ color: d.color, fontSize: 12, fontWeight: '700' }}>{Math.round(d.current)}/{d.target}g</Text>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: colors.border + '40', marginHorizontal: -20, marginBottom: 14 }} />
+
+          {/* ── Macro pill rows ── */}
+          <View style={{ gap: 8 }}>
+            {radarData.map(d => {
+              const pctClamped = Math.min(d.pct * 100, 100);
+              return (
+                <View key={d.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  {/* Color swatch */}
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: d.color }} />
+                  {/* Name */}
+                  <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', width: 56, textTransform: 'uppercase', letterSpacing: 0.3 }}>{d.label}</Text>
+                  {/* Bar track */}
+                  <View style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border + '50', overflow: 'hidden' }}>
+                    <View style={[{ height: '100%', borderRadius: 3, backgroundColor: d.color, width: `${pctClamped}%` }]} />
+                  </View>
+                  {/* Numbers */}
+                  <Text style={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700', minWidth: 70, textAlign: 'right' }}>
+                    <Text style={{ color: d.color }}>{Math.round(d.current)}</Text>
+                    <Text style={{ color: colors.textMuted, fontWeight: '400' }}>/{d.target}g</Text>
+                  </Text>
                 </View>
-                <View style={[s.progressBar, { backgroundColor: colors.border }]}>
-                  <View style={[s.progressFill, { width: `${Math.min(d.pct * 100, 100)}%`, backgroundColor: d.color }]} />
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
+        </GlassCard>
 
-        {/* ── Consistency Heatmap (Premium Redesign) ────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* ── Consistency Heatmap ───────────────────────────────────── */}
+        <GlassCard noPadding showStripe accentColor={colors.secondary}>
+        <View style={[s.card, { borderWidth: 0 }]}>
           <View style={s.cardHeader}>
             <View>
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
             </View>
-            <View style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+            <View style={{ backgroundColor: colors.secondary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={{ color: colors.secondary, fontSize: 11, fontWeight: '700' }}>PRO</Text>
             </View>
           </View>
 
@@ -754,10 +908,12 @@ export default function TrackerScreen() {
             <Text style={{ color: colors.textMuted, fontSize: 10, marginLeft: 6 }}>Más</Text>
           </View>
         </View>
+        </GlassCard>
 
 
-        {/* Water */}
-        <View style={[s.card, { backgroundColor: colors.surface }]}>
+        {/* Water — GlassCard */}
+        <GlassCard noPadding showStripe accentColor="#06B6D4">
+        <View style={[s.card, { borderWidth: 0 }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
           </View>
@@ -766,17 +922,19 @@ export default function TrackerScreen() {
             <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
           </View>
           <View style={s.waterControls}>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(-250)}>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt + '88' }]} onPress={() => addWater(-250)}>
               <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>-</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.waterBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addWater(250)}>
-              <Text style={[s.waterBtnText, { color: colors.textPrimary }]}>+</Text>
+            <TouchableOpacity style={[s.waterBtn, { backgroundColor: '#06B6D4' }]} onPress={() => addWater(250)}>
+              <Text style={[s.waterBtnText, { color: '#fff' }]}>+</Text>
             </TouchableOpacity>
           </View>
         </View>
+        </GlassCard>
 
-        {/* Steps Section */}
-        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Steps — GlassCard */}
+        <GlassCard noPadding showStripe accentColor={colors.success}>
+        <View style={[s.card, { borderWidth: 0 }]}>
           <View style={s.cardHeader}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.steps')}</Text>
             <TouchableOpacity onPress={() => setSteps(0)}>
@@ -789,23 +947,25 @@ export default function TrackerScreen() {
               {steps} <Text style={{ fontSize: 16, color: colors.textSecondary }}>/ 6000 {t('tracker.steps').toLowerCase()}</Text>
             </Text>
           </View>
-          <View style={[s.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[s.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%`, backgroundColor: colors.primary }]} />
+          <View style={[s.progressBar, { backgroundColor: colors.border + '55' }]}>
+            <View style={[s.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%`, backgroundColor: colors.success }]} />
           </View>
           
           <View style={s.stepsControls}>
-            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => addSteps(-100)}>
+            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.surfaceAlt + '88' }]} onPress={() => addSteps(-100)}>
               <Text style={[s.stepBtnText, { color: colors.textPrimary }]}>- 100</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.primary }]} onPress={() => addSteps(100)}>
-              <Text style={[s.stepBtnText, { color: colors.background }]}>+ 100</Text>
+            <TouchableOpacity style={[s.stepBtn, { backgroundColor: colors.success }]} onPress={() => addSteps(100)}>
+              <Text style={[s.stepBtnText, { color: '#fff' }]}>+ 100</Text>
             </TouchableOpacity>
           </View>
         </View>
+        </GlassCard>
 
       </ScrollView>
+      </Animated.View>
       </View>
-      {/* </GestureDetector> */}
+      </GestureDetector>
     </SafeAreaView>
   );
 }
