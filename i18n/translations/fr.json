@@ -15,7 +15,9 @@
     "locale": "fr-FR",
     "done": "Fait",
     "continue": "Continuer",
-    "previous": "Précédent"
+    "previous": "Précédent",
+    "confirm": "Confirmer",
+    "delete": "Supprimer"
   },
   "tabs": {
     "dashboard": "Tableau de bord",
@@ -24,7 +26,8 @@
     "planner": "Planificateur",
     "profile": "Profil",
     "nutritionist": "Nutritionniste",
-    "trainer": "Entraîneur"
+    "trainer": "Entraîneur",
+    "doctor": "Médecin"
   },
   "profile": {
     "title": "Profil",
@@ -107,9 +110,6 @@
     "healthProfileFailed": "Échec de la mise à jour du profil de santé",
     "dietaryRestrictions": "Restrictions Alimentaires",
     "medicalConditions": "Conditions Médicales",
-    "medicationsSupplements": "Médicaments et Suppléments",
-    "noneSelected": "Aucun sélectionné",
-    "editHealthProfile": "Modifier le Profil de Santé",
     "updateGoals": "Mettre à jour objectifs",
     "mealPlanFoods": "Aliments Disponibles",
     "reminders": "Rappels",
@@ -125,11 +125,30 @@
     "loseWeightValidation": "Le poids cible doit être inférieur au poids actuel",
     "gainWeightValidation": "Le poids cible doit être supérieur au poids actuel",
     "maintainWeightInfo": "Votre poids cible est fixé à votre poids actuel",
-    "currentWeight": "Quel est votre poids actuel ?"
+    "currentWeight": "Quel est votre poids actuel ?",
+    "massUnit": "Unité de masse",
+    "volumeUnit": "Unité de volume",
+    "lengthUnit": "Unité de longueur",
+    "energyUnit": "Unité d’énergie",
+    "tempUnit": "Unité de température",
+    "selectMassUnit": "Sélectionner l’unité de masse",
+    "selectVolumeUnit": "Sélectionner l’unité de volume",
+    "selectLengthUnit": "Sélectionner l’unité de longueur",
+    "selectEnergyUnit": "Sélectionner l’unité d’énergie",
+    "selectTempUnit": "Sélectionner l’unité de température",
+    "deleteAccount": "Supprimer le Compte",
+    "cancelSubscription": "Annuler l’Abonnement",
+    "cancelSubscriptionConfirm": "Voulez-vous vraiment annuler votre abonnement Pro ?",
+    "subscriptionCancelled": "Abonnement annulé avec succès",
+    "verifySuccess": "Abonnement vérifié avec succès",
+    "notPremiumTitle": "Aucun Abonnement Actif",
+    "notPremiumDesc": "Aucun abonnement Pro associé à votre compte.",
+    "upgradeNow": "Mettre à Niveau",
+    "verifySubscription": "Vérifier l’Abonnement",
+    "manageSubscription": "Gérer l’Abonnement"
   },
   "coach": {
     "title": "Fitz Coach",
-    "welcome": "Bonjour ! Je suis Fitz, votre coach en nutrition IA. Comment puis-je vous aider aujourd'hui ?",
     "typing": "Fitz réfléchit...",
     "inputPlaceholder": "Posez n'importe quelle question sur la nutrition...",
     "limitReached": "Limite quotidienne atteinte",
@@ -150,22 +169,18 @@
       "suggest2": "Comment améliorer ma technique de squat ? 🏋️",
       "suggest3": "Plan d'entraînement pour la prise de muscle 💪",
       "suggest4": "Quels étirements faire après avoir couru ? 🏃"
+    },
+    "doctor": {
+      "label": "Médecin Personnel",
+      "welcome": "Bonjour ! Je suis votre Médecin Personnel IA.",
+      "suggest1": "Que faire si je me sens étourdi après l’entraînement ? 😵‍💫",
+      "suggest2": "Y a-t-il des interactions avec mes médicaments ? 💊",
+      "suggest3": "Comment améliorer mon sommeil ? 🛋️",
+      "suggest4": "Quels sont les signes de déshydratation ? 💧"
     }
   },
-  "nutritionist": {
-    "welcome": "Bonjour ! Je suis Fitz, votre nutritionniste IA. Comment puis-je vous aider avec votre régime aujourd'hui ?",
-    "suggest1": "Que devrais-je manger après l'entraînement ? 💪",
-    "suggest2": "Donnez-moi une idée de petit-déjeuner riche en protéines 🍳",
-    "suggest3": "Comment puis-je réduire mes envies de sucre ? 🍬",
-    "suggest4": "Est-ce que je mange assez de protéines ? 📊"
-  },
-  "trainer": {
-    "welcome": "Salut ! Je suis Fitz, votre entraîneur personnel IA. Sur quoi travaillons-nous aujourd'hui ?",
-    "suggest1": "Donnez-moi un entraînement abdominal de 15 min 🔥",
-    "suggest2": "Comment améliorer mes pompes ? 💪",
-    "suggest3": "J'ai mal au genou, quels exercices de jambes puis-je faire ? 🦵",
-    "suggest4": "Suggérez une bonne routine d'échauffement 🏃‍♂️"
-  },
+  "nutritionist": {},
+  "trainer": {},
   "about": {
     "title": "À propos de FitGO",
     "social": "Réseaux Sociaux",
@@ -213,7 +228,8 @@
     "addActivity": "Ajouter Activité",
     "recent": "Récent",
     "popular": "Populaire",
-    "search": "Rechercher une activité..."
+    "search": "Rechercher une activité...",
+    "custom": "Activité Personnalisée"
   },
   "welcome": {
     "motto": "Fit-Go : Votre meilleure version",
@@ -228,7 +244,6 @@
   },
   "auth": {
     "login": "Connexion",
-    "welcomeBack": "Heureux de vous revoir !",
     "email": "Email",
     "password": "Mot de passe",
     "signIn": "Se connecter",
@@ -245,11 +260,7 @@
     "registerFailed": "Échec de l'inscription",
     "forgotPassword": "Mot de passe oublié ?",
     "resetPassword": "Réinitialiser le mot de passe",
-    "resetInstructions": "Entrez votre email et nous vous enverrons un lien.",
-    "sendLink": "Envoyer le lien",
     "checkEmail": "Vérifiez votre email",
-    "linkSent": "Nous avons envoyé un lien de réinitialisation à",
-    "returnLogin": "Retour à la connexion",
     "loginSub": "Connectez-vous pour continuer votre voyage",
     "signingIn": "Connexion en cours...",
     "registerSub": "Rejoignez FitGO aujourd'hui",
@@ -365,18 +376,11 @@
     "recalculateMeals": "Recalculer Repas",
     "exportPlan": "Exporter Plan",
     "exportDay": "Exporter Journée",
-    "summary": "Résumé",
-    "generatePlan": "Générer un Plan",
-    "nutrients": "Nutriments",
-    "activitySub": "Gagnez des calories en bougeant",
-    "neat": "NEAT",
-    "neatSub": "Mouvement quotidien",
-    "exercise": "Exercice",
-    "exerciseSub": "Entraînement actif",
-    "burned": "brûlé",
     "text": "Texte",
     "loadFailed": "Impossible de charger les données. Veuillez réessayer.",
-    "addSnack": "Ajouter Snack"
+    "addSnack": "Ajouter Snack",
+    "snack2": "En-cas 2",
+    "snack3": "En-cas 3"
   },
   "planner": {
     "title": "Planificateur de Repas",
@@ -498,9 +502,7 @@
       "potato": "Pomme de terre",
       "avocado": "Avocat",
       "nuts": "Noix",
-      "oliveOil": "Huile d'olive",
       "cheese": "Fromage",
-      "peanutButter": "Beurre de cacahuète",
       "apple": "Pomme",
       "banana": "Banane",
       "berries": "Baies",
@@ -511,8 +513,6 @@
       "tomato": "Tomate",
       "onion": "Oignon",
       "salt": "Sel",
-      "soySauce": "Sauce soja",
-      "hotSauce": "Sauce piquante",
       "protein_powder": "Protéine en Poudre",
       "turkey": "Dinde",
       "pork": "Porc",

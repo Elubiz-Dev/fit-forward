@@ -3,8 +3,8 @@ import Purchases, { LOG_LEVEL, PurchasesOffering } from 'react-native-purchases'
 import Constants from 'expo-constants';
 
 const API_KEYS = {
-  apple: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || 'test_hmUiccsdRdsPKSwKGPenankwQgd',
-  google: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || 'test_hmUiccsdRdsPKSwKGPenankwQgd',
+  apple: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '',
+  google: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '',
 };
 
 export const ENTITLEMENT_ID = 'fitgo Pro';
@@ -26,7 +26,7 @@ export class RevenueCatService {
     const isExpoGo = Constants.appOwnership === 'expo';
     
     if (isExpoGo) {
-      console.warn('[RevenueCat] Native SDK not supported in Expo Go. Please use a Development Build.');
+      if (__DEV__) console.log('[RevenueCat] Native SDK not supported in Expo Go. Please use a Development Build.');
       return;
     }
 
@@ -36,14 +36,14 @@ export class RevenueCatService {
       const apiKey = Platform.OS === 'ios' ? API_KEYS.apple : API_KEYS.google;
 
       if (apiKey.startsWith('test_')) {
-        console.warn('[RevenueCat] Using placeholder API key. Ensure you have set the correct keys in .env');
+        if (__DEV__) console.log('[RevenueCat] Using placeholder API key. Ensure you have set the correct keys in .env');
       }
 
       Purchases.configure({ apiKey, appUserID: userId });
       
       if (__DEV__) console.log('[RevenueCat] Initialized successfully');
     } catch (e: any) {
-      console.warn('[RevenueCat] Failed to initialize:', e.message);
+      if (__DEV__) console.log('[RevenueCat] Failed to initialize:', e.message);
     }
   }
 

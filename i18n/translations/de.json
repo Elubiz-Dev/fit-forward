@@ -15,7 +15,9 @@
     "locale": "de-DE",
     "done": "Fertig",
     "continue": "Weiter",
-    "previous": "Vor."
+    "previous": "Vor.",
+    "confirm": "Bestätigen",
+    "delete": "Löschen"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -24,7 +26,8 @@
     "planner": "Planer",
     "profile": "Profil",
     "nutritionist": "Ernährungsberater",
-    "trainer": "Trainer"
+    "trainer": "Trainer",
+    "doctor": "Arzt"
   },
   "profile": {
     "title": "Profil",
@@ -107,9 +110,6 @@
     "healthProfileFailed": "Aktualisierung fehlgeschlagen",
     "dietaryRestrictions": "Ernährungseinschränkungen",
     "medicalConditions": "Erkrankungen",
-    "medicationsSupplements": "Medikamente und Nahrungsergänzung",
-    "noneSelected": "Nichts ausgewählt",
-    "editHealthProfile": "Gesundheitsprofil bearbeiten",
     "updateSuccess": "Profil erfolgreich aktualisiert ✨",
     "roleSuperAdmin": "Super Admin",
     "roleAdmin": "Administrator",
@@ -125,11 +125,30 @@
     "syncMeals": "Mahlzeiten synchronisieren",
     "account": "Konto",
     "sendFeedback": "Feedback senden",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "massUnit": "Masseeinheit",
+    "volumeUnit": "Volumeneinheit",
+    "lengthUnit": "Längeneinheit",
+    "energyUnit": "Energieeinheit",
+    "tempUnit": "Temperatureinheit",
+    "selectMassUnit": "Masseeinheit wählen",
+    "selectVolumeUnit": "Volumeneinheit wählen",
+    "selectLengthUnit": "Längeneinheit wählen",
+    "selectEnergyUnit": "Energieeinheit wählen",
+    "selectTempUnit": "Temperatureinheit wählen",
+    "deleteAccount": "Konto Löschen",
+    "cancelSubscription": "Abo Kündigen",
+    "cancelSubscriptionConfirm": "Pro-Abo wirklich kündigen?",
+    "subscriptionCancelled": "Abo erfolgreich gekündigt",
+    "verifySuccess": "Abo erfolgreich verifiziert",
+    "notPremiumTitle": "Kein Aktives Abo",
+    "notPremiumDesc": "Kein Pro-Abo mit Ihrem Konto verknüpft.",
+    "upgradeNow": "Jetzt Upgraden",
+    "verifySubscription": "Abo Verifizieren",
+    "manageSubscription": "Abo Verwalten"
   },
   "coach": {
     "title": "Fitz Coach",
-    "welcome": "Hallo! Ich bin Fitz, dein KI-Ernährungscoach. Wie kann ich dir heute helfen?",
     "typing": "Fitz denkt nach...",
     "inputPlaceholder": "Frage alles über Ernährung...",
     "limitReached": "Tageslimit erreicht",
@@ -150,22 +169,18 @@
       "suggest2": "Wie verbessere ich meine Kniebeugen-Technik? 🏋️",
       "suggest3": "Trainingsplan für Muskelaufbau 💪",
       "suggest4": "Welche Dehnübungen nach dem Laufen? 🏃"
+    },
+    "doctor": {
+      "label": "Persönlicher Arzt",
+      "welcome": "Hallo! Ich bin Ihr persönlicher KI-Arzt.",
+      "suggest1": "Was tun bei Schwindel nach dem Training? 😵‍💫",
+      "suggest2": "Gibt es Wechselwirkungen mit meinen Medikamenten? 💊",
+      "suggest3": "Wie kann ich meinen Schlaf verbessern? 🛋️",
+      "suggest4": "Was sind Anzeichen einer Dehydration? 💧"
     }
   },
-  "nutritionist": {
-    "welcome": "Hallo! Ich bin Fitz, dein KI-Ernährungsberater. Wie kann ich dir heute helfen?",
-    "suggest1": "Was sollte ich nach dem Training essen? 💪",
-    "suggest2": "Gib mir eine proteinreiche Frühstücksidee 🍳",
-    "suggest3": "Wie kann ich Heißhunger auf Süßes reduzieren? 🍬",
-    "suggest4": "Esse ich genug Protein? 📊"
-  },
-  "trainer": {
-    "welcome": "Hi! Ich bin Fitz, dein KI-Personal Trainer. Woran arbeiten wir heute?",
-    "suggest1": "Gib mir ein 15-minütiges Bauchmuskeltraining 🔥",
-    "suggest2": "Wie verbessere ich meine Liegestütze? 💪",
-    "suggest3": "Ich habe Knieschmerzen, welche Beinübungen kann ich machen? 🦵",
-    "suggest4": "Schlage eine gute Aufwärmroutine vor 🏃‍♂️"
-  },
+  "nutritionist": {},
+  "trainer": {},
   "about": {
     "title": "Über FitGO",
     "social": "Soziale Medien",
@@ -213,7 +228,8 @@
     "addActivity": "Aktivität hinzufügen",
     "recent": "Zuletzt",
     "popular": "Beliebt",
-    "search": "Aktivität suchen..."
+    "search": "Aktivität suchen...",
+    "custom": "Eigene Aktivität"
   },
   "welcome": {
     "motto": "Fit-Go: Deine beste Version",
@@ -228,7 +244,6 @@
   },
   "auth": {
     "login": "Anmelden",
-    "welcomeBack": "Willkommen zurück!",
     "email": "E-Mail",
     "password": "Passwort",
     "signIn": "Anmelden",
@@ -245,11 +260,7 @@
     "registerFailed": "Registrierung fehlgeschlagen",
     "forgotPassword": "Passwort vergessen?",
     "resetPassword": "Passwort zurücksetzen",
-    "resetInstructions": "E-Mail eingeben für den Reset-Link.",
-    "sendLink": "Link senden",
     "checkEmail": "E-Mails prüfen",
-    "linkSent": "Wir haben einen Link gesendet an",
-    "returnLogin": "Zurück zum Login",
     "loginSub": "Anmelden, um fortzufahren",
     "signingIn": "Anmeldung...",
     "registerSub": "Werde heute Teil von FitGO",
@@ -365,18 +376,11 @@
     "recalculateMeals": "Mahlzeiten neu berechnen",
     "exportPlan": "Plan exportieren",
     "exportDay": "Tag exportieren",
-    "summary": "Zusammenfassung",
-    "generatePlan": "Plan generieren",
-    "nutrients": "Nährstoffe",
-    "activitySub": "Kalorien durch Bewegung verdienen",
-    "neat": "NEAT",
-    "neatSub": "Tägliche Bewegung",
-    "exercise": "Sport",
-    "exerciseSub": "Aktives Training",
-    "burned": "verbrannt",
     "text": "Text",
     "loadFailed": "Daten konnten nicht geladen werden. Bitte versuche es erneut.",
-    "addSnack": "Snack Hinzufügen"
+    "addSnack": "Snack Hinzufügen",
+    "snack2": "Snack 2",
+    "snack3": "Snack 3"
   },
   "planner": {
     "title": "Mahlzeitenplaner",
@@ -477,9 +481,7 @@
       "potato": "Kartoffel",
       "avocado": "Avocado",
       "nuts": "Nüsse",
-      "oliveOil": "Olivenöl",
       "cheese": "Käse",
-      "peanutButter": "Erdnussbutter",
       "apple": "Apfel",
       "banana": "Banane",
       "berries": "Beeren",
@@ -490,8 +492,6 @@
       "tomato": "Tomate",
       "onion": "Zwiebel",
       "salt": "Salz",
-      "soySauce": "Sojasauce",
-      "hotSauce": "Scharfe Sauce",
       "protein_powder": "Proteinpulver",
       "turkey": "Pute",
       "pork": "Schwein",
@@ -519,7 +519,6 @@
       "zucchini": "Zucchini",
       "pepper": "Pfeffer",
       "soy_sauce": "Sojasauce",
-      "hot_source": "Scharfe Sauce",
       "garlic": "Knoblauch",
       "mustard": "Senf",
       "lemon_juice": "Zitronensaft",

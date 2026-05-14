@@ -356,7 +356,6 @@ export default function TrackerScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top']}>
-      <GestureDetector gesture={gesture}>
       <View style={{ flex: 1 }}>
       <CustomAlert 
         visible={alert.visible}
@@ -391,10 +390,11 @@ export default function TrackerScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <Animated.View style={[swipeAnimStyle]}>
+      <Animated.View style={[{ flex: 1 }, swipeAnimStyle]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
-        {/* Date Picker */}
-        <View style={s.datePicker}>
+        {/* Date Picker — Restricted Gesture Area */}
+        <GestureDetector gesture={gesture}>
+          <View style={s.datePicker}>
           {days.map((d) => (
             <TouchableOpacity 
               key={d.full} 
@@ -409,6 +409,7 @@ export default function TrackerScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        </GestureDetector>
 
 
 
@@ -871,42 +872,64 @@ export default function TrackerScreen() {
               <Text style={[s.cardTitle, { color: colors.textPrimary }]}>🗓️ {t('tracker.consistency', 'Consistencia')}</Text>
               <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>{t('tracker.last28', 'Últimos 28 días')}</Text>
             </View>
-            <View style={{ backgroundColor: colors.secondary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={{ color: colors.secondary, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+            {!profile?.isPro && (
+              <View style={{ backgroundColor: colors.secondary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                <Text style={{ color: colors.secondary, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+              </View>
+            )}
+          </View>
+
+          {profile?.isPro ? (
+            <>
+              <View style={s.heatmapGrid}>
+                {heatmapDays.map((day, idx) => {
+                  // Intensity logic: more logs = more opaque color
+                  const intensity = todayLogs.filter(l => l.loggedAt.startsWith(day.dateStr)).length;
+                  const opacity = intensity === 0 ? '15' : intensity === 1 ? '40' : intensity === 2 ? '70' : 'FF';
+                  
+                  return (
+                    <View
+                      key={idx}
+                      style={[
+                        s.heatCell,
+                        {
+                          backgroundColor: day.hasLogs ? colors.primary + opacity : colors.border + '40',
+                          borderRadius: 4,
+                          borderWidth: 1,
+                          borderColor: day.hasLogs ? colors.primary + '30' : 'transparent',
+                        }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+
+              <View style={[s.heatLegend, { justifyContent: 'flex-end', marginTop: 16 }]}>
+                <Text style={{ color: colors.textMuted, fontSize: 10, marginRight: 6 }}>{t('common.less', 'Menos')}</Text>
+                <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.border + '40', borderRadius: 2 }]} />
+                <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '40', borderRadius: 2, marginLeft: 3 }]} />
+                <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '70', borderRadius: 2, marginLeft: 3 }]} />
+                <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary, borderRadius: 2, marginLeft: 3 }]} />
+                <Text style={{ color: colors.textMuted, fontSize: 10, marginLeft: 6 }}>{t('common.more', 'Más')}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+               <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+               <Text style={[s.cardTitle, { color: colors.textPrimary, fontSize: 16, textAlign: 'center' }]}>
+                 {t('tracker.proFeature', 'Función Exclusiva Pro')}
+               </Text>
+               <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center', marginTop: 6, paddingHorizontal: 20 }}>
+                 {t('tracker.proHeatmapDesc', 'Desbloquea el análisis detallado de tu constancia y hábitos con FitGO Pro.')}
+               </Text>
+               <TouchableOpacity 
+                 style={{ marginTop: 20, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: Radius.full }}
+                 onPress={() => router.push('/modals/paywall')}
+               >
+                 <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('common.upgrade', 'Mejorar a Pro')}</Text>
+               </TouchableOpacity>
             </View>
-          </View>
-
-          <View style={s.heatmapGrid}>
-            {heatmapDays.map((day, idx) => {
-              // Intensity logic: more logs = more opaque color
-              const intensity = todayLogs.filter(l => l.loggedAt.startsWith(day.dateStr)).length;
-              const opacity = intensity === 0 ? '15' : intensity === 1 ? '40' : intensity === 2 ? '70' : 'FF';
-              
-              return (
-                <View
-                  key={idx}
-                  style={[
-                    s.heatCell,
-                    {
-                      backgroundColor: day.hasLogs ? colors.primary + opacity : colors.border + '40',
-                      borderRadius: 4,
-                      borderWidth: 1,
-                      borderColor: day.hasLogs ? colors.primary + '30' : 'transparent',
-                    }
-                  ]}
-                />
-              );
-            })}
-          </View>
-
-          <View style={[s.heatLegend, { justifyContent: 'flex-end', marginTop: 16 }]}>
-            <Text style={{ color: colors.textMuted, fontSize: 10, marginRight: 6 }}>Menos</Text>
-            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.border + '40', borderRadius: 2 }]} />
-            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '40', borderRadius: 2, marginLeft: 3 }]} />
-            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary + '70', borderRadius: 2, marginLeft: 3 }]} />
-            <View style={[s.heatCell, { width: 12, height: 12, backgroundColor: colors.primary, borderRadius: 2, marginLeft: 3 }]} />
-            <Text style={{ color: colors.textMuted, fontSize: 10, marginLeft: 6 }}>Más</Text>
-          </View>
+          )}
         </View>
         </GlassCard>
 
@@ -965,7 +988,6 @@ export default function TrackerScreen() {
       </ScrollView>
       </Animated.View>
       </View>
-      </GestureDetector>
     </SafeAreaView>
   );
 }

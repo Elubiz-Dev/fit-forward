@@ -102,6 +102,7 @@ export default function FoodDetailModal() {
   const fiber  = food.fiber ? Math.round(food.fiber * factor) : 0;
   const sodium = food.sodium ? Math.round(food.sodium * factor) : 0;
   const iron   = food.iron ? Math.round(food.iron * factor) : 0;
+  const calcium = food.calcium ? Math.round(food.calcium * factor) : 0;
   const satFat = food.saturatedFat ? Math.round(food.saturatedFat * factor) : 0;
   const transFat = food.transFat ? Math.round(food.transFat * factor) : 0;
 
@@ -130,6 +131,7 @@ export default function FoodDetailModal() {
         fiber,
         sodium,
         iron,
+        calcium,
         saturatedFat: satFat,
         transFat,
       });
@@ -146,6 +148,7 @@ export default function FoodDetailModal() {
           fiber,
           sodium,
           iron,
+          calcium,
           saturated_fat: satFat,
           trans_fat: transFat,
         }).eq('id', logId);
@@ -168,6 +171,7 @@ export default function FoodDetailModal() {
         fiber,
         sodium,
         iron,
+        calcium,
         saturatedFat: satFat,
         transFat,
       });
@@ -187,6 +191,7 @@ export default function FoodDetailModal() {
           fiber,
           sodium,
           iron,
+          calcium,
           saturated_fat: satFat,
           trans_fat: transFat,
         }).select().single();

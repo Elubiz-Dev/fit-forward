@@ -1,3 +1,10 @@
+/**
+ * nutritionStore.ts
+ *
+ * Central Zustand store for daily nutrition tracking, activity logging,
+ * water/step/sleep metrics, and food favorites. Data is persisted locally
+ * via AsyncStorage and synced to Supabase when the user is authenticated.
+ */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -5,6 +12,7 @@ import { FoodLog, ActivityLog } from './types';
 import type { FoodItem } from '../services/foodDatabase';
 import { getLocalDateString } from '../utils/date';
 import { useAuthStore } from './authStore';
+import { supabase } from '../services/supabase';
 
 interface NutritionState {
   todayLogs:    FoodLog[];
@@ -57,6 +65,32 @@ interface NutritionState {
   // Extra Snacks logic synchronized here
   addExtraSnack: () => Promise<void>;
   removeExtraSnack: () => Promise<void>;
+}
+
+/**
+ * Calculates the user's current activity streak (consecutive days with logged data).
+ * Starts from today (or yesterday if today has no activity) and counts backwards.
+ */
+function recalculateStreak(activeDays: Record<string, boolean>): number {
+  let streak = 0;
+  const todayStr = getLocalDateString();
+  const checkDate = new Date();
+
+  // Allow today to be missing (day might still be ongoing)
+  if (!activeDays[todayStr]) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  let safety = 0;
+  while (safety < 365) {
+    safety++;
+    const dateStr = getLocalDateString(checkDate);
+    if (!activeDays[dateStr]) break;
+    streak++;
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  return streak;
 }
 
 export const useNutritionStore = create<NutritionState>()(
@@ -153,25 +187,7 @@ export const useNutritionStore = create<NutritionState>()(
 
         const newActiveDays = { ...activeDays, [date]: true };
         const newPlannedDays = plannedDays + 1;
-
-        // Calculate Streak
-        let streak = 0;
-        const todayStr = getLocalDateString();
-        const checkDate = new Date();
-
-        // Allow today to be missing (it might still be ongoing)
-        if (!newActiveDays[todayStr]) {
-          checkDate.setDate(checkDate.getDate() - 1);
-        }
-        
-        let safety = 0;
-        while (safety < 365) {
-          safety++;
-          const dateStr = getLocalDateString(checkDate);
-          if (!newActiveDays[dateStr]) break;
-          streak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        }
+        const streak = recalculateStreak(newActiveDays);
 
         set({ activeDays: newActiveDays, plannedDays: newPlannedDays, streakDays: streak });
       },
@@ -303,7 +319,7 @@ export const useNutritionStore = create<NutritionState>()(
       totals: () => {
         const date = get().selectedDate;
         const logs = get().todayLogs.filter(l => l.loggedAt.startsWith(date));
-        return logs.reduce(
+        const raw = logs.reduce(
           (acc, l) => ({
             calories: acc.calories + (Number(l.calories) || 0),
             protein:  acc.protein  + (Number(l.protein) || 0),
@@ -319,6 +335,20 @@ export const useNutritionStore = create<NutritionState>()(
           }),
           { calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0, iron: 0, calcium: 0, saturatedFat: 0, transFat: 0 }
         );
+
+        return {
+          calories: Math.round(raw.calories),
+          protein:  Math.round(raw.protein * 10) / 10,
+          carbs:    Math.round(raw.carbs * 10) / 10,
+          fat:      Math.round(raw.fat * 10) / 10,
+          sugar:    Math.round(raw.sugar * 10) / 10,
+          fiber:    Math.round(raw.fiber * 10) / 10,
+          sodium:   Math.round(raw.sodium),
+          iron:     Math.round(raw.iron * 10) / 10,
+          calcium:  Math.round(raw.calcium),
+          saturatedFat: Math.round(raw.saturatedFat * 10) / 10,
+          transFat:     Math.round(raw.transFat * 10) / 10,
+        };
       },
 
       fetchLogs: async (userId, date) => {
@@ -438,24 +468,15 @@ export const useNutritionStore = create<NutritionState>()(
 
           // Force recalculate streak to avoid stale UI
           const { activeDays } = get();
-          let streak = 0;
-          const todayStr = getLocalDateString();
-          const checkDate = new Date();
-          if (!activeDays[todayStr]) checkDate.setDate(checkDate.getDate() - 1);
-          
-          let safety = 0;
-          while (safety < 365) {
-            safety++;
-            const dStr = getLocalDateString(checkDate);
-            if (!activeDays[dStr]) break;
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          }
+          const streak = recalculateStreak(activeDays);
           if (get().streakDays !== streak) set({ streakDays: streak });
 
         } catch (err) {
           console.error('[NutritionStore] fetchLogs error:', err);
-          set({ todayLogs: [] });
+          // Only clear logs for the failed date, not all cached data
+          set((s) => ({
+            todayLogs: s.todayLogs.filter(log => !log.loggedAt.startsWith(date))
+          }));
           throw err; // Re-throw so UI can handle it
         }
       },
@@ -485,6 +506,13 @@ export const useNutritionStore = create<NutritionState>()(
                 protein: d.grams > 0 ? Math.round((d.protein / d.grams) * 100) : d.protein,
                 carbs: d.grams > 0 ? Math.round((d.carbs / d.grams) * 100) : d.carbs,
                 fat: d.grams > 0 ? Math.round((d.fat / d.grams) * 100) : d.fat,
+                sugar:    d.grams > 0 ? Math.round((d.sugar    / d.grams) * 100) : d.sugar,
+                fiber:    d.grams > 0 ? Math.round((d.fiber    / d.grams) * 100) : d.fiber,
+                sodium:   d.grams > 0 ? Math.round((d.sodium   / d.grams) * 100) : d.sodium,
+                iron:     d.grams > 0 ? Math.round((d.iron     / d.grams) * 100) : d.iron,
+                calcium:  d.grams > 0 ? Math.round((d.calcium  / d.grams) * 100) : d.calcium,
+                saturatedFat: d.grams > 0 ? Math.round((d.saturated_fat / d.grams) * 100) : d.saturated_fat,
+                transFat:     d.grams > 0 ? Math.round((d.trans_fat     / d.grams) * 100) : d.trans_fat,
                 source: 'custom',
               },
               grams: d.grams,
@@ -494,6 +522,13 @@ export const useNutritionStore = create<NutritionState>()(
               protein: d.protein,
               carbs: d.carbs,
               fat: d.fat,
+              sugar:    d.sugar,
+              fiber:    d.fiber,
+              sodium:   d.sodium,
+              iron:     d.iron,
+              calcium:  d.calcium,
+              saturatedFat: d.saturated_fat,
+              transFat:     d.trans_fat,
             }));
 
             set(s => {

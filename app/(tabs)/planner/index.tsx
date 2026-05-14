@@ -39,7 +39,7 @@ export default function PlannerScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
   // Plans and analysis are in the persistent store to survive tab switches
   const {
-    mealPlans, workoutPlans, weeklyAnalysis: analysis, weekStart,
+    mealPlans, workoutPlans, weeklyAnalysis: analysis, weekStart, warning,
     setMealPlans, setWorkoutPlans, setWeeklyAnalysis: setAnalysis, clearPlans,
   } = usePlannerStore();
   const [analyzing, setAnalyzing] = useState(false);
@@ -150,7 +150,8 @@ export default function PlannerScreen() {
           medicationsSupplements: profile.medicationsSupplements,
         }, language);
 
-        setMealPlans(parsedPlan, currentWeekStart);
+        const { warning: planWarning, ...plansOnly } = parsedPlan as any;
+        setMealPlans(plansOnly, currentWeekStart, planWarning);
         await supabase.from('meal_plans').delete().eq('user_id', profile.id);
         const { data: planData } = await supabase.from('meal_plans').insert({
           user_id: profile.id, title: t('planner.weekPlan', 'Weekly AI Plan'), week_start: currentWeekStart,
@@ -170,7 +171,8 @@ export default function PlannerScreen() {
           weight: profile.weight, height: profile.height, sex: profile.sex, medicalConditions: profile.medicalConditions,
         }, language);
 
-        setWorkoutPlans(parsedPlan, currentWeekStart);
+        const { warning: planWarning, ...plansOnly } = parsedPlan as any;
+        setWorkoutPlans(plansOnly, currentWeekStart, planWarning);
         await supabase.from('workout_plans').delete().eq('user_id', profile.id);
         const { data: planData } = await supabase.from('workout_plans').insert({
           user_id: profile.id, title: t('planner.workoutsTab', 'Weekly AI Workout'), week_start: currentWeekStart,
@@ -199,7 +201,7 @@ export default function PlannerScreen() {
       const meals = mealPlans[day] || [];
       if (meals.length > 0) {
         html += `<h2>${t(`planner.${day.toLowerCase()}`)}</h2><table><tr><th>Meal</th><th>Food</th><th>Calories</th><th>P/C/F</th></tr>`;
-        meals.forEach(m => {
+        meals.forEach((m: PlanItem) => {
           html += `<tr><td>${t(`tracker.${m.meal}`)}</td><td>${m.name}</td><td>${m.calories} kcal</td><td>${m.protein}g / ${m.carbs}g / ${m.fat}g</td></tr>`;
         });
         html += `</table>`;
@@ -218,7 +220,7 @@ export default function PlannerScreen() {
         html += `<h2>${t(`planner.${day.toLowerCase()}`)}: ${workout.exercises.length === 0 ? t('planner.restDay') : workout.name}</h2>`;
         if (workout.exercises.length > 0) {
           html += `<ul>`;
-          workout.exercises.forEach(ex => {
+          workout.exercises.forEach((ex: any) => {
             html += `<li><strong>${ex.name}</strong><br/>Sets: ${ex.sets} | Reps: ${ex.reps} | Rest: ${ex.rest}</li>`;
           });
           html += `</ul>`;
@@ -361,6 +363,17 @@ export default function PlannerScreen() {
 
         <DayPicker active={activeDay} onSelect={setActiveDay} />
 
+        {/* AI Safety Warning */}
+        {warning && (
+          <View style={[s.warningBox, { backgroundColor: colors.error + '10', borderColor: colors.error + '30' }]}>
+            <View style={s.warningHeader}>
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <Text style={[s.warningTitle, { color: colors.error }]}>{t('common.warning', 'Advertencia')}</Text>
+            </View>
+            <Text style={[s.warningText, { color: colors.textPrimary }]}>{warning}</Text>
+          </View>
+        )}
+
         {/* Weekly Analysis Section */}
         {mode === 'nutrition' && (
           <View style={[s.analysisWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -404,7 +417,7 @@ export default function PlannerScreen() {
         <View style={s.contentList}>
           {mode === 'nutrition' ? (
             meals.length > 0 ? (
-              meals.map((m, i) => (
+              meals.map((m: PlanItem, i: number) => (
                 <AnimatedCard key={i} index={i} direction="up">
                   <MealCard name={m.name} meal={m.meal} cal={m.calories} protein={m.protein} carbs={m.carbs} fat={m.fat} />
                 </AnimatedCard>
@@ -423,7 +436,7 @@ export default function PlannerScreen() {
                          <Text style={[s.workoutBadgeText, {color: colors.primary}]}>{workout.exercises.length} Exercises</Text>
                       </View>
                     </View>
-                    {workout.exercises.map((ex, i) => (
+                    {workout.exercises.map((ex: any, i: number) => (
                       <AnimatedCard key={i} index={i} direction="up">
                         <View style={[s.exerciseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                           <View style={s.exerciseHeader}>
@@ -667,5 +680,10 @@ const s = StyleSheet.create({
 
   exportBtn: { marginHorizontal: Spacing.base, marginTop: 20, borderRadius: Radius.full, overflow: 'hidden', elevation: 4, shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
   exportGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8 },
-  exportText: { color: '#fff', fontSize: 16, fontWeight: '800' }
+  exportText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  
+  warningBox: { marginHorizontal: Spacing.base, marginBottom: Spacing.lg, padding: 16, borderRadius: Radius.xl, borderWidth: 1, borderLeftWidth: 4 },
+  warningHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  warningTitle: { fontSize: 16, fontWeight: '800' },
+  warningText: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
 });

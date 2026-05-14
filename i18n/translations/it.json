@@ -15,7 +15,9 @@
     "locale": "it-IT",
     "done": "Fatto",
     "continue": "Continua",
-    "previous": "Prec."
+    "previous": "Prec.",
+    "confirm": "Conferma",
+    "delete": "Elimina"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -24,7 +26,8 @@
     "planner": "Pianificatore",
     "profile": "Profilo",
     "nutritionist": "Nutrizionista",
-    "trainer": "Allenatore"
+    "trainer": "Allenatore",
+    "doctor": "Medico"
   },
   "profile": {
     "title": "Profilo",
@@ -107,9 +110,6 @@
     "healthProfileFailed": "Aggiornamento profilo sanitario fallito",
     "dietaryRestrictions": "Restrizioni Alimentari",
     "medicalConditions": "Condizioni Mediche",
-    "medicationsSupplements": "Farmaci e Integratori",
-    "noneSelected": "Nessuno selezionato",
-    "editHealthProfile": "Modifica Profilo Sanitario",
     "updateSuccess": "Profilo aggiornato con successo ✨",
     "roleSuperAdmin": "Super Admin",
     "roleAdmin": "Amministratore",
@@ -125,11 +125,30 @@
     "syncMeals": "Sincronizza Pasti",
     "account": "Account",
     "sendFeedback": "Invia Feedback",
-    "settings": "Impostazioni"
+    "settings": "Impostazioni",
+    "massUnit": "Unità di massa",
+    "volumeUnit": "Unità di volume",
+    "lengthUnit": "Unità di lunghezza",
+    "energyUnit": "Unità di energia",
+    "tempUnit": "Unità di temperatura",
+    "selectMassUnit": "Seleziona unità di massa",
+    "selectVolumeUnit": "Seleziona unità di volume",
+    "selectLengthUnit": "Seleziona unità di lunghezza",
+    "selectEnergyUnit": "Seleziona unità di energia",
+    "selectTempUnit": "Seleziona unità di temperatura",
+    "deleteAccount": "Elimina Account",
+    "cancelSubscription": "Cancella Abbonamento",
+    "cancelSubscriptionConfirm": "Vuoi cancellare il tuo abbonamento Pro?",
+    "subscriptionCancelled": "Abbonamento cancellato con successo",
+    "verifySuccess": "Abbonamento verificato con successo",
+    "notPremiumTitle": "Nessun Abbonamento Attivo",
+    "notPremiumDesc": "Nessun abbonamento Pro associato al tuo account.",
+    "upgradeNow": "Aggiorna Ora",
+    "verifySubscription": "Verifica Abbonamento",
+    "manageSubscription": "Gestisci Abbonamento"
   },
   "coach": {
     "title": "Fitz Coach",
-    "welcome": "Ciao! Sono Fitz, il tuo coach nutrizionale IA. Come posso aiutarti oggi?",
     "typing": "Fitz sta pensando...",
     "inputPlaceholder": "Chiedi qualsiasi cosa sulla nutrizione...",
     "limitReached": "Limite giornaliero raggiunto",
@@ -150,22 +169,18 @@
       "suggest2": "Come migliorare la mia tecnica di squat? 🏋️",
       "suggest3": "Piano di allenamento per guadagno muscolare 💪",
       "suggest4": "Quali stretching fare dopo la corsa? 🏃"
+    },
+    "doctor": {
+      "label": "Medico Personale",
+      "welcome": "Ciao! Sono il tuo Medico Personale IA.",
+      "suggest1": "Cosa fare se mi sento stordito dopo l’allenamento? 😵‍💫",
+      "suggest2": "Ci sono interazioni con i miei farmaci? 💊",
+      "suggest3": "Come migliorare la qualità del sonno? 🛋️",
+      "suggest4": "Quali sono i segni della disidratazione? 💧"
     }
   },
-  "nutritionist": {
-    "welcome": "Ciao! Sono Fitz, il tuo nutrizionista IA. Come posso aiutarti con la tua dieta oggi?",
-    "suggest1": "Cosa dovrei mangiare dopo l'allenamento? 💪",
-    "suggest2": "Dammi un'idea per una colazione proteica 🍳",
-    "suggest3": "Come posso ridurre la voglia di dolci? 🍬",
-    "suggest4": "Sto mangiando abbastanza proteine? 📊"
-  },
-  "trainer": {
-    "welcome": "Ciao! Sono Fitz, il tuo personal trainer IA. Su cosa lavoriamo oggi?",
-    "suggest1": "Dammi un allenamento per gli addominali di 15 min 🔥",
-    "suggest2": "Come migliorare i miei piegamenti? 💪",
-    "suggest3": "Ho dolore al ginocchio, quali esercizi per le gambe posso fare? 🦵",
-    "suggest4": "Suggerisci una buona routine di riscaldamento 🏃‍♂️"
-  },
+  "nutritionist": {},
+  "trainer": {},
   "about": {
     "title": "Su FitGO",
     "social": "Social Media",
@@ -213,7 +228,8 @@
     "addActivity": "Aggiungi Attività",
     "recent": "Recenti",
     "popular": "Popolari",
-    "search": "Cerca attività..."
+    "search": "Cerca attività...",
+    "custom": "Attività Personalizzata"
   },
   "welcome": {
     "motto": "Fit-Go: La tua migliore versione",
@@ -228,7 +244,6 @@
   },
   "auth": {
     "login": "Accedi",
-    "welcomeBack": "Bentornato!",
     "email": "Email",
     "password": "Password",
     "signIn": "Accedi",
@@ -245,11 +260,7 @@
     "registerFailed": "Registrazione fallita",
     "forgotPassword": "Password dimenticata?",
     "resetPassword": "Reimposta password",
-    "resetInstructions": "Inserisci la tua email e ti invieremo un link.",
-    "sendLink": "Invia Link",
     "checkEmail": "Controlla la tua email",
-    "linkSent": "Abbiamo inviato un link di ripristino a",
-    "returnLogin": "Torna al login",
     "loginSub": "Accedi per continuare il tuo viaggio",
     "signingIn": "Accesso in corso...",
     "registerSub": "Unisciti a FitGO oggi",
@@ -365,18 +376,11 @@
     "recalculateMeals": "Ricalcola Pasti",
     "exportPlan": "Esporta Piano",
     "exportDay": "Esporta Giorno",
-    "summary": "Riepilogo",
-    "generatePlan": "Genera Piano",
-    "nutrients": "Nutrienti",
-    "activitySub": "Guadagna calorie muovendoti",
-    "neat": "NEAT",
-    "neatSub": "Movimento quotidiano",
-    "exercise": "Esercizio",
-    "exerciseSub": "Allenamento attivo",
-    "burned": "bruciato",
     "text": "Testo",
     "loadFailed": "Impossibile caricare i dati. Riprova.",
-    "addSnack": "Aggiungi Snack"
+    "addSnack": "Aggiungi Snack",
+    "snack2": "Spuntino 2",
+    "snack3": "Spuntino 3"
   },
   "planner": {
     "title": "Pianificatore Pasti",
@@ -477,9 +481,7 @@
       "potato": "Patata",
       "avocado": "Avocado",
       "nuts": "Noci",
-      "oliveOil": "Olio d'oliva",
       "cheese": "Formaggio",
-      "peanutButter": "Burro d'arachidi",
       "apple": "Mela",
       "banana": "Banana",
       "berries": "Frutti di bosco",
@@ -490,8 +492,6 @@
       "tomato": "Pomodoro",
       "onion": "Cipolla",
       "salt": "Sale",
-      "soySauce": "Salsa di soia",
-      "hotSauce": "Salsa piccante",
       "protein_powder": "Proteine in Polvere",
       "turkey": "Tacchino",
       "pork": "Maiale",

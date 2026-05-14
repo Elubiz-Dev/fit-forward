@@ -15,8 +15,8 @@ export default function PaywallModal() {
     router.back();
   };
 
-  const handlePurchase = () => {
-    grantPro();
+  const handlePurchase = async () => {
+    await grantPro();
     router.back();
   };
 

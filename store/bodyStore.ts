@@ -19,9 +19,14 @@ export const useBodyStore = create<BodyState>()(
     (set, get) => ({
       measurements: [],
       addMeasurement: async (m) => {
-        set((s) => ({
-          measurements: [m, ...s.measurements].sort((a, b) => b.date.localeCompare(a.date)),
-        }));
+        set((s) => {
+          const filtered = s.measurements.filter(item => item.date !== m.date);
+          const existing = s.measurements.find(item => item.date === m.date);
+          const merged = existing ? { ...existing, ...m } : m;
+          return {
+            measurements: [merged, ...filtered].sort((a, b) => b.date.localeCompare(a.date)),
+          };
+        });
 
         // Sync to Supabase
         const { profile } = useAuthStore.getState();

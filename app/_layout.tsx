@@ -11,8 +11,7 @@ import '../i18n';
 import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
 import { usePurchaseStore } from '../store';
-import { revenueCat } from '../services/revenuecat';
-import Purchases from 'react-native-purchases';
+
 
 SplashScreen.preventAutoHideAsync();
 

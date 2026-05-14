@@ -123,7 +123,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
               ))
             ) : (
               <>
-                {type === 'confirm' && (
+                {onCancel && (
                   <TouchableOpacity 
                     style={[styles.button, styles.cancelButton, { borderColor: colors.border }]} 
                     onPress={onCancel} 
@@ -134,7 +134,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                 )}
                 
                 <TouchableOpacity 
-                  style={[styles.button, type === 'confirm' ? { flex: 1.5 } : { width: '100%' }]} 
+                  style={[styles.button, onCancel ? { flex: 1.5 } : { width: '100%' }]} 
                   onPress={onConfirm} 
                   activeOpacity={0.85}
                 >
@@ -230,6 +230,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 14,
   },
   buttonGradient: {
     paddingVertical: 14,

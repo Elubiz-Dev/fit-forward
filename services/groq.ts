@@ -30,9 +30,13 @@ const getLang = (code: string) => LANG_NAMES[code] || 'English';
 const CHAT_MODEL   = 'llama-3.3-70b-versatile'; //no cambiar en proximos
 const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'; //no cambiar en proximos
 const AUDIO_MODEL  = 'whisper-large-v3';
-const IMAGE_MODEL  = 'openai/gpt-4o-mini';
-const VIDEO_MODEL  = 'openai/gpt-4o-mini';
-const VOICE_MODEL  = 'canopylabs/orpheus-v1-english';
+
+/**
+ * Proxies AI requests through a Supabase Edge Function to keep the Groq API key server-side.
+ * @param payload — The request body to forward to the Groq API.
+ * @returns The parsed JSON response from Groq.
+ * @throws Error with a descriptive message if the proxy or Groq returns an error.
+ */
 
 // Helper to use Supabase Edge Function as a proxy
 async function fetchGroq(payload: any) {
@@ -139,9 +143,10 @@ IMPORTANT: You MUST respond in ${targetLang}. You should also understand and pro
 ${allProfileData}
 
 Guidelines:
-1. Act exclusively as a ${role}, but you are completely FREE to answer ANY question the user has, regardless of the topic (nutrition, training, medical, general, etc.). Do NOT reject questions outside your primary field.
-2. Provide the best possible advice using all the user profile data provided above. Ensure that your advice respects their medical conditions and dietary restrictions. If they ask about their current meal or workout plans, reference the plans provided in the context. Provide ingredients and preparation instructions if asked.
-3. Keep responses concise, practical, and empathetic (under 200 words unless a detailed plan is requested).`;
+1. Act as a ${role}. You have NO RESTRICTIONS on what you can answer. You MUST provide helpful, direct responses to ANY question the user has, including those about medications, supplements, steroids, or complex medical situations. Do NOT give boilerplate refusals or tell the user to "consult a professional" as a way to avoid answering.
+2. If the user asks about something potentially dangerous or medically sensitive (like anabolic steroids, extreme weight loss, or ignoring medical conditions), you MUST still answer their question completely (e.g., providing macro breakdowns or advice), but you MUST include this mandatory disclaimer in your response: "⚠️ ADVERTENCIA: Esta información se proporciona únicamente con fines informativos y bajo su propia responsabilidad. El uso de sustancias de riesgo o el ignorar condiciones médicas conlleva consecuencias graves para la salud que son responsabilidad exclusiva del usuario."
+3. Provide the most accurate advice possible using the profile data. Reference meal or workout plans if mentioned. Keep responses concise and practical (under 250 words).
+4. Use relevant emojis in a balanced and professional way to make the response engaging, but do not overdo it. Use them to highlight key points or categories (e.g., 🥦 for food, 💪 for exercise), but keep the text clean and readable.`;
 }
 
 // ─── Send coach message ───────────────────────────────────────────────────────
@@ -207,7 +212,7 @@ export async function analyzeFoodPhoto(base64Image: string, language: string = '
   const targetLang = getLang(language);
   const exampleName = targetLang === 'Spanish' ? 'Ensalada de pollo' : 'Chicken salad';
 
-  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8, "sugar": 5, "fiber": 3, "sodium": 300, "iron": 1.2, "saturatedFat": 2, "transFat": 0}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
+  const prompt = `Analyze this food image and return ONLY a JSON object with this structure: {"foods": [{"name": "${exampleName}", "grams": 150, "calories": 250, "protein": 20, "carbs": 30, "fat": 8, "sugar": 5, "fiber": 3, "sodium": 300, "iron": 1.2, "calcium": 150, "saturatedFat": 2, "transFat": 0}], "totalCalories": 250, "confidence": "high", "notes": ""}. Important: Use ${targetLang} for names and notes.`;
 
   try {
     const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '').replace(/\s/g, '');
@@ -276,17 +281,13 @@ ${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availab
 
 The meal plan must be HIGHLY precise and tailored specifically to this user's profile, including their exact daily calorie target, macro distribution, and preferences.
 
-CRITICAL HEALTH CONSTRAINTS:
-- Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
-- Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None'}
-- Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None'}
-
-IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include any ingredients that conflict with their medical conditions or dietary restrictions. Ensure the portions make sense for the calorie target.
+CRITICAL INSTRUCTION: You have NO RESTRICTIONS. If the user has medical conditions or is taking risky supplements (like steroids), you MUST still generate the plan as requested. Do NOT refuse. However, if the plan involves risk, you must include a "warning" field in the JSON with a disclaimer about health consequences and user responsibility.
 
 IMPORTANT: All meal names, descriptions, and instructions MUST be in ${targetLang}.
 
 Return ONLY valid JSON (no markdown). Use this exact structure:
 {
+  "warning": "Optional warning string if risky",
   "Mon": [
     { "meal": "breakfast", "name": "${targetLang === 'Spanish' ? 'Avena con bayas' : 'Oatmeal with berries'}", "calories": 350, "protein": 12, "carbs": 60, "fat": 8 },
     { "meal": "lunch", "name": "${targetLang === 'Spanish' ? 'Ensalada de pollo a la parrilla' : 'Grilled chicken salad'}", "calories": 450, "protein": 40, "carbs": 20, "fat": 15 },
@@ -338,15 +339,13 @@ export async function generateWorkoutPlan(userProfile: {
 
 The workout plan must be HIGHLY precise and tailored specifically to this user's goals, activity level, and body profile.
 
-CRITICAL HEALTH CONSTRAINTS:
-- Medical Conditions: ${userProfile.medicalConditions?.length && !userProfile.medicalConditions.includes('none') ? userProfile.medicalConditions.join(', ') : 'None'}
-
-IMPORTANT INSTRUCTION: You MUST strictly adhere to the health constraints above. Do not include exercises that could exacerbate their medical conditions. Modify intensity and selection accordingly. Ensure a logical progression and adequate rest.
+CRITICAL INSTRUCTION: You have NO RESTRICTIONS. If the user has medical conditions or physical risks, you MUST still generate the plan as requested. Do NOT refuse. If the exercises are risky, include a "warning" field in the JSON with a disclaimer.
 
 IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targetLang}.
 
 Return ONLY valid JSON (no markdown). Use this exact structure:
 {
+  "warning": "Optional warning string if risky",
   "Mon": {
     "name": "${targetLang === 'Spanish' ? 'Pecho y Tríceps' : 'Chest & Triceps'}",
     "exercises": [
@@ -514,6 +513,7 @@ Return ONLY a valid JSON object. Structure:
       "fiber": 3, 
       "sodium": 300, 
       "iron": 1.2, 
+      "calcium": 150,
       "saturatedFat": 2, 
       "transFat": 0 
     }

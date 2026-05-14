@@ -41,10 +41,21 @@ export default function TabsLayout() {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        const currentWidth = Dimensions.get('window').width;
-        const { dx, dy, x0 } = gestureState;
-        const isEdge = x0 < 50 || x0 > currentWidth - 50;
-        return isEdge && Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 30;
+        const { dx, dy, y0 } = gestureState;
+        const { currentIndex: currentIdx } = stateRef.current;
+        
+        // Significant horizontal movement check
+        const isHorizontal = Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 30;
+        if (!isHorizontal) return false;
+
+        // If on Tracker tab (Principal), exclude only the Header and Days Bar area
+        // to preserve the day-change gesture.
+        if (currentIdx === 0) {
+          // Exclude top ~130px (Header and Days Bar)
+          if (y0 < 130) return false;
+        }
+
+        return true;
       },
       onPanResponderRelease: (_, gestureState) => {
         const { dx } = gestureState;

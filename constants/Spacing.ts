@@ -34,8 +34,8 @@ export const Shadow = {
     default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 6 },
   }),
   lg: Platform.select({
-    web:     { boxShadow: '0px 6px 18px rgba(124,92,252,0.3)' } as any,
-    default: { shadowColor: '#7C5CFC', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 18, elevation: 12 },
+    web:     { boxShadow: '0px 6px 18px rgba(139,92,246,0.3)' } as any,
+    default: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 18, elevation: 12 },
   }),
 };
 

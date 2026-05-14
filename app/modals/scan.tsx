@@ -35,7 +35,7 @@ export default function ScanModal() {
   const [photoResult, setPhotoResult]   = useState<{
     foods: { 
       name: string; grams: number; calories: number; protein: number; carbs: number; fat: number;
-      sugar?: number; fiber?: number; sodium?: number; iron?: number; saturatedFat?: number; transFat?: number;
+      sugar?: number; fiber?: number; sodium?: number; iron?: number; calcium?: number; saturatedFat?: number; transFat?: number;
     }[];
     totalCalories: number;
     confidence: 'high' | 'medium' | 'low';
@@ -45,7 +45,7 @@ export default function ScanModal() {
     name: string; grams: number; calories: number; protein: number; carbs: number; fat: number;
     sugar?: number; fiber?: number; sodium?: number; iron?: number; saturatedFat?: number; transFat?: number;
     originalGrams: number; originalCal: number; originalProt: number; originalCarbs: number; originalFat: number;
-    originalSugar?: number; originalFiber?: number; originalSodium?: number; originalIron?: number; originalSatFat?: number; originalTransFat?: number;
+    originalSugar?: number; originalFiber?: number; originalSodium?: number; originalIron?: number; originalCalcium?: number; originalSatFat?: number; originalTransFat?: number;
   }[]>([]);
   const [capturedUri, setCapturedUri]    = useState<string | null>(null);
   const cameraRef = useRef<any>(null);
@@ -250,6 +250,7 @@ export default function ScanModal() {
         originalFiber: f.fiber,
         originalSodium: f.sodium,
         originalIron: f.iron,
+        originalCalcium: f.calcium,
         originalSatFat: f.saturatedFat,
         originalTransFat: f.transFat,
       })));
@@ -340,6 +341,7 @@ export default function ScanModal() {
           originalFiber: f.fiber,
           originalSodium: f.sodium,
           originalIron: f.iron,
+          originalCalcium: f.calcium,
           originalSatFat: f.saturatedFat,
           originalTransFat: f.transFat,
         })));
@@ -380,6 +382,7 @@ export default function ScanModal() {
         originalFiber: f.fiber,
         originalSodium: f.sodium,
         originalIron: f.iron,
+        originalCalcium: f.calcium,
         originalSatFat: f.saturatedFat,
         originalTransFat: f.transFat,
       })));
@@ -408,6 +411,7 @@ export default function ScanModal() {
         fiber:    f.originalFiber ? Math.round(f.originalFiber * ratio) : undefined,
         sodium:   f.originalSodium ? Math.round(f.originalSodium * ratio) : undefined,
         iron:     f.originalIron ? Math.round(f.originalIron * ratio) : undefined,
+        calcium:  f.originalCalcium ? Math.round(f.originalCalcium * ratio) : undefined,
         saturatedFat: f.originalSatFat ? Math.round(f.originalSatFat * ratio) : undefined,
         transFat:     f.originalTransFat ? Math.round(f.originalTransFat * ratio) : undefined,
       };
@@ -435,6 +439,7 @@ export default function ScanModal() {
         fiber:    food.originalFiber ? Math.round((food.originalFiber / food.originalGrams) * 100) : undefined,
         sodium:   food.originalSodium ? Math.round((food.originalSodium / food.originalGrams) * 100) : undefined,
         iron:     food.originalIron ? Math.round((food.originalIron / food.originalGrams) * 100) : undefined,
+        calcium:  food.originalCalcium ? Math.round((food.originalCalcium / food.originalGrams) * 100) : undefined,
         saturatedFat: food.originalSatFat ? Math.round((food.originalSatFat / food.originalGrams) * 100) : undefined,
         transFat:     food.originalTransFat ? Math.round((food.originalTransFat / food.originalGrams) * 100) : undefined,
         source:   'custom' as const,
@@ -450,6 +455,7 @@ export default function ScanModal() {
       fiber:    food.fiber,
       sodium:   food.sodium,
       iron:     food.iron,
+      calcium:  food.calcium,
       saturatedFat: food.saturatedFat,
       transFat:     food.transFat,
     }));
@@ -469,6 +475,7 @@ export default function ScanModal() {
         fiber: food.fiber,
         sodium: food.sodium,
         iron: food.iron,
+        calcium: food.calcium,
         saturated_fat: food.saturatedFat,
         trans_fat: food.transFat,
       }));

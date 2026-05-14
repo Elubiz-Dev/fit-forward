@@ -3,6 +3,12 @@ import type { FoodItem } from '../services/foodDatabase';
 export type ThemeMode = 'light' | 'dark';
 export type AppLanguage = 'en' | 'es' | 'fr' | 'pt' | 'it' | 'de' | 'ru';
 
+export type MassUnit = 'g' | 'kg' | 'lb';
+export type VolumeUnit = 'oz' | 'l' | 'ml';
+export type LengthUnit = 'cm' | 'm' | 'in' | 'ft';
+export type EnergyUnit = 'kcal' | 'kj';
+export type TempUnit = 'c' | 'f';
+
 /**
  * Health profile sub-shape stored inside UserProfile.
  * All fields are optional so users can skip any section.

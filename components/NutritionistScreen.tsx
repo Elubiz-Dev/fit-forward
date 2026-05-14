@@ -17,6 +17,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { safe } from '../utils/sanitize';
 import CoachHistoryModal from './CoachHistoryModal';
+import { ImagePickerModal } from './ImagePickerModal';
 
 const FREE_MSG_LIMIT = 10;
 
@@ -35,24 +36,29 @@ function MessageBubble({ msg, isLastUser, onEdit }: { msg: CoachMessage; isLastU
       {!isUser && (
         <Image source={require('../assets/nutritionist_badge.jpg')} style={bubble.avatar} resizeMode="cover" />
       )}
-      <View style={[bubble.box, isUser ? { backgroundColor: colors.primary, borderBottomRightRadius: 4 } : { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 }]}>
+      <View style={[
+        bubble.box, 
+        isUser 
+          ? { backgroundColor: colors.primary, borderBottomRightRadius: 4, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 } 
+          : { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }
+      ]}>
         {msg.imageUrl && (
           <Image
             source={{ uri: msg.imageUrl }}
-            style={{ width: 180, height: 180, borderRadius: 8, marginBottom: 8 }}
+            style={{ width: 180, height: 180, borderRadius: 12, marginBottom: 8 }}
             resizeMode="cover"
           />
         )}
         <Text style={[bubble.text, isUser && bubble.textUser, !isUser && { color: colors.textPrimary }]}>
-          {formatContent(msg.content)}
+          {msg.content}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
           {isLastUser && onEdit && (
             <TouchableOpacity onPress={() => onEdit(msg)} hitSlop={8}>
               <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' }}>{safe('✎')}</Text>
             </TouchableOpacity>
           )}
-          <Text style={[bubble.time, isUser ? { color: 'rgba(255,255,255,0.6)', marginTop: 0 } : { color: colors.textMuted, marginTop: 0 }]}>
+          <Text style={[bubble.time, isUser ? { color: 'rgba(255,255,255,0.6)' } : { color: colors.textMuted }]}>
             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
@@ -96,6 +102,7 @@ export default function NutritionistScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   const isRecording   = recorderState.isRecording;
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const flatRef                         = useRef<FlatList<CoachMessage>>(null);
 
   const { t } = useTranslation();
@@ -188,6 +195,17 @@ export default function NutritionistScreen() {
     loadHistory();
   }, [profile?.id, language, sessionId]);
 
+  // Handle starting a new chat
+  const handleNewChat = useCallback(() => {
+    setCurrentSessionId(null, coachType);
+    setMessages([{
+      id:        'welcome',
+      role:      'model',
+      content:   t(`coach.${coachType}.welcome`),
+      timestamp: new Date().toISOString(),
+    }], coachType);
+  }, [coachType, t]);
+
   // Scroll to bottom on new message or typing change
   useEffect(() => {
     if (messages.length > 0) {
@@ -200,37 +218,45 @@ export default function NutritionistScreen() {
   }, [messages.length, isTyping]);
 
   // ─── Pick image (camera or gallery) ─────────────────────────────────────────
-  const handlePickImage = useCallback(async () => {
+  const handlePickImage = useCallback(() => {
+    setImagePickerVisible(true);
+  }, []);
+
+  const onLaunchCamera = async () => {
     try {
       const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-
       if (!granted) {
-        // Fallback to gallery
-        const { granted: galleryGranted } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!galleryGranted) {
-          Alert.alert('Permission needed', 'Please allow photo library access in Settings.');
-          return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-          base64: true, quality: 0.2, mediaTypes: ['images'], // Lower quality for Groq
-        });
-        if (!result.canceled && result.assets?.[0]?.base64) {
-          setSelectedImage(result.assets[0].base64!);
-        }
+        Alert.alert('Permission needed', 'Please allow camera access in Settings.');
         return;
       }
-
       const result = await ImagePicker.launchCameraAsync({
-        base64: true, quality: 0.2, // Lower quality for Groq
+        base64: true, quality: 0.2,
       });
       if (!result.canceled && result.assets?.[0]?.base64) {
         setSelectedImage(result.assets[0].base64!);
       }
     } catch {
-      Alert.alert('Error', 'Could not open camera. Please try again.');
+      Alert.alert('Error', 'Could not open camera.');
     }
-  }, []);
+  };
+
+  const onLaunchGallery = async () => {
+    try {
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access in Settings.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        base64: true, quality: 0.2, mediaTypes: ['images'],
+      });
+      if (!result.canceled && result.assets?.[0]?.base64) {
+        setSelectedImage(result.assets[0].base64!);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not open gallery.');
+    }
+  };
 
   // ─── Voice Recording ────────────────────────────────────────────────────────
   /**
@@ -456,7 +482,10 @@ export default function NutritionistScreen() {
   return (
     <View style={[s.safe, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[s.header, { borderBottomColor: colors.border }]}>
+      <LinearGradient 
+        colors={[colors.background, colors.surfaceAlt]} 
+        style={[s.header, { borderBottomColor: colors.border }]}
+      >
         <Image source={require('../assets/nutritionist_badge.jpg')} style={s.headerAvatar} resizeMode="cover" />
         <View style={{ flex: 1 }}>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.nutritionist.label', 'Nutritionist')}</Text>
@@ -466,21 +495,32 @@ export default function NutritionistScreen() {
           </View>
         </View>
 
-        <TouchableOpacity 
-          onPress={() => setHistoryVisible(true)}
-          style={[s.historyBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-        >
-          <Text style={{ fontSize: 18 }}>🕒</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <TouchableOpacity 
+            onPress={handleNewChat}
+            style={[s.headerIconBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 18 }}>➕</Text>
+          </TouchableOpacity>
 
-        {!isProActually && (
-          <View style={[s.countBadge, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-            <Text style={[s.countText, { color: colors.textSecondary }]}>
-              {Math.max(FREE_MSG_LIMIT - msgCount, 0)}/{FREE_MSG_LIMIT}
-            </Text>
-          </View>
-        )}
-      </View>
+          <TouchableOpacity 
+            onPress={() => setHistoryVisible(true)}
+            style={[s.headerIconBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 18 }}>🕒</Text>
+          </TouchableOpacity>
+
+          {!isProActually && (
+            <View style={[s.countBadge, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+              <Text style={[s.countText, { color: colors.textSecondary }]}>
+                {Math.max(FREE_MSG_LIMIT - msgCount, 0)}/{FREE_MSG_LIMIT}
+              </Text>
+            </View>
+          )}
+        </View>
+      </LinearGradient>
 
 
 
@@ -615,7 +655,10 @@ export default function NutritionistScreen() {
                 activeOpacity={0.8}
                 hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               >
-                <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.sendGrad}>
+                <LinearGradient 
+                  colors={['#7C5CFC', '#4338CA']} 
+                  style={[s.sendGrad, { shadowColor: '#7C5CFC', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }]}
+                >
                   <Text style={s.sendText}>↑</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -628,6 +671,13 @@ export default function NutritionistScreen() {
         visible={historyVisible} 
         onClose={() => setHistoryVisible(false)} 
         coachType="nutritionist" 
+      />
+
+      <ImagePickerModal
+        visible={imagePickerVisible}
+        onClose={() => setImagePickerVisible(false)}
+        onCamera={onLaunchCamera}
+        onGallery={onLaunchGallery}
       />
     </View>
   );
@@ -672,6 +722,6 @@ const s = StyleSheet.create({
   upgradeBtn:           { borderRadius: Radius.md, overflow: 'hidden' },
   upgradeGrad:          { padding: 14, alignItems: 'center' },
   upgradeText:          { color: '#fff', fontWeight: '700', fontSize: 15 },
-  historyBtn:           { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  headerIconBtn:        { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
 });
 

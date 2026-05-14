@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform, Image, Linking,
+  LayoutAnimation, UIManager,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,12 +21,21 @@ import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
 import LanguageModal from '../../../components/LanguageModal';
-import { Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, Activity, Scale, ChevronLeft, ChevronRight, Construction, CheckCircle2, AlertCircle } from 'lucide-react-native';
+import { 
+  Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, 
+  Activity, Scale, ChevronLeft, ChevronRight, Construction, 
+  CheckCircle2, AlertCircle, User, Bell, Moon, Globe, Ruler, 
+  Lock, LogOut, Info, FileText, Smartphone, Mail, 
+  MessageSquare, Palette, Languages, Settings, HelpCircle, ShieldCheck, Database,
+  Trash2, Key, RefreshCw, Copy, Calendar, Fingerprint, Share2, MoreHorizontal, ChevronDown, ChevronUp,
+  Camera, ExternalLink, Award, Thermometer, Droplets
+} from 'lucide-react-native';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { Animated, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import { GlassCard } from '../../../components/GlassCard';
 import { WeightProgressPath } from '../../../components/WeightProgressPath';
+import { UnitSelectionModal } from '../../../components/UnitSelectionModal';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ACTIVITY_TO_EXERCISE: Record<string, string> = {
@@ -174,16 +184,50 @@ const stat = StyleSheet.create({
   editHint: { fontSize: 8, marginTop: 4, textTransform: 'uppercase' },
 });
 
-function MenuRow({ icon, label, value, onPress, isDestructive, rightIcon, indent }: {
-  icon: string; label: string; value?: string; onPress?: () => void; isDestructive?: boolean; rightIcon?: string; indent?: boolean;
+function MenuRow({ icon, label, value, onPress, onLongPress, isDestructive, rightIcon, indent, showGradient, iconColor }: {
+  icon: any; label: string; value?: string; onPress?: () => void; onLongPress?: () => void; isDestructive?: boolean; rightIcon?: string; indent?: boolean; showGradient?: boolean; iconColor?: string;
 }) {
   const colors = useTheme();
-  return (
-    <TouchableOpacity style={[mr.row, { borderBottomColor: colors.border, paddingLeft: indent ? Spacing.xl : Spacing.base }]} onPress={onPress} activeOpacity={0.7}>
-      <Text style={mr.icon}>{icon}</Text>
+  const Icon = typeof icon === 'string' ? null : icon;
+  const activeIconColor = iconColor || (isDestructive ? colors.error : colors.primary);
+
+  const content = (
+    <View style={[mr.row, { borderBottomColor: colors.border + '15', paddingLeft: indent ? Spacing.xl + 16 : Spacing.base }]}>
+      <View style={[mr.iconWrapper, { backgroundColor: activeIconColor + '15' }]}>
+        {Icon ? (
+          <Icon size={16} color={activeIconColor} strokeWidth={2.5} />
+        ) : (
+          <Text style={mr.icon}>{icon}</Text>
+        )}
+      </View>
       <Text style={[mr.label, { color: isDestructive ? colors.error : colors.textPrimary }]}>{label}</Text>
-      {value && <Text style={[mr.value, { color: colors.textSecondary }]}>{value}</Text>}
-      <Text style={[mr.arrow, { color: rightIcon === '🔒' ? colors.accent : colors.textMuted, fontSize: rightIcon ? 14 : 20 }]}>{rightIcon || '›'}</Text>
+      {value && <Text style={[mr.value, { color: colors.textSecondary }]} numberOfLines={1}>{value}</Text>}
+      <View style={mr.arrowWrapper}>
+        {rightIcon === '▼' ? (
+          <ChevronDown size={16} color={colors.textMuted} />
+        ) : rightIcon === '▲' ? (
+          <ChevronUp size={16} color={colors.textMuted} />
+        ) : rightIcon === '🔒' ? (
+          <Lock size={12} color="#FBBF24" />
+        ) : onPress ? (
+          <ChevronRight size={16} color={colors.textMuted} />
+        ) : null}
+      </View>
+    </View>
+  );
+
+  return (
+    <TouchableOpacity 
+      onPress={onPress} 
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      style={{ overflow: 'hidden' }}
+    >
+      {showGradient ? (
+        <LinearGradient colors={[activeIconColor + '10', 'transparent']} start={{x:0, y:0}} end={{x:1, y:0}}>
+          {content}
+        </LinearGradient>
+      ) : content}
     </TouchableOpacity>
   );
 }
@@ -443,18 +487,28 @@ const wm = StyleSheet.create({
 });
 
 const mr = StyleSheet.create({
-  row:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.base, borderBottomWidth: 1 },
-  icon:  { fontSize: 20, width: 28 },
-  label: { flex: 1, fontSize: 15, fontWeight: '500' },
-  value: { fontSize: 14 },
-  arrow: { fontSize: 20 },
+  row:   { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: Spacing.base, borderBottomWidth: 1 },
+  iconWrapper: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  icon:  { fontSize: 14 },
+  label: { flex: 1, fontSize: 14, fontWeight: '600', letterSpacing: -0.2 },
+  value: { fontSize: 12, fontWeight: '500', flex: 2, textAlign: 'right', opacity: 0.8 },
+  arrowWrapper: { width: 20, alignItems: 'center', justifyContent: 'center' },
+  arrow: { fontWeight: '700' },
 });
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const colors = useTheme();
-  const { theme, setTheme, language, setLanguage } = useSettingsStore();
+  const { 
+    theme, setTheme, language, setLanguage,
+    massUnit, setMassUnit, volumeUnit, setVolumeUnit, lengthUnit, setLengthUnit, energyUnit, setEnergyUnit,
+    tempUnit, setTempUnit
+  } = useSettingsStore();
   const { profile, setProfile, clearAuth } = useAuthStore();
   const { isPro, refreshStatus } = usePurchaseStore();
   const { setNeat, setExerciseLevel }      = useNutritionStore();
@@ -472,6 +526,20 @@ export default function ProfileScreen() {
   const [showHealth, setShowHealth] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [showInterface, setShowInterface] = useState(false);
+  
+  const [unitModal, setUnitModal] = useState<{
+    visible: boolean;
+    title: string;
+    options: { value: string; label: string; description?: string }[];
+    selectedValue: string;
+    onSelect: (val: any) => void;
+  }>({ visible: false, title: '', options: [], selectedValue: '', onSelect: () => {} });
+  
+  const toggleSection = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setter(!current);
+  };
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Custom Alert State
@@ -512,10 +580,10 @@ export default function ProfileScreen() {
         onConfirm?.();
         setAlert(prev => ({ ...prev, visible: false }));
       },
-      onCancel: () => {
-        onCancel?.();
+      onCancel: onCancel ? () => {
+        onCancel();
         setAlert(prev => ({ ...prev, visible: false }));
-      },
+      } : undefined,
     });
   };
 
@@ -587,15 +655,6 @@ export default function ProfileScreen() {
           date: todayStr,
           weight: updates.weight,
           bodyFat: lastMeasure?.bodyFat,
-        });
-        
-        supabase.from('body_measurements').insert([{
-          user_id: userId,
-          measured_at: todayStr,
-          weight: updates.weight,
-          body_fat_pct: lastMeasure?.bodyFat
-        }]).then(({ error }) => {
-          if (error) console.error('Failed to sync body measurement to DB:', error);
         });
       }
 
@@ -751,16 +810,6 @@ export default function ProfileScreen() {
           weight: newData.weight,
           bodyFat: lastMeasure?.bodyFat, // preserve previous body fat if exists
         });
-        
-        // Also try to insert into supabase body_measurements
-        supabase.from('body_measurements').insert([{
-          user_id: profile.id,
-          measured_at: todayStr,
-          weight: newData.weight,
-          body_fat_pct: lastMeasure?.bodyFat
-        }]).then(({ error }) => {
-          if (error) console.error('Failed to sync body measurement to DB:', error);
-        });
       }
 
       setToastMsg({ text: t('profile.updateSuccess'), type: 'success' });
@@ -804,6 +853,75 @@ export default function ProfileScreen() {
     setLangModalVisible(true);
   };
 
+  const handleEditMassUnit = () => {
+    setUnitModal({
+      visible: true,
+      title: t('profile.massUnit', 'Unidad de masa'),
+      selectedValue: massUnit,
+      options: [
+        { value: 'g', label: 'Gramos (g)' },
+        { value: 'kg', label: 'Kilogramos (kg)' },
+        { value: 'lb', label: 'Libras (lb)' },
+      ],
+      onSelect: setMassUnit,
+    });
+  };
+
+  const handleEditVolumeUnit = () => {
+    setUnitModal({
+      visible: true,
+      title: t('profile.volumeUnit', 'Unidad de volumen'),
+      selectedValue: volumeUnit,
+      options: [
+        { value: 'ml', label: 'Mililitros (ml)' },
+        { value: 'l',  label: 'Litros (l)' },
+        { value: 'oz', label: 'Onzas (oz)' },
+      ],
+      onSelect: setVolumeUnit,
+    });
+  };
+
+  const handleEditLengthUnit = () => {
+    setUnitModal({
+      visible: true,
+      title: t('profile.lengthUnit', 'Unidad de longitud'),
+      selectedValue: lengthUnit,
+      options: [
+        { value: 'cm', label: 'Centímetros (cm)' },
+        { value: 'm', label: 'Metros (m)' },
+        { value: 'in', label: 'Pulgadas (in)' },
+        { value: 'ft', label: 'Pies (ft)' },
+      ],
+      onSelect: setLengthUnit,
+    });
+  };
+
+  const handleEditEnergyUnit = () => {
+    setUnitModal({
+      visible: true,
+      title: t('profile.energyUnit', 'Unidad de energía'),
+      selectedValue: energyUnit,
+      options: [
+        { value: 'kcal', label: 'Kilocalorías (kcal)' },
+        { value: 'kj', label: 'Kilojulios (kJ)' },
+      ],
+      onSelect: setEnergyUnit,
+    });
+  };
+
+  const handleEditTempUnit = () => {
+    setUnitModal({
+      visible: true,
+      title: t('profile.tempUnit', 'Unidad de temperatura'),
+      selectedValue: tempUnit,
+      options: [
+        { value: 'c', label: 'Celsius (°C)' },
+        { value: 'f', label: 'Fahrenheit (°F)' },
+      ],
+      onSelect: setTempUnit,
+    });
+  };
+
   const { measurements } = useBodyStore();
   const weightData = useMemo(() => {
     if (!measurements || measurements.length === 0) {
@@ -832,6 +950,103 @@ export default function ProfileScreen() {
       console.error('Error presenting Customer Center', e);
       router.push('/modals/paywall');
     }
+  };
+
+  const handleCancelSubscription = async () => {
+    showAlert(
+      'confirm',
+      t('profile.cancelSubscription', 'Cancelar Suscripción'),
+      t('profile.cancelSubscriptionConfirm', '¿Estás seguro de que deseas cancelar tu suscripción Pro? Perderás el acceso a todas las funciones premium.'),
+      async () => {
+        const { cancelPro } = usePurchaseStore.getState();
+        await cancelPro();
+        setToastMsg({ text: t('profile.subscriptionCancelled', 'Suscripción cancelada correctamente'), type: 'success' });
+      },
+      () => {},
+      t('profile.cancelSubscription', 'Cancelar Suscripción'),
+      t('common.cancel')
+    );
+  };
+
+  const handleVerifySubscription = async () => {
+    const { verifyProStatus } = usePurchaseStore.getState();
+    const isPro = await verifyProStatus();
+    
+    if (isPro) {
+      setToastMsg({ text: t('profile.verifySuccess', 'Suscripción verificada correctamente'), type: 'success' });
+    } else {
+      showAlert(
+        'info',
+        t('profile.notPremiumTitle', 'Sin Suscripción Activa'),
+        t('profile.notPremiumDesc', 'No hemos encontrado una suscripción Pro asociada a tu cuenta. ¡Mejora tu plan para desbloquear todas las funciones!'),
+        () => router.push('/modals/paywall'),
+        () => {},
+        t('profile.upgradeNow', 'Mejorar ahora'),
+        t('common.cancel')
+      );
+    }
+  };
+
+  const handleCopyID = async () => {
+    if (!profile?.id) return;
+    try {
+      // We try to use expo-clipboard if possible
+      try {
+        const Clipboard = require('expo-clipboard');
+        await Clipboard.setStringAsync(profile.id);
+        setToastMsg({ text: t('profile.idCopied'), type: 'success' });
+      } catch (e) {
+        // Fallback to Share for visibility
+        const { Share } = require('react-native');
+        await Share.share({ message: profile.id });
+      }
+    } catch (err) {
+      console.error('Copy ID error:', err);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    showAlert(
+      'confirm',
+      t('profile.deleteAccount', 'Eliminar Cuenta'),
+      t('profile.deleteAccountConfirm', '¿Estás seguro de que quieres eliminar tu cuenta? Esta acción es permanente y no se puede deshacer.'),
+      async () => {
+        try {
+          const { error } = await supabase.rpc('delete_user'); 
+          if (error) throw error;
+          
+          await supabase.auth.signOut();
+          clearAuth();
+          router.replace('/(auth)/welcome');
+        } catch (e) {
+          console.error('Delete account error:', e);
+          Alert.alert(t('common.error', 'Error'), t('profile.deleteAccountError', 'No se pudo eliminar la cuenta. Por favor contacta a soporte.'));
+        }
+      },
+      () => {},
+      t('common.delete', 'Eliminar'),
+      t('common.cancel', 'Cancelar')
+    );
+  };
+
+  const handleUpdateEmailPassword = () => {
+    showAlert(
+      'info',
+      t('profile.updateEmailPassword'),
+      t('profile.updateEmailPasswordInfo', 'Para actualizar tu correo o contraseña, te enviaremos un enlace de recuperación.'),
+      async () => {
+        if (profile?.email) {
+          const { error } = await supabase.auth.resetPasswordForEmail(profile.email);
+          if (error) {
+            setToastMsg({ text: t('profile.updateFailed'), type: 'error' });
+          } else {
+            setToastMsg({ text: t('auth.checkEmail'), type: 'success' });
+          }
+        }
+      },
+      () => {},
+      t('common.continue')
+    );
   };
 
   const handleLogout = async () => {
@@ -913,24 +1128,35 @@ export default function ProfileScreen() {
         }} 
       />
 
+      <UnitSelectionModal
+        visible={unitModal.visible}
+        title={unitModal.title}
+        options={unitModal.options}
+        selectedValue={unitModal.selectedValue}
+        onSelect={unitModal.onSelect}
+        onClose={() => setUnitModal(p => ({ ...p, visible: false }))}
+      />
+
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={colors.gradientCard} style={s.header}>
-          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8} style={s.avatarContainer}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatar}>
               {profile?.avatarUrl ? (
                 <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage} />
               ) : (
                 <Text style={s.avatarText}>{profile?.name?.[0]?.toUpperCase() ?? '?'}</Text>
               )}
-              <View style={[s.editBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={{ fontSize: 10 }}>📸</Text>
-              </View>
             </LinearGradient>
+            <View style={[s.editBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Camera size={12} color={colors.primary} strokeWidth={2.5} />
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => openEdit('name', t('profile.editName'), t('profile.enterName'))}>
-            <Text style={[s.name, { color: colors.textPrimary }]}>{profile?.name ?? 'User'} ✎</Text>
-          </TouchableOpacity>
-          <Text style={[s.email, { color: colors.textSecondary }]}>{profile?.email ?? ''}</Text>
+          <View style={{ alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => openEdit('name', t('profile.editName'), t('profile.enterName'))}>
+              <Text style={[s.name, { color: colors.textPrimary }]}>{profile?.name ?? 'User'} <Text style={{ fontSize: 14, opacity: 0.5 }}>✎</Text></Text>
+            </TouchableOpacity>
+            <Text style={[s.email, { color: colors.textSecondary }]}>{profile?.email ?? ''}</Text>
+          </View>
           {profile?.role === 'super_admin' ? (
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proBadge}>
               <Text style={s.proBadgeText}>⚡ {t('profile.roleSuperAdmin', 'Super Admin')}</Text>
@@ -939,8 +1165,8 @@ export default function ProfileScreen() {
             <LinearGradient colors={['#10B981', '#059669']} style={s.proBadge}>
               <Text style={s.proBadgeText}>🛡️ {t('profile.roleAdmin', 'Administrator')}</Text>
             </LinearGradient>
-          ) : isPro ? (
-            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proBadge}>
+          ) : profile?.isPro ? (
+            <LinearGradient colors={['#F59E0B', '#D97706']} style={s.proBadge}>
               <Text style={s.proBadgeText}>⭐ {t('profile.rolePro', 'Pro Member')}</Text>
             </LinearGradient>
           ) : (
@@ -1015,7 +1241,7 @@ export default function ProfileScreen() {
                 focusedDataPointColor={colors.accent}
                 focusEnabled
                 showStripOnFocus
-                showDataPointOnFocus
+                focusedDataPointRadius={6}
                 xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
               />
             </View>
@@ -1034,63 +1260,152 @@ export default function ProfileScreen() {
         </GlassCard>
 
         {/* Configuración */}
-        <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <GlassCard
+          noPadding
+          showStripe
+          accentColor={colors.primary}
+          style={{ marginHorizontal: Spacing.base, marginBottom: Spacing.base }}
+        >
           <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('profile.settings', 'Configuración')}</Text>
-          <MenuRow icon="🔥" label={t('profile.updateGoals', 'Actualizar objetivos')} onPress={handleEditGoalFlow} />
-          {isPro && <MenuRow icon="⭐" label={t('profile.manageSubscription', 'Gestionar Suscripción')} onPress={handleManageSubscription} />}
-          <MenuRow icon="🍎" label={t('profile.mealPlanFoods', 'Tus Comidas Disponibles')} onPress={() => router.push('/modals/food-selection' as any)} />
-          <MenuRow icon="🩺" label={t('profile.healthProfile', 'Perfil de Salud')} rightIcon={showHealth ? '▼' : '›'} onPress={() => setShowHealth(!showHealth)} />
+          <MenuRow icon={Flame} label={t('profile.updateGoals', 'Actualizar objetivos')} onPress={handleEditGoalFlow} showGradient iconColor="#FF4D4D" />
+          <MenuRow icon={Target} label={t('profile.mealPlanFoods', 'Tus Comidas Disponibles')} onPress={() => router.push('/modals/food-selection' as any)} iconColor="#10B981" />
+          <MenuRow icon={Activity} label={t('profile.healthProfile', 'Perfil de Salud')} rightIcon={showHealth ? '▼' : '›'} onPress={() => toggleSection(setShowHealth, showHealth)} iconColor="#3B82F6" />
           {showHealth && (
-            <View style={{ backgroundColor: colors.surfaceAlt, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <MenuRow icon="🍏" label={t('profile.dietaryRestrictions', 'Restricciones Dietéticas')} value={profile?.dietaryRestrictions?.includes('none') || !profile?.dietaryRestrictions?.length ? t('profile.none') : `${profile.dietaryRestrictions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} />
-              <MenuRow icon="❤️" label={t('profile.medicalConditions', 'Condiciones Médicas')} value={profile?.medicalConditions?.includes('none') || !profile?.medicalConditions?.length ? t('profile.none') : `${profile.medicalConditions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} />
-              <MenuRow icon="💊" label={t('profile.medicationsSupplements', 'Medicamentos')} value={profile?.medicationsSupplements?.includes('none') || !profile?.medicationsSupplements?.length ? t('profile.none') : `${profile.medicationsSupplements.length} seleccionados`} indent onPress={() => router.push('/modals/health-profile' as any)} />
+            <View style={{ backgroundColor: colors.surfaceAlt + '10', borderBottomWidth: 1, borderBottomColor: colors.border + '10' }}>
+              <MenuRow icon={Heart} label={t('profile.dietaryRestrictions', 'Restricciones Dietéticas')} value={profile?.dietaryRestrictions?.includes('none') || !profile?.dietaryRestrictions?.length ? t('profile.none') : `${profile.dietaryRestrictions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} iconColor="#EF4444" />
+              <MenuRow icon={Activity} label={t('profile.medicalConditions', 'Condiciones Médicas')} value={profile?.medicalConditions?.includes('none') || !profile?.medicalConditions?.length ? t('profile.none') : `${profile.medicalConditions.length} seleccionadas`} indent onPress={() => router.push('/modals/health-profile' as any)} iconColor="#3B82F6" />
+              <MenuRow icon={ShieldCheck} label={t('profile.medicationsSupplements', 'Medicamentos')} value={profile?.medicationsSupplements?.includes('none') || !profile?.medicationsSupplements?.length ? t('profile.none') : `${profile.medicationsSupplements.length} seleccionados`} indent onPress={() => router.push('/modals/health-profile' as any)} iconColor="#10B981" />
             </View>
           )}
-          <MenuRow icon="🔔" label={t('profile.reminders', 'Recordatorios')} onPress={handleNotImplemented} />
-          <MenuRow icon="🌗" label={t('profile.interface', 'Interfaz')} value={theme === 'dark' ? t('profile.dark', 'Oscuro') : t('profile.lightMode', 'Claro')} onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
-          <MenuRow icon="🍱" label={t('profile.syncMeals', 'Sincronizar Comidas')} rightIcon="🔒" onPress={handleNotImplemented} />
-          <MenuRow icon="👤" label={t('profile.account', 'Cuenta')} rightIcon={showAccount ? '▼' : '›'} onPress={() => setShowAccount(!showAccount)} />
+          <MenuRow icon={Bell} label={t('profile.reminders', 'Recordatorios')} onPress={handleNotImplemented} iconColor="#F59E0B" />
+          <MenuRow icon={Palette} label={t('profile.interface', 'Interfaz')} rightIcon={showInterface ? '▼' : '›'} onPress={() => toggleSection(setShowInterface, showInterface)} iconColor="#8B5CF6" />
+          {showInterface && (
+            <View style={{ backgroundColor: colors.surfaceAlt + '10', borderBottomWidth: 1, borderBottomColor: colors.border + '10' }}>
+              <MenuRow 
+                icon={Moon} 
+                label={t('profile.appearance', 'Apariencia')} 
+                value={theme === 'dark' ? t('profile.dark', 'Oscuro') : t('profile.lightMode', 'Claro')} 
+                indent 
+                onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+                iconColor="#8B5CF6"
+              />
+              <MenuRow 
+                icon={Globe} 
+                label={t('profile.language', 'Idioma')} 
+                value={language.toUpperCase()} 
+                indent 
+                onPress={handleEditLanguage} 
+                iconColor="#3B82F6"
+              />
+              <MenuRow 
+                icon={Scale} 
+                label={t('profile.massUnit', 'Unidad de masa')} 
+                value={massUnit.toUpperCase()} 
+                indent 
+                onPress={handleEditMassUnit} 
+                iconColor="#10B981"
+              />
+              <MenuRow 
+                icon={Droplets} 
+                label={t('profile.volumeUnit', 'Unidad de volumen')} 
+                value={volumeUnit.toUpperCase()} 
+                indent 
+                onPress={handleEditVolumeUnit} 
+                iconColor="#3B82F6"
+              />
+              <MenuRow 
+                icon={Ruler} 
+                label={t('profile.lengthUnit', 'Unidad de longitud')} 
+                value={lengthUnit.toUpperCase()} 
+                indent 
+                onPress={handleEditLengthUnit} 
+                iconColor="#6366F1"
+              />
+              <MenuRow 
+                icon={Zap} 
+                label={t('profile.energyUnit', 'Unidad de energía')} 
+                value={energyUnit.toUpperCase()} 
+                indent 
+                onPress={handleEditEnergyUnit} 
+                iconColor="#F59E0B"
+              />
+              <MenuRow 
+                icon={Thermometer} 
+                label={t('profile.tempUnit', 'Unidad de temperatura')} 
+                value={tempUnit === 'c' ? '°C' : '°F'} 
+                indent 
+                onPress={handleEditTempUnit} 
+                iconColor="#3B82F6"
+              />
+            </View>
+          )}
+          <MenuRow icon={User} label={t('profile.account', 'Cuenta')} rightIcon={showAccount ? '▼' : '›'} onPress={() => toggleSection(setShowAccount, showAccount)} iconColor="#6366F1" />
           
           {showAccount && (
-            <View style={{ backgroundColor: colors.surfaceAlt, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <MenuRow icon="✎" label={t('profile.editName', 'Nombre')} value={profile?.name ?? '--'} indent onPress={() => openEdit('name', t('profile.editName'), t('profile.enterName'))} />
-              <MenuRow icon="⚖️" label={t('profile.weight', 'Peso')} value={`${profile?.weight ?? '--'} ${t('profile.kg')}`} indent onPress={() => openEdit('weight', t('profile.weight'), t('profile.enterWeight'), 'numeric')} />
-              <MenuRow icon="📏" label={t('profile.height', 'Altura')} value={`${profile?.height ?? '--'} ${t('profile.cm')}`} indent onPress={() => openEdit('height', t('profile.height'), t('profile.enterHeight'), 'numeric')} />
-              <MenuRow icon="🎂" label={t('profile.age', 'Edad')} value={`${profile?.age ?? '--'}`} indent onPress={() => openEdit('age', t('profile.age'), t('profile.enterAge'), 'numeric')} />
-              <MenuRow icon="⚧️" label={t('profile.sex', 'Sexo')} value={profile?.sex ? (profile.sex === 'male' ? t('profile.male') : t('profile.female')) : '--'} indent onPress={handleEditSex} />
-              <MenuRow icon="🌐" label={t('profile.language', 'Idioma')} value={language.toUpperCase()} indent onPress={handleEditLanguage} />
+            <View style={{ backgroundColor: colors.surfaceAlt + '10', borderBottomWidth: 1, borderBottomColor: colors.border + '10' }}>
+              <MenuRow icon={User} label={t('profile.editName', 'Nombre')} value={profile?.name ?? '--'} indent onPress={() => openEdit('name', t('profile.editName'), t('profile.enterName'))} iconColor="#6366F1" />
+              <MenuRow icon={Scale} label={t('profile.weight', 'Peso')} value={`${profile?.weight ?? '--'} ${t('profile.kg')}`} indent onPress={() => openEdit('weight', t('profile.weight'), t('profile.enterWeight'), 'numeric')} iconColor="#10B981" />
+              <MenuRow icon={Ruler} label={t('profile.height', 'Altura')} value={`${profile?.height ?? '--'} ${t('profile.cm')}`} indent onPress={() => openEdit('height', t('profile.height'), t('profile.enterHeight'), 'numeric')} iconColor="#3B82F6" />
+              <MenuRow icon={Calendar} label={t('profile.age', 'Edad')} value={`${profile?.age ?? '--'}`} indent onPress={() => openEdit('age', t('profile.age'), t('profile.enterAge'), 'numeric')} iconColor="#F59E0B" />
+              <MenuRow icon={Activity} label={t('profile.sex', 'Sexo')} value={profile?.sex ? (profile.sex === 'male' ? t('profile.male') : t('profile.female')) : '--'} indent onPress={handleEditSex} iconColor="#8B5CF6" />
+              
+              <MenuRow icon={Database} label={t('profile.exportData', 'Exportar Data (Excel)')} rightIcon={!profile?.isPro ? '🔒' : undefined} indent onPress={profile?.isPro ? handleNotImplemented : () => router.push('/modals/paywall')} iconColor="#10B981" />
+              <MenuRow icon={Zap} label={t('profile.manageSubscription', 'Gestionar Suscripción')} indent onPress={handleManageSubscription} iconColor="#F59E0B" />
+              {profile?.isPro ? (
+                <MenuRow icon={RefreshCw} label={t('profile.cancelSubscription', 'Cancelar Suscripción')} indent onPress={handleCancelSubscription} iconColor="#EF4444" />
+              ) : (
+                <MenuRow icon={RefreshCw} label={t('profile.verifySubscription', 'Verificar suscripción')} indent onPress={handleVerifySubscription} iconColor="#3B82F6" />
+              )}
+              <MenuRow icon={Fingerprint} label={t('profile.userId', 'ID Usuario')} value={profile?.id ?? '--'} indent onLongPress={handleCopyID} iconColor="#6366F1" />
+              <MenuRow icon={Mail} label={t('auth.email', 'Email')} value={profile?.email ?? '--'} indent iconColor="#8B5CF6" />
+              <MenuRow icon={Key} label={t('profile.updateEmailPassword', 'Actualizar correo o contraseña')} indent onPress={handleUpdateEmailPassword} iconColor="#F59E0B" />
+              <MenuRow icon={Trash2} label={t('profile.deleteAccount', 'Eliminar Cuenta')} indent onPress={handleDeleteAccount} isDestructive />
             </View>
           )}
-        </View>
+        </GlassCard>
 
         {/* About */}
-        <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('about.title', 'Acerca de')}</Text>
-          <MenuRow icon="ℹ️" label={t('about.moreInfo', 'Más información')} rightIcon={showAbout ? '▼' : '›'} onPress={() => setShowAbout(!showAbout)} />
+        <GlassCard
+          noPadding
+          opacity={0.4}
+          accentColor="#8B5CF6"
+          style={{ marginHorizontal: Spacing.base, marginBottom: Spacing.base }}
+        >
+          <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('about.title', 'SOBRE FITGO')}</Text>
+          <MenuRow icon={FileText} label={t('profile.termsAndConditions', 'Términos y Condiciones')} onPress={undefined} iconColor="#6366F1" />
+          <MenuRow icon={Info} label={t('about.moreInfo', 'Más información')} rightIcon={showAbout ? '▼' : '›'} onPress={() => toggleSection(setShowAbout, showAbout)} iconColor="#3B82F6" />
           
           {showAbout && (
-            <View style={{ backgroundColor: colors.surfaceAlt, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <MenuRow icon="📱" label={t('about.tiktok', 'TikTok')} indent onPress={() => Linking.openURL('https://www.tiktok.com/@fit_go?is_from_webapp=1&sender_device=pc')} />
-              <MenuRow icon="📸" label={t('about.instagram', 'Instagram')} indent onPress={() => Linking.openURL('https://www.instagram.com/fit___go/')} />
-              <MenuRow icon="📧" label={t('about.email', 'Email')} value="fitgoenterprise@gmail.com" indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} />
-              <MenuRow icon="💬" label={t('profile.sendFeedback', 'Enviar Sugerencia')} indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} />
-              <View style={s.hashtagRow}>
-                <Text style={[s.hashtagText, { color: colors.primary }]}>#FitGo {t('about.hashtag', '#TuMejorVersion')}</Text>
-              </View>
+            <View style={{ backgroundColor: colors.surfaceAlt + '10', borderTopWidth: 1, borderTopColor: colors.border + '10' }}>
+              <MenuRow icon={Smartphone} label={t('about.tiktok', 'TikTok')} indent onPress={() => Linking.openURL('https://www.tiktok.com/@fit_go?is_from_webapp=1&sender_device=pc')} iconColor="#FF0050" />
+              <MenuRow icon={Camera} label={t('about.instagram', 'Instagram')} indent onPress={() => Linking.openURL('https://www.instagram.com/fit___go/')} iconColor="#E1306C" />
+              <MenuRow icon={Mail} label={t('about.email', 'Email')} value="fitgoenterprise@gmail.com" indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} iconColor="#EA4335" />
+              <MenuRow icon={MessageSquare} label={t('profile.sendFeedback', 'Enviar Sugerencia')} indent onPress={() => Linking.openURL('mailto:fitgoenterprise@gmail.com')} iconColor="#10B981" />
+              <MenuRow icon={Info} label={t('about.version', 'Versión')} value="v1.0.1" indent iconColor={colors.textMuted} />
             </View>
           )}
-        </View>
+        </GlassCard>
 
+        {/* Sign Out Button */}
+        <TouchableOpacity 
+          onPress={handleLogout}
+          activeOpacity={0.7}
+          style={{ marginHorizontal: Spacing.base, marginBottom: 20 }}
+        >
+          <LinearGradient 
+            colors={['rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.05)']}
+            start={{x:0, y:0}}
+            end={{x:1, y:1}}
+            style={{ borderRadius: 20, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+          >
+            <LogOut size={20} color="#EF4444" strokeWidth={2.5} />
+            <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '700' }}>
+              {t('profile.signOut', 'Cerrar Sesión')}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
-        {/* Danger Zone */}
-        <View style={[s.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('profile.dangerZone', 'Zona Peligrosa')}</Text>
-          <MenuRow icon="🚪" label={t('profile.signOut', 'Cerrar Sesión')} onPress={handleLogout} isDestructive rightIcon=" " />
-        </View>
-
-        <Text style={[s.version, { color: colors.textMuted }]}>FitGO v1.0.1</Text>
-        <View style={{ height: 32 }} />
+        <View style={{ height: 48 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -1108,14 +1423,15 @@ function MeasureStat({ label, value }: { label: string; value: string }) {
 
 const s = StyleSheet.create({
   safe:        { flex: 1 },
-  header:      { alignItems: 'center', padding: Spacing['2xl'], paddingTop: Spacing.lg, marginBottom: Spacing.base },
-  avatar:      { width: 84, height: 84, borderRadius: 42, justifyContent: 'center', alignItems: 'center', marginBottom: 14, position: 'relative' },
-  avatarImage: { width: 84, height: 84, borderRadius: 42 },
-  editBadge:   { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
-  avatarText:  { fontSize: 36, fontWeight: '800', color: '#fff' },
-  name:        { fontSize: 22, fontWeight: '800', marginBottom: 4 },
-  email:       { fontSize: 13, marginBottom: 16 },
-  proBadge:    { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 6 },
+  header:      { alignItems: 'center', padding: Spacing['2xl'], paddingTop: Spacing.xl, marginBottom: Spacing.base, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  avatarContainer: { position: 'relative', marginBottom: 14 },
+  avatar:      { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  avatarImage: { width: 90, height: 90, borderRadius: 45 },
+  editBadge:   { position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 3 },
+  avatarText:  { fontSize: 38, fontWeight: '800', color: '#fff' },
+  name:        { fontSize: 24, fontWeight: '900', marginBottom: 2, letterSpacing: -0.5 },
+  email:       { fontSize: 13, marginBottom: 16, opacity: 0.7 },
+  proBadge:    { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   proBadgeText:{ color: '#fff', fontWeight: '700', fontSize: 13 },
   upgradeBtn:  { borderRadius: Radius.lg, overflow: 'hidden' },
   upgradeGrad: { paddingHorizontal: 20, paddingVertical: 10 },
@@ -1128,8 +1444,12 @@ const s = StyleSheet.create({
   measureCard: { marginHorizontal: Spacing.base, borderRadius: Radius.lg, padding: Spacing.base, marginBottom: Spacing.base, borderWidth: 1 },
   measureRow:  { flexDirection: 'row', marginTop: 10 },
   section:     { marginHorizontal: Spacing.base, marginBottom: Spacing.base, borderRadius: Radius.lg, overflow: 'hidden', borderWidth: 1 },
-  sectionTitle:{ fontSize: 12, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', padding: Spacing.base, paddingBottom: 6 },
-  version:     { textAlign: 'center', fontSize: 12, marginTop: 8 },
-  hashtagRow:  { padding: Spacing.base, alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
-  hashtagText: { fontSize: 13, fontWeight: '600', fontStyle: 'italic' },
+  sectionTitle:{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: Spacing.base, paddingTop: Spacing.base + 4, paddingBottom: 8 },
+  deleteBtnText: {
+    color: '#EF4444',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  version:     { textAlign: 'center', fontSize: 11, marginTop: 20 },
 });
