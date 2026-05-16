@@ -51,7 +51,7 @@ export default function ScanModal() {
   const cameraRef = useRef<any>(null);
   const colors = useTheme();
   const { language } = useSettingsStore();
-  const { addLog, fetchLogs, selectedDate, aiUsageCount, incrementAiUsage } = useNutritionStore();
+  const { addLog, fetchLogs, selectedDate, aiPhotoUsageCount, aiTextUsageCount, incrementAiUsage } = useNutritionStore();
   const { profile } = useAuthStore();
   const { isPro } = usePurchaseStore();
   const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
@@ -108,19 +108,35 @@ export default function ScanModal() {
     if (!permission?.granted) requestPermission();
   }, []);
 
-  const checkAiLimit = (): boolean => {
+  const checkAiLimit = (scanMode: 'photo' | 'text'): boolean => {
     if (isProActually) return true;
-    if (aiUsageCount >= 5) {
-      showAlert(
-        'confirm',
-        t('scan.limitReached') || 'AI Limit Reached',
-        t('scan.limitReachedSub') || 'You have reached the daily limit of 5 AI-powered registrations. Upgrade to Pro for unlimited use!',
-        () => router.push('/modals/paywall'),
-        () => {},
-        t('onboarding.proBtn'),
-        t('common.cancel')
-      );
-      return false;
+    
+    if (scanMode === 'photo') {
+      if (aiPhotoUsageCount >= 5) {
+        showAlert(
+          'confirm',
+          t('scan.limitReached') || 'AI Limit Reached',
+          t('scan.limitReachedSubPhoto') || 'You have reached the daily limit of 5 AI photo registrations. Upgrade to Pro for unlimited use!',
+          () => router.push('/modals/paywall'),
+          () => {},
+          t('onboarding.proBtn'),
+          t('common.cancel')
+        );
+        return false;
+      }
+    } else {
+      if (aiTextUsageCount >= 10) {
+        showAlert(
+          'confirm',
+          t('scan.limitReached') || 'AI Limit Reached',
+          t('scan.limitReachedSubText') || 'You have reached the daily limit of 10 AI text registrations. Upgrade to Pro for unlimited use!',
+          () => router.push('/modals/paywall'),
+          () => {},
+          t('onboarding.proBtn'),
+          t('common.cancel')
+        );
+        return false;
+      }
     }
     return true;
   };
@@ -222,7 +238,7 @@ export default function ScanModal() {
   };
 
   const handleTextAnalyze = async () => {
-    if (!textInput.trim() || !checkAiLimit()) return;
+    if (!textInput.trim() || !checkAiLimit('text')) return;
     setLoading(true);
 
     try {
@@ -255,7 +271,7 @@ export default function ScanModal() {
         originalTransFat: f.transFat,
       })));
       setCapturedUri('text'); // Flag to indicate text mode
-      incrementAiUsage();
+      incrementAiUsage('text');
     } catch (err: any) {
       console.error('[ScanModal] Text analyze error:', err);
       showAlert('error', t('common.error'), t('scan.analysisFailed') || 'AI analysis failed. Please check your connection.');
@@ -314,7 +330,7 @@ export default function ScanModal() {
   };
 
   const handlePickImage = async () => {
-    if (loading || !checkAiLimit()) return;
+    if (loading || !checkAiLimit('photo')) return;
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -346,7 +362,7 @@ export default function ScanModal() {
           originalSatFat: f.saturatedFat,
           originalTransFat: f.transFat,
         })));
-        incrementAiUsage();
+        incrementAiUsage('photo');
       }
     } catch (err: any) {
       console.error('Picker Error:', err);
@@ -357,7 +373,7 @@ export default function ScanModal() {
   };
 
   const handleTakePhoto = async () => {
-    if (loading || !cameraRef.current || !checkAiLimit()) return;
+    if (loading || !cameraRef.current || !checkAiLimit('photo')) return;
     setLoading(true);
 
     try {
@@ -387,7 +403,7 @@ export default function ScanModal() {
         originalSatFat: f.saturatedFat,
         originalTransFat: f.transFat,
       })));
-      incrementAiUsage();
+      incrementAiUsage('photo');
     } catch (err: any) {
       console.error('Analysis Error:', err);
       showAlert('error', t('scan.analysisFailed'), t('scan.analysisFailedSub', { error: err?.message || err }));
@@ -682,7 +698,7 @@ export default function ScanModal() {
                       <Text style={{ fontSize: 20 }}>🔄</Text>
                     </TouchableOpacity>
                   </View>
-                  {!isProActually && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 5 - aiUsageCount }) || `${5 - aiUsageCount} AI scans left today`}</Text>}
+                  {!isProActually && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 5 - aiPhotoUsageCount }) || `${5 - aiPhotoUsageCount} AI scans left today`}</Text>}
                 </View>
               </>
             ) : (
@@ -710,7 +726,7 @@ export default function ScanModal() {
                     {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.analyzeText}>{t('scan.analyze') || 'Analyze with AI'}</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
-                {!profile?.isPro && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 5 - aiUsageCount }) || `${5 - aiUsageCount} AI scans left today`}</Text>}
+                {!profile?.isPro && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 10 - aiTextUsageCount }) || `${10 - aiTextUsageCount} AI scans left today`}</Text>}
               </ScrollView>
             )}
           </View>

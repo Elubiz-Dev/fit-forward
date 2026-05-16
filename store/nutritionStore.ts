@@ -28,10 +28,11 @@ interface NutritionState {
   dailySleep:    Record<string, number>; // date -> hours
   dailyNeat:     Record<string, string>;
   dailyExercise: Record<string, string>;
-  aiUsageCount:  number;
+  aiPhotoUsageCount:  number;
+  aiTextUsageCount:   number;
   lastAiUsageDate: string;
   updateActivity: (date: string) => void;
-  incrementAiUsage: () => void;
+  incrementAiUsage: (mode: 'photo' | 'text') => void;
   checkAndResetAiLimit: () => void;
   addLog:       (log: FoodLog) => void;
   removeLog:    (id: string) => void;
@@ -109,7 +110,8 @@ export const useNutritionStore = create<NutritionState>()(
       dailySleep:   {},
       dailyNeat:    {},
       dailyExercise:{},
-      aiUsageCount: 0,
+      aiPhotoUsageCount: 0,
+      aiTextUsageCount:  0,
       lastAiUsageDate: new Date().toLocaleDateString('en-CA'),
 
       addExtraSnack: async () => {
@@ -169,13 +171,17 @@ export const useNutritionStore = create<NutritionState>()(
       checkAndResetAiLimit: () => {
         const today = getLocalDateString();
         if (get().lastAiUsageDate !== today) {
-          set({ aiUsageCount: 0, lastAiUsageDate: today });
+          set({ aiPhotoUsageCount: 0, aiTextUsageCount: 0, lastAiUsageDate: today });
         }
       },
 
-      incrementAiUsage: () => {
+      incrementAiUsage: (mode) => {
         get().checkAndResetAiLimit();
-        set((s) => ({ aiUsageCount: s.aiUsageCount + 1 }));
+        if (mode === 'photo') {
+          set((s) => ({ aiPhotoUsageCount: s.aiPhotoUsageCount + 1 }));
+        } else {
+          set((s) => ({ aiTextUsageCount: s.aiTextUsageCount + 1 }));
+        }
       },
 
       updateActivity: (date) => {
@@ -558,7 +564,8 @@ export const useNutritionStore = create<NutritionState>()(
         dailyExercise: {},
         activityLogs: [],
         favoriteFoods: [],
-        aiUsageCount: 0,
+        aiPhotoUsageCount: 0,
+        aiTextUsageCount: 0,
         activeDays: {},
         plannedDays: 0,
         lastAiUsageDate: new Date().toLocaleDateString('en-CA'),
@@ -580,7 +587,8 @@ export const useNutritionStore = create<NutritionState>()(
         favoriteFoods: s.favoriteFoods,
         activeDays:    s.activeDays,
         plannedDays:   s.plannedDays,
-        aiUsageCount:  s.aiUsageCount,
+        aiPhotoUsageCount:  s.aiPhotoUsageCount,
+        aiTextUsageCount:   s.aiTextUsageCount,
         lastAiUsageDate: s.lastAiUsageDate,
       }),
     }
