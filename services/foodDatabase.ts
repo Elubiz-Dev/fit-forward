@@ -162,23 +162,38 @@ export function calculateTDEE(params: {
   age: number;
   sex: 'male' | 'female';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  lifestyleLevel?: 'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
 }): { bmr: number; tdee: number } {
   // Mifflin-St Jeor
   const bmr = params.sex === 'male'
     ? 10 * params.weight + 6.25 * params.height - 5 * params.age + 5
     : 10 * params.weight + 6.25 * params.height - 5 * params.age - 161;
 
-  const activityMultipliers = {
-    sedentary:   1.2,
-    light:       1.375,
-    moderate:    1.55,
-    active:      1.725,
-    very_active: 1.9,
+  // Base multipliers for NEAT (Non-Exercise Activity Thermogenesis)
+  const lifestyleMultipliers = {
+    seated: 1.15,
+    standing_sometimes: 1.25,
+    standing_mostly: 1.35,
+    moving: 1.45,
+    physical_work: 1.55,
   };
+
+  // Additions for EAT (Exercise Activity Thermogenesis)
+  const exerciseAdditions = {
+    sedentary:   0.05,
+    light:       0.15,
+    moderate:    0.25,
+    active:      0.40,
+    very_active: 0.55,
+  };
+
+  const lifestyleBase = lifestyleMultipliers[params.lifestyleLevel || 'seated'];
+  const exerciseBonus = exerciseAdditions[params.activityLevel];
+  const totalMultiplier = lifestyleBase + exerciseBonus;
 
   return {
     bmr: Math.round(bmr),
-    tdee: Math.round(bmr * activityMultipliers[params.activityLevel]),
+    tdee: Math.round(bmr * totalMultiplier),
   };
 }
 

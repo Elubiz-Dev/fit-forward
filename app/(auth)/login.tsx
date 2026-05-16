@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,6 +24,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const { setSession }          = useAuthStore();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{title: string, message: string, type: AlertType}>({ title: '', message: '', type: 'error' });
+
+  const showAlert = (title: string, message: string, type: AlertType = 'error') => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
 
   const redirectTo = makeRedirectUri();
 
@@ -46,7 +54,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(t('common.error'), t('auth.fillFields'));
+      showAlert(t('common.error'), t('auth.fillFields'), 'warning');
       return;
     }
     setLoading(true);
@@ -54,7 +62,7 @@ export default function LoginScreen() {
     
     if (error) {
       setLoading(false);
-      Alert.alert(t('auth.loginFailed'), error.message);
+      showAlert(t('auth.loginFailed'), error.message, 'error');
       return;
     }
   };
@@ -81,7 +89,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message);
+      showAlert(t('common.error'), error.message, 'error');
     }
   };
 
@@ -173,6 +181,15 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertVisible(false)}
+        confirmText="OK"
+      />
     </KeyboardAvoidingView>
   );
 }

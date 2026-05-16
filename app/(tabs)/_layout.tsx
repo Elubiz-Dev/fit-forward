@@ -1,10 +1,12 @@
-import { Tabs, router, usePathname } from 'expo-router';
-import { View, Text, StyleSheet, PanResponder, Dimensions } from 'react-native';
+import { Tabs, router, usePathname, useSegments } from 'expo-router';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { FileText, BarChart2, MessageCircle, Calendar } from 'lucide-react-native';
 import { useAuthStore, usePurchaseStore } from '../../store';
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 function TabIcon({ Icon, label, focused }: { Icon: any; label: string; focused: boolean }) {
   const colors = useTheme();
@@ -30,60 +32,46 @@ export default function TabsLayout() {
   const { profile } = useAuthStore();
   const { isPro } = usePurchaseStore();
   const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
-  const pathname = usePathname();
+  const segments = useSegments();
+  const tabs = ['tracker', 'dashboard', 'coach', 'planner'];
+  const currentIndex = tabs.findIndex(t => segments.some(s => s === t));
 
-  const tabs = ['/tracker', '/dashboard', '/coach', '/planner'];
-  const currentIndex = tabs.findIndex(t => pathname.includes(t));
+  const goToTab = (index: number) => {
+    if (index < 0 || index >= tabs.length) return;
+    const tabPath = `/(tabs)/${tabs[index]}`;
+    if (tabs[index] === 'planner' && !isProActually) {
+      router.push('/modals/paywall');
+    } else {
+      router.replace(tabPath as any);
+    }
+  };
 
-  const stateRef = useRef({ currentIndex, isPro });
-  stateRef.current = { currentIndex, isPro };
+  const panGesture = useMemo(() => Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-20, 20])
+    .onEnd((e) => {
+      // Thresholds for swipe: velocity or distance
+      const isSignificantSwipe = Math.abs(e.velocityX) > 500 || Math.abs(e.translationX) > Dimensions.get('window').width * 0.2;
+      const isHorizontal = Math.abs(e.velocityX) > Math.abs(e.velocityY) * 2;
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        const { dx, dy, y0 } = gestureState;
-        const { currentIndex: currentIdx } = stateRef.current;
-        
-        // Significant horizontal movement check
-        const isHorizontal = Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 30;
-        if (!isHorizontal) return false;
+      if (isSignificantSwipe && isHorizontal) {
+        // Exclude date picker area on tracker (index 0)
+        if (currentIndex === 0 && e.y < 150) return;
 
-        // If on Tracker tab (Principal), exclude only the Header and Days Bar area
-        // to preserve the day-change gesture.
-        if (currentIdx === 0) {
-          // Exclude top ~130px (Header and Days Bar)
-          if (y0 < 130) return false;
+        if (e.translationX < 0) {
+          // Swipe Left -> Next
+          runOnJS(goToTab)(currentIndex + 1);
+        } else {
+          // Swipe Right -> Previous
+          runOnJS(goToTab)(currentIndex - 1);
         }
-
-        return true;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const { dx } = gestureState;
-        const { currentIndex: currentIdx, isPro: pro } = stateRef.current;
-        
-        if (dx < -50) {
-          // Swipe Left -> Next Tab
-          if (currentIdx !== -1 && currentIdx < tabs.length - 1) {
-            const next = tabs[currentIdx + 1];
-            if (next === '/planner' && !isProActually) {
-              router.push('/modals/paywall');
-            } else {
-              router.push(next as any);
-            }
-          }
-        } else if (dx > 50) {
-          // Swipe Right -> Previous Tab
-          if (currentIdx > 0) {
-            router.push(tabs[currentIdx - 1] as any);
-          }
-        }
-      },
-    })
-  ).current;
+      }
+    }), [currentIndex, isProActually]);
   
   return (
-    <View style={{ flex: 1 }} {...panResponder.panHandlers}>
-    <Tabs
+    <GestureDetector gesture={panGesture}>
+      <View style={{ flex: 1 }}>
+        <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
@@ -145,6 +133,7 @@ export default function TabsLayout() {
       />
     </Tabs>
     </View>
+    </GestureDetector>
   );
 }
 

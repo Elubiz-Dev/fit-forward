@@ -10,6 +10,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Svg, {
   Defs, LinearGradient as SvgGradient, Stop,
   Path, Circle, Text as SvgText, G,
@@ -19,6 +20,8 @@ import Animated, {
   withTiming, Easing, ReduceMotion,
 } from 'react-native-reanimated';
 import { useTheme } from '../hooks/useTheme';
+import { useSettingsStore } from '../store';
+import { convertMass } from '../utils/units';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -36,12 +39,19 @@ export function WeightProgressPath({
   width = 320,
 }: WeightProgressPathProps) {
   const colors = useTheme();
+  const { t } = useTranslation();
+  const { massUnit } = useSettingsStore();
 
   const W = width;
   const H = 160;
   const padX = 28;
   const padY = 40;
   const midY = H / 2;
+
+  // Convert for display
+  const displayStart = Number(convertMass(startingWeight, 'kg', massUnit).toFixed(1));
+  const displayCurr = Number(convertMass(currentWeight, 'kg', massUnit).toFixed(1));
+  const displayTarget = Number(convertMass(targetWeight, 'kg', massUnit).toFixed(1));
 
   // Clamp pct between 0 and 1 (handle edge cases where user already past goal)
   const isLoss = targetWeight < startingWeight;
@@ -133,10 +143,10 @@ export function WeightProgressPath({
         <G>
           <Circle cx={x0} cy={y0} r={10} fill={colors.surface} stroke={colors.border} strokeWidth={2} />
           <SvgText x={x0} y={y0 + 1} textAnchor="middle" alignmentBaseline="middle" fontSize={7} fill={colors.textSecondary} fontWeight="800">
-            {startingWeight}
+            {displayStart}
           </SvgText>
           <SvgText x={x0} y={y0 + 20} textAnchor="middle" fontSize={9} fill={colors.textMuted} fontWeight="600">
-            Inicio
+            {t('profile.start', 'Inicio')}
           </SvgText>
         </G>
 
@@ -156,10 +166,10 @@ export function WeightProgressPath({
             fill={colors.primary}
             fontWeight="900"
           >
-            {currentWeight} kg
+            {displayCurr} {massUnit}
           </SvgText>
           <SvgText x={x1} y={y1 + 22} textAnchor="middle" fontSize={9} fill={colors.textSecondary} fontWeight="700">
-            Ahora
+            {t('profile.now', 'Ahora')}
           </SvgText>
         </G>
 
@@ -167,10 +177,10 @@ export function WeightProgressPath({
         <G>
           <Circle cx={x2} cy={y2} r={10} fill={colors.surface} stroke={colors.success + 'CC'} strokeWidth={2} strokeDasharray="3,2" />
           <SvgText x={x2} y={y2 + 1} textAnchor="middle" alignmentBaseline="middle" fontSize={7} fill={colors.success} fontWeight="800">
-            {targetWeight}
+            {displayTarget}
           </SvgText>
           <SvgText x={x2} y={y2 + 20} textAnchor="middle" fontSize={9} fill={colors.success} fontWeight="600">
-            Meta
+            {t('profile.goal', 'Meta')}
           </SvgText>
         </G>
       </Svg>
@@ -179,21 +189,21 @@ export function WeightProgressPath({
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={[styles.statVal, { color: colors.textPrimary }]}>{displayPct}%</Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>Completado</Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('profile.completed', 'Completado')}</Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
           <Text style={[styles.statVal, { color: isLoss ? colors.success : colors.primary }]}>
-            {isLoss ? '-' : '+'}{Math.abs(Math.round((currentWeight - startingWeight) * 10) / 10)} kg
+            {isLoss ? '-' : '+'}{Math.abs(Math.round((displayCurr - displayStart) * 10) / 10)} {massUnit}
           </Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>Desde inicio</Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('profile.sinceStart', 'Desde inicio')}</Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
           <Text style={[styles.statVal, { color: colors.warning }]}>
-            {isLoss ? '-' : '+'}{Math.abs(Math.round((targetWeight - currentWeight) * 10) / 10)} kg
+            {isLoss ? '-' : '+'}{Math.abs(Math.round((displayTarget - displayCurr) * 10) / 10)} {massUnit}
           </Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>Faltan</Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('profile.remaining', 'Faltan')}</Text>
         </View>
       </View>
     </View>

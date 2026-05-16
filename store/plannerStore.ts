@@ -45,6 +45,8 @@ interface PlannerState {
   setWorkoutPlans: (plans: Record<string, WorkoutRoutine>, weekStart: string, warning?: string) => void;
   setWeeklyAnalysis: (text: string) => void;
   clearPlans: () => void;
+  clearMealPlans: () => void;
+  clearWorkoutPlans: () => void;
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -69,6 +71,9 @@ export const usePlannerStore = create<PlannerState>()(
       /** Called when the user generates a fresh plan or when the week changes. */
       clearPlans: () =>
         set({ mealPlans: {}, workoutPlans: {}, weekStart: null, weeklyAnalysis: null, warning: null }),
+        
+      clearMealPlans: () => set({ mealPlans: {} }),
+      clearWorkoutPlans: () => set({ workoutPlans: {} }),
     }),
     {
       name: 'ff-planner',

@@ -119,7 +119,6 @@ export const useNutritionStore = create<NutritionState>()(
         setProfile({ ...profile, extraSnacks: newCount });
         if (profile.id) {
           try {
-            const { supabase } = await import('../services/supabase');
             await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
           } catch (err) {
             console.error('[NutritionStore] addExtraSnack sync error:', err);
@@ -134,7 +133,6 @@ export const useNutritionStore = create<NutritionState>()(
         setProfile({ ...profile, extraSnacks: newCount });
         if (profile.id) {
           try {
-            const { supabase } = await import('../services/supabase');
             await supabase.from('users').update({ extra_snacks: newCount }).eq('id', profile.id);
           } catch (err) {
             console.error('[NutritionStore] removeExtraSnack sync error:', err);
@@ -148,7 +146,6 @@ export const useNutritionStore = create<NutritionState>()(
         if (!profile?.id) return;
 
         try {
-          const { supabase } = await import('../services/supabase');
           const water_ml = get().dailyWater[date] || 0;
           const steps = get().dailySteps[date] || 0;
           const sleep_hours = get().dailySleep[date] || 0;
@@ -182,11 +179,11 @@ export const useNutritionStore = create<NutritionState>()(
       },
 
       updateActivity: (date) => {
-        const { activeDays, plannedDays } = get();
+        const { activeDays } = get();
         if (activeDays[date]) return;
 
         const newActiveDays = { ...activeDays, [date]: true };
-        const newPlannedDays = plannedDays + 1;
+        const newPlannedDays = Object.keys(newActiveDays).length;
         const streak = recalculateStreak(newActiveDays);
 
         set({ activeDays: newActiveDays, plannedDays: newPlannedDays, streakDays: streak });
@@ -205,7 +202,7 @@ export const useNutritionStore = create<NutritionState>()(
         const safeml = Math.max(0, ml);
         set((s) => ({ dailyWater: { ...s.dailyWater, [s.selectedDate]: safeml } }));
         if (safeml > 0) get().updateActivity(get().selectedDate);
-        await get().syncDailyMetrics();
+        get().syncDailyMetrics();
       },
       addWater:  async (ml) => {
         const date = get().selectedDate;
@@ -214,7 +211,7 @@ export const useNutritionStore = create<NutritionState>()(
         }));
         const newVal = get().dailyWater[date] || 0;
         if (newVal > 0) get().updateActivity(date);
-        await get().syncDailyMetrics();
+        get().syncDailyMetrics();
       },
       setDate:   (date) => set({ selectedDate: date }),
       setStreak: (streakDays) => set({ streakDays }),
@@ -222,7 +219,7 @@ export const useNutritionStore = create<NutritionState>()(
         const safeSteps = Math.max(0, steps);
         set((s) => ({ dailySteps: { ...s.dailySteps, [s.selectedDate]: safeSteps } }));
         if (safeSteps > 0) get().updateActivity(get().selectedDate);
-        await get().syncDailyMetrics();
+        get().syncDailyMetrics();
       },
       addSteps:  async (steps) => {
         const date = get().selectedDate;
@@ -231,12 +228,15 @@ export const useNutritionStore = create<NutritionState>()(
         }));
         const newVal = get().dailySteps[date] || 0;
         if (newVal > 0) get().updateActivity(date);
-        await get().syncDailyMetrics();
+        get().syncDailyMetrics();
       },
       setSleep:  async (hours) => {
-        set((s) => ({ dailySleep: { ...s.dailySleep, [s.selectedDate]: hours } }));
-        if (hours > 0) get().updateActivity(get().selectedDate);
-        await get().syncDailyMetrics();
+        const date = get().selectedDate;
+        set((s) => ({ dailySleep: { ...s.dailySleep, [date]: hours } }));
+        if (hours > 0) get().updateActivity(date);
+        
+        // Trigger sync in background without awaiting to keep UI snappy
+        get().syncDailyMetrics();
       },
       setActivity: (activityCals) => set({ activityCals }),
       addActivityLog: async (activity) => {
@@ -246,7 +246,6 @@ export const useNutritionStore = create<NutritionState>()(
         const { profile } = useAuthStore.getState();
         if (profile?.id) {
           try {
-            const { supabase } = await import('../services/supabase');
             const { error } = await supabase.from('activity_logs').insert({
               id:         activity.id,
               user_id:    profile.id,
@@ -271,7 +270,6 @@ export const useNutritionStore = create<NutritionState>()(
       removeActivityLog: async (id) => {
         set((s) => ({ activityLogs: s.activityLogs.filter(a => a.id !== id) }));
         try {
-          const { supabase } = await import('../services/supabase');
           const { error } = await supabase.from('activity_logs').delete().eq('id', id);
           if (error) {
             console.error('[NutritionStore] removeActivityLog Supabase error:', error);
@@ -287,7 +285,6 @@ export const useNutritionStore = create<NutritionState>()(
           activityLogs: s.activityLogs.map(a => a.id === id ? { ...a, ...updates } : a)
         }));
         try {
-          const { supabase } = await import('../services/supabase');
           await supabase.from('activity_logs').update({
             name:       updates.name,
             icon:       updates.icon,
@@ -353,8 +350,6 @@ export const useNutritionStore = create<NutritionState>()(
 
       fetchLogs: async (userId, date) => {
         try {
-          const { supabase } = await import('../services/supabase');
-
           // Parallel fetch for better performance
           const [foodResult, metricsResult, actResult] = await Promise.all([
             supabase.from('food_logs').select('*').eq('user_id', userId).eq('logged_at', date),
@@ -483,7 +478,6 @@ export const useNutritionStore = create<NutritionState>()(
 
       fetchHistory: async (userId) => {
         try {
-          const { supabase } = await import('../services/supabase');
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           const startDate = thirtyDaysAgo.toISOString().split('T')[0];
@@ -537,12 +531,17 @@ export const useNutritionStore = create<NutritionState>()(
               return { todayLogs: [...s.todayLogs, ...newLogs] as any };
             });
             
-            const activeDays: Record<string, boolean> = {};
+            const historyActiveDays: Record<string, boolean> = {};
             data.forEach((log: any) => {
               const day = log.logged_at.split('T')[0];
-              activeDays[day] = true;
+              historyActiveDays[day] = true;
             });
-            set(s => ({ activeDays: { ...s.activeDays, ...activeDays } }));
+            set(s => {
+              const mergedActiveDays = { ...s.activeDays, ...historyActiveDays };
+              const newPlannedDays = Object.keys(mergedActiveDays).length;
+              const streak = recalculateStreak(mergedActiveDays);
+              return { activeDays: mergedActiveDays, plannedDays: newPlannedDays, streakDays: streak };
+            });
           }
         } catch (err) {
           console.error('[NutritionStore] fetchHistory error:', err);
@@ -562,6 +561,7 @@ export const useNutritionStore = create<NutritionState>()(
         aiUsageCount: 0,
         activeDays: {},
         plannedDays: 0,
+        lastAiUsageDate: new Date().toLocaleDateString('en-CA'),
       }),
     }),
     {

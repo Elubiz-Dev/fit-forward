@@ -19,12 +19,10 @@ serve(async (req) => {
     )
 
     // Get the session/user from the request
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
 
-    if (!user) {
-      throw new Error('Unauthorized')
+    if (authError || !user) {
+      throw new Error(`Unauthorized: ${authError?.message || 'No user found'}`)
     }
 
     const { action } = await req.json()
@@ -59,8 +57,13 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Error in manage-subscription:', error.message)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack,
+        context: 'manage-subscription function'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 

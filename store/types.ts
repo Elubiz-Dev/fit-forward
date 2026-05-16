@@ -46,6 +46,8 @@ export interface UserProfile extends HealthProfile {
   widgetsOrder?:   string[];
   lifestyle?:      'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
   extraSnacks?:    number;
+  badges?:         string[];
+  selectedBadge?:  string;
 }
 
 export interface FoodLog {
@@ -129,3 +131,25 @@ export interface ProgressPhoto {
   date:      string; // YYYY-MM-DD
   notes?:    string;
 }
+
+export interface ProgressEvaluation {
+  id: string;
+  uri: string;
+  date: string;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  estimatedFatPercentage: string;
+}
+
+export interface Reminder {
+  id: string;
+  title: string;
+  body: string;
+  time: string; // HH:mm
+  enabled: boolean;
+  days: number[]; // 0-6
+  type: 'meal' | 'water' | 'workout' | 'general';
+  notificationId?: string;
+}
+

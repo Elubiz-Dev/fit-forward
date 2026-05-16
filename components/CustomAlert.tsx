@@ -1,9 +1,11 @@
-import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AlertCircle, CheckCircle2, Info, HelpCircle, XCircle } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, Info, HelpCircle, XCircle, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../hooks/useTheme';
 import { Radius, Spacing, Shadow } from '../constants';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
@@ -31,34 +33,42 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
   actions
 }) => {
   const colors = useTheme();
-  const [scale] = React.useState(new Animated.Value(0));
-  const [opacity] = React.useState(new Animated.Value(0));
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
           useNativeDriver: true,
-          tension: 50,
-          friction: 8,
+          tension: 65,
+          friction: 7,
         }),
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 200,
+          duration: 300,
           useNativeDriver: true,
-        })
+        }),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulse, { toValue: 1.15, duration: 1500, useNativeDriver: true }),
+            Animated.timing(pulse, { toValue: 1, duration: 1500, useNativeDriver: true }),
+          ])
+        )
       ]).start();
     } else {
       scale.setValue(0);
       opacity.setValue(0);
+      pulse.setValue(1);
     }
   }, [visible]);
 
   if (!visible) return null;
 
   const getIcon = () => {
-    const size = 32;
+    const size = 36;
     switch (type) {
       case 'success': return <CheckCircle2 size={size} color="#fff" strokeWidth={2.5} />;
       case 'error':   return <XCircle size={size} color="#fff" strokeWidth={2.5} />;
@@ -70,13 +80,15 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
 
   const getColors = (): [string, string] => {
     switch (type) {
-      case 'success': return [colors.success, '#15803D'];
-      case 'error':   return [colors.error, '#B91C1C'];
-      case 'warning': return [colors.warning, '#B45309'];
-      case 'confirm': return [colors.primary, colors.primaryDark];
-      default:        return [colors.primary, colors.primaryDark];
+      case 'success': return ['#10B981', '#059669'];
+      case 'error':   return ['#EF4444', '#B91C1C'];
+      case 'warning': return ['#F59E0B', '#D97706'];
+      case 'confirm': return ['#7C5CFC', '#4338CA'];
+      default:        return ['#3B82F6', '#1E40AF'];
     }
   };
+
+  const mainColors = getColors();
 
   return (
     <Modal visible={visible} transparent animationType="none">
@@ -91,25 +103,49 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
             transform: [{ scale }]
           }
         ]}>
-          <View style={styles.iconContainer}>
+          {/* Top accent stripe for premium feel */}
+          <LinearGradient
+            colors={[mainColors[0], 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.topStripe}
+          />
+
+          <View style={styles.iconWrapper}>
+            <Animated.View style={[
+              styles.iconPulse, 
+              { borderColor: mainColors[0], transform: [{ scale: pulse }] }
+            ]} />
             <LinearGradient
-              colors={getColors()}
+              colors={mainColors}
               style={styles.iconCircle}
             >
               {getIcon()}
             </LinearGradient>
-            <View style={[styles.iconPulse, { borderColor: getColors()[0] }]} />
+            
+            {type === 'success' && (
+              <>
+                <View style={[styles.sparkle, { top: -10, right: -15 }]}>
+                  <Sparkles size={18} color="#F59E0B" fill="#F59E0B" />
+                </View>
+                <View style={[styles.sparkle, { bottom: 0, left: -20 }]}>
+                  <Sparkles size={14} color="#F59E0B" fill="#F59E0B" />
+                </View>
+              </>
+            )}
           </View>
           
-          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
-          <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
+          <View style={styles.content}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+            <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
+          </View>
           
           <View style={[styles.buttonRow, actions ? { flexDirection: 'column' } : {}]}>
             {actions ? (
               actions.map((action, idx) => (
                 <TouchableOpacity 
                   key={idx} 
-                  style={[styles.button, { width: '100%' }]} 
+                  style={[styles.button, { width: '100%', marginBottom: idx < actions.length - 1 ? 8 : 0 }]} 
                   onPress={action.onPress} 
                   activeOpacity={0.8}
                 >
@@ -139,7 +175,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                   activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={getColors()}
+                    colors={mainColors}
                     style={styles.buttonGradient}
                   >
                     <Text style={styles.buttonText}>{confirmText}</Text>
@@ -163,58 +199,75 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
   },
   card: {
     width: '100%',
-    maxWidth: 340,
-    borderRadius: Radius.xl,
+    maxWidth: 360,
+    borderRadius: 32,
     borderWidth: 1.5,
     padding: Spacing.xl,
+    paddingTop: Spacing['2xl'],
     alignItems: 'center',
-    ...Shadow.md,
+    overflow: 'hidden',
+    ...Shadow.lg,
   },
-  iconContainer: {
-    marginTop: -Spacing.xl - 20,
-    marginBottom: Spacing.lg,
+  topStripe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    opacity: 0.5,
+  },
+  iconWrapper: {
+    marginBottom: Spacing.xl,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
-    elevation: 5,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   iconPulse: {
     position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 2,
     opacity: 0.2,
   },
+  sparkle: {
+    position: 'absolute',
+    zIndex: 3,
+  },
+  content: {
+    alignItems: 'center',
+    marginBottom: Spacing['2xl'],
+  },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     marginBottom: Spacing.sm,
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   message: {
-    fontSize: 16,
+    fontSize: 17,
     textAlign: 'center',
-    marginBottom: Spacing.xl,
-    lineHeight: 22,
-    opacity: 0.9,
+    lineHeight: 24,
+    opacity: 0.8,
+    paddingHorizontal: 10,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -222,7 +275,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   button: {
-    borderRadius: Radius.lg,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   cancelButton: {
@@ -230,20 +283,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   buttonGradient: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
 });
+

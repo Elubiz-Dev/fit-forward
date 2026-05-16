@@ -5,12 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { supabase } from '../services/supabase';
-import { useAuthStore, useSettingsStore } from '../store';
+import { useAuthStore, useSettingsStore, usePurchaseStore } from '../store';
 import { Colors } from '../constants';
 import '../i18n';
 import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
-import { usePurchaseStore } from '../store';
 
 
 SplashScreen.preventAutoHideAsync();
@@ -160,6 +159,22 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="modals/food-selection"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/social"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/progress-evaluation"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/achievements"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/reminders"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>

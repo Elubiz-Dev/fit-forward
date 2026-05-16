@@ -37,7 +37,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "minSdkVersion": 24
     },
@@ -62,7 +63,16 @@
       ],
       "expo-secure-store",
       "expo-sharing",
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#7C5CFC"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

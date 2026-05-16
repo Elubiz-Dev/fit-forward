@@ -8,3 +8,4 @@ export * from './recipesStore';
 export * from './progressStore';
 export * from './settingsStore';
 export * from './purchaseStore';
+export * from './socialStore';

@@ -7,7 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore, usePlannerStore } from '../store';
 import { sendCoachMessage, buildCoachSystemPrompt, transcribeAudio } from '../services/groq';
@@ -19,7 +19,7 @@ import { safe } from '../utils/sanitize';
 import CoachHistoryModal from './CoachHistoryModal';
 import { ImagePickerModal } from './ImagePickerModal';
 
-const FREE_MSG_LIMIT = 10;
+const FREE_MSG_LIMIT = 5;
 
 // Suggestion chips are now generated inside the component using t()
 
@@ -93,7 +93,8 @@ function TypingIndicator() {
 
 // ─── Trainer Screen ─────────────────────────────────────────────────────────────
 export default function TrainerScreen() {
-  const [input, setInput]               = useState('');
+  const params = useLocalSearchParams();
+  const [input, setInput]               = useState((params.prompt as string) || '');
   const coachType = 'trainer';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSending, setIsSending]       = useState(false); // local send guard
@@ -125,7 +126,10 @@ export default function TrainerScreen() {
     setTyping(false);
     setIsSending(false);
     checkAndResetDaily();
-  }, []);
+    if (params.prompt) {
+      setInput(params.prompt as string);
+    }
+  }, [params.prompt]);
 
   const loadSessions = async () => {
     if (!profile?.id) return;
@@ -265,6 +269,10 @@ export default function TrainerScreen() {
    * is populated after stopping.
    */
   const startRecording = async () => {
+    if (!isProActually) {
+      router.push('/modals/paywall');
+      return;
+    }
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (permission.status !== 'granted') {
@@ -520,8 +528,8 @@ export default function TrainerScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
       >
         <FlatList<CoachMessage>
           ref={flatRef}
@@ -624,6 +632,7 @@ export default function TrainerScreen() {
                   ? <ActivityIndicator size="small" color={colors.primary} />
                   : <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
                 }
+                {!isProActually && <View style={s.lockBadge}><Text style={{ fontSize: 10 }}>🔒</Text></View>}
               </TouchableOpacity>
 
               <TextInput
@@ -703,6 +712,7 @@ const s = StyleSheet.create({
   micBtn:               { padding: 8, justifyContent: 'center', alignItems: 'center' },
   micBtnActive:         { backgroundColor: '#EF444422', borderRadius: Radius.full },
   cameraEmoji:          { fontSize: 24 },
+  lockBadge:            { position: 'absolute', top: -2, right: -2, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 2 },
   input:                { flex: 1, borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, borderWidth: 1.5, maxHeight: 120 },
   sendBtn:              { borderRadius: Radius.md, overflow: 'hidden' },
   sendBtnDisabled:      { opacity: 0.35 },

@@ -11,8 +11,10 @@ import {
   Target, Flame, Dumbbell, Heart, ChevronLeft, 
   User, Zap, Activity, Mars, Venus, Footprints, Monitor, Bike,
   Utensils, Sparkles, Droplets, Leaf, Scale, Clock, ChevronRight,
-  Apple, AlertCircle
+  Apple, AlertCircle, Trophy, Check, Briefcase, Building2, Coffee,
+  PersonStanding, Hammer, Plus, Minus
 } from 'lucide-react-native';
+import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, Circle, Line as SvgLine } from 'react-native-svg';
 import { 
   useAuthStore, useSettingsStore, useNutritionStore, 
   useCoachStore, useBodyStore, useRecipesStore, useProgressStore 
@@ -26,9 +28,9 @@ import { CustomAlert, AlertType } from '../components/CustomAlert';
 
 // ─── Step types ────────────────────────────────────────────────────────────────
 const STEPS = [
-  'goal', 'stats', 'activity', 
+  'goal', 'stats', 'activity', 'lifestyle',
   'dietaryRestrictions', 'medicalConditions', 'medications', 
-  'dietType', 'diet', 'personalization'
+  'dietType', 'diet', 'personalization', 'projection'
 ] as const;
 type Step = typeof STEPS[number];
 
@@ -39,6 +41,7 @@ interface OnboardingData {
   weight:       number;
   height:       number;
   activityLevel:'sedentary'|'light'|'moderate'|'active'|'very_active';
+  lifestyle:     'seated'|'standing_sometimes'|'standing_mostly'|'moving'|'physical_work';
   dietaryRestrictions: string[];
   medicalConditions: string[];
   medicationsSupplements: string[];
@@ -46,6 +49,8 @@ interface OnboardingData {
   targetWeight: number;
   velocity:     'slow' | 'moderate' | 'fast';
   availableFoods: string[];
+  weightUnit:   'kg' | 'lbs';
+  heightUnit:   'cm' | 'ft';
 }
 
 // ─── Step 1: Goal ─────────────────────────────────────────────────────────────
@@ -54,16 +59,34 @@ function GoalStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
   const colors = useTheme();
 
   const GOALS = [
-    { id: 'lose',     icon: <Flame size={24} color={colors.primary} />, title: t('onboarding.loseTitle'),   sub: t('onboarding.loseSub') },
-    { id: 'gain',     icon: <Dumbbell size={24} color={colors.primary} />, title: t('onboarding.gainTitle'),   sub: t('onboarding.gainSub') },
-    { id: 'maintain', icon: <Heart size={24} color={colors.primary} />, title: t('onboarding.stayTitle'),  sub: t('onboarding.staySub') },
+    { 
+      id: 'lose',     
+      icon: <Flame size={26} color="#FF4D4D" />, 
+      title: t('onboarding.loseTitle'),   
+      sub: t('onboarding.loseSub'),
+      accent: '#FF4D4D'
+    },
+    { 
+      id: 'gain',     
+      icon: <Dumbbell size={26} color="#4D94FF" />, 
+      title: t('onboarding.gainTitle'),   
+      sub: t('onboarding.gainSub'),
+      accent: '#4D94FF'
+    },
+    { 
+      id: 'maintain', 
+      icon: <Heart size={26} color="#4DFF88" />, 
+      title: t('onboarding.stayTitle'),  
+      sub: t('onboarding.staySub'),
+      accent: '#4DFF88'
+    },
   ] as const;
 
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
-        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary }]}>
-          <Target size={36} color={colors.primary} />
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary, elevation: 12 }]}>
+          <Target size={42} color={colors.primary} />
         </View>
         <Text style={[step.title, { color: colors.textPrimary }]}>{t('onboarding.goalTitle')}</Text>
         <Text style={[step.sub, { color: colors.textSecondary }]}>{t('onboarding.goalSub')}</Text>
@@ -78,20 +101,31 @@ function GoalStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
               style={[
                 step.optionCard, 
                 { backgroundColor: colors.surface, borderColor: colors.border }, 
-                isActive && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+                isActive && { 
+                  borderColor: g.accent, 
+                  backgroundColor: g.accent + '12',
+                  shadowColor: g.accent,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 8,
+                }
               ]}
               onPress={() => onChange({ goal: g.id })}
               activeOpacity={0.7}
             >
-              <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
+              <View style={[
+                step.iconContainer, 
+                { backgroundColor: colors.background, borderColor: isActive ? g.accent + '40' : colors.border + '40' },
+                isActive && { shadowColor: g.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 }
+              ]}>
                 {g.icon}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{g.title}</Text>
+              <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: g.accent }]}>{g.title}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{g.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: colors.primary }]} />}
+              <View style={[step.radioOuter, { borderColor: isActive ? g.accent : colors.border }]}>
+                {isActive && <View style={[step.radioInner, { backgroundColor: g.accent }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -108,8 +142,8 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
-        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary }]}>
-          <User size={36} color={colors.primary} />
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary, elevation: 12 }]}>
+          <User size={42} color={colors.primary} />
         </View>
         <Text style={[step.title, { color: colors.textPrimary }]}>{t('onboarding.statsTitle')}</Text>
         <Text style={[step.sub, { color: colors.textSecondary }]}>{t('onboarding.statsSub')}</Text>
@@ -122,20 +156,26 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
           <View style={step.sexRow}>
             {(['male', 'female'] as const).map((s) => {
               const active = data.sex === s;
+              const accentColor = s === 'male' ? '#4D94FF' : '#FF4D88';
               return (
                 <TouchableOpacity
                   key={s}
                   style={[
                     step.sexBtn, 
                     { backgroundColor: colors.surface, borderColor: colors.border }, 
-                    active && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+                    active && { borderColor: accentColor, shadowColor: accentColor, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }
                   ]}
                   onPress={() => onChange({ sex: s })}
+                  activeOpacity={0.8}
                 >
-                  <View style={[step.sexIconWrap, active && { backgroundColor: colors.primary }]}>
+                  <LinearGradient
+                    colors={active ? [accentColor + '20', accentColor + '05'] : ['transparent', 'transparent']}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={[step.sexIconWrap, { backgroundColor: active ? accentColor : colors.background }]}>
                     {s === 'male' ? <Mars size={20} color={active ? '#fff' : colors.textSecondary} /> : <Venus size={20} color={active ? '#fff' : colors.textSecondary} />}
                   </View>
-                  <Text style={[step.sexLabel, { color: colors.textSecondary }, active && { color: colors.textPrimary }]}>
+                  <Text style={[step.sexLabel, { color: colors.textSecondary }, active && { color: colors.textPrimary, fontWeight: '900' }]}>
                     {t(`profile.${s}`)}
                   </Text>
                 </TouchableOpacity>
@@ -146,34 +186,71 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
 
         {/* Numeric fields */}
         {[
-          { label: t('profile.age'), key: 'age', unit: t('profile.ageYears'), min: 15, max: 80 },
-          { label: t('profile.weight'), key: 'weight', unit: t('profile.kg'), min: 30, max: 250 },
-          { label: t('profile.height'), key: 'height', unit: t('profile.cm'), min: 100, max: 250 },
-        ].map(({ label, key, unit, min, max }) => (
+          { label: t('profile.age'), key: 'age', unit: t('profile.ageYears'), min: 15, max: 80, icon: <Activity size={18} /> },
+          { label: t('profile.weight'), key: 'weight', unit: data.weightUnit === 'lbs' ? 'lbs' : 'kg', min: data.weightUnit === 'lbs' ? 66 : 30, max: data.weightUnit === 'lbs' ? 550 : 250, icon: <Target size={18} /> },
+          { label: t('profile.height'), key: 'height', unit: data.heightUnit === 'ft' ? 'ft' : 'cm', min: data.heightUnit === 'ft' ? 3.2 : 100, max: data.heightUnit === 'ft' ? 8.2 : 250, icon: <User size={18} /> },
+        ].map(({ label, key, unit, min, max, icon }) => (
           <View key={key} style={step.field}>
-            <Text style={[step.fieldLabel, { color: colors.textSecondary }]}>{label}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[step.fieldLabel, { marginBottom: 0, color: colors.textSecondary }]}>{label}</Text>
+              </View>
+              {(key === 'weight' || key === 'height') && (
+                <TouchableOpacity 
+                  style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '30' }}
+                  onPress={() => {
+                    if (key === 'weight') {
+                      const newUnit = data.weightUnit === 'lbs' ? 'kg' : 'lbs';
+                      const newWeight = newUnit === 'lbs' ? Math.round((data.weight ?? 70) * 2.20462) : Math.round((data.weight ?? 154) / 2.20462);
+                      onChange({ weightUnit: newUnit, weight: newWeight });
+                    } else {
+                      const newUnit = data.heightUnit === 'ft' ? 'cm' : 'ft';
+                      // cm to ft: cm / 30.48
+                      // ft to cm: ft * 30.48
+                      const newHeight = newUnit === 'ft' 
+                        ? Number(((data.height ?? 170) / 30.48).toFixed(1))
+                        : Math.round((data.height ?? 5.6) * 30.48);
+                      onChange({ heightUnit: newUnit, height: newHeight });
+                    }
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {key === 'weight' 
+                      ? (data.weightUnit === 'lbs' ? t('profile.changeToKg') : t('profile.changeToLbs'))
+                      : (data.heightUnit === 'ft' ? t('profile.changeToCm') : t('profile.changeToFt'))
+                    }
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <View style={step.numRow}>
               <TouchableOpacity
                 style={[step.numBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   const cur = (data as any)[key] ?? min;
-                  if (cur > min) onChange({ [key]: cur - 1 });
+                  const stepVal = key === 'height' && data.heightUnit === 'ft' ? 0.1 : 1;
+                  if (cur > min) onChange({ [key]: Number((cur - stepVal).toFixed(1)) });
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={[step.numBtnText, { color: colors.primary }]}>−</Text>
+                <Minus size={24} color={colors.primary} />
               </TouchableOpacity>
+              
               <View style={[step.numDisplay, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[step.numValue, { color: colors.textPrimary }]}>{(data as any)[key] ?? '-'}</Text>
-                <Text style={[step.numUnit, { color: colors.textMuted }]}>{unit}</Text>
+                <Text style={[step.numUnit, { color: colors.textSecondary }]}>{unit}</Text>
               </View>
+
               <TouchableOpacity
                 style={[step.numBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   const cur = (data as any)[key] ?? min;
-                  if (cur < max) onChange({ [key]: cur + 1 });
+                  const stepVal = key === 'height' && data.heightUnit === 'ft' ? 0.1 : 1;
+                  if (cur < max) onChange({ [key]: Number((cur + stepVal).toFixed(1)) });
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={[step.numBtnText, { color: colors.primary }]}>+</Text>
+                <Plus size={24} color={colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -183,24 +260,54 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
   );
 }
 
-// ─── Step 3: Activity ─────────────────────────────────────────────────────────
+// ─── Step 3: Activity (Exercise) ─────────────────────────────────────────────────────────
 function ActivityStep({ data, onChange }: { data: Partial<OnboardingData>; onChange: (d: Partial<OnboardingData>) => void }) {
   const { t } = useTranslation();
   const colors = useTheme();
 
   const ACTIVITY_LEVELS = [
-    { id: 'sedentary',   label: t('profile.sedentary'),    sub: t('onboarding.activitySedentary'),     icon: <Monitor size={22} color={colors.primary} /> },
-    { id: 'light',       label: t('profile.lightlyActive'), sub: t('onboarding.activityLight'),            icon: <Footprints size={22} color={colors.primary} /> },
-    { id: 'moderate',    label: t('profile.moderatelyActive'), sub: t('onboarding.activityModerate'),         icon: <Activity size={22} color={colors.primary} /> },
-    { id: 'active',      label: t('profile.veryActive'),    sub: t('onboarding.activityActive'),              icon: <Dumbbell size={22} color={colors.primary} /> },
-    { id: 'very_active', label: t('profile.very_active') || 'Athlete',  sub: t('onboarding.activityVeryActive'),icon: <Zap size={22} color={colors.primary} /> },
+    { 
+      id: 'sedentary',   
+      label: t('onboarding.activitySedentary'),    
+      sub: t('onboarding.activitySedentaryEx'),     
+      icon: <Monitor size={22} color="#6B7280" />,
+      color: '#6B7280'
+    },
+    { 
+      id: 'light',       
+      label: t('onboarding.activityLight'), 
+      sub: t('onboarding.activityLightEx'),            
+      icon: <Footprints size={22} color="#10B981" />,
+      color: '#10B981'
+    },
+    { 
+      id: 'moderate',    
+      label: t('onboarding.activityModerate'), 
+      sub: t('onboarding.activityModerateEx'),         
+      icon: <Dumbbell size={22} color="#3B82F6" />,
+      color: '#3B82F6'
+    },
+    { 
+      id: 'active',      
+      label: t('onboarding.activityActive'),    
+      sub: t('onboarding.activityActiveEx'),              
+      icon: <Flame size={22} color="#F59E0B" />,
+      color: '#F59E0B'
+    },
+    { 
+      id: 'very_active', 
+      label: t('onboarding.activityVeryActive'),  
+      sub: t('onboarding.activityVeryActiveEx'),
+      icon: <Zap size={22} color="#EF4444" />,
+      color: '#EF4444'
+    },
   ] as const;
 
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
-        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary }]}>
-          <Zap size={36} color={colors.primary} />
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary, elevation: 12 }]}>
+          <Dumbbell size={42} color={colors.primary} />
         </View>
         <Text style={[step.title, { color: colors.textPrimary }]}>{t('onboarding.activityTitle')}</Text>
         <Text style={[step.sub, { color: colors.textSecondary }]}>{t('onboarding.activitySub')}</Text>
@@ -215,20 +322,105 @@ function ActivityStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
               style={[
                 step.optionCard, 
                 { backgroundColor: colors.surface, borderColor: colors.border }, 
-                isActive && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+                isActive && { borderColor: a.color, backgroundColor: a.color + '10' }
               ]}
               onPress={() => onChange({ activityLevel: a.id })}
               activeOpacity={0.7}
             >
-              <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
+              <View style={[step.iconContainer, { backgroundColor: colors.background, borderColor: isActive ? a.color : 'rgba(255,255,255,0.05)' }]}>
                 {a.icon}
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, backgroundColor: 'transparent' }}>
                 <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{a.label}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{a.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: colors.primary }]} />}
+              <View style={[step.radioOuter, { borderColor: isActive ? a.color : colors.border }]}>
+                {isActive && <View style={[step.radioInner, { backgroundColor: a.color }]} />}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Step 3b: Lifestyle (NEAT) ──────────────────────────────────────────────────
+function LifestyleStep({ data, onChange }: { data: Partial<OnboardingData>; onChange: (d: Partial<OnboardingData>) => void }) {
+  const { t } = useTranslation();
+  const colors = useTheme();
+
+  const LIFESTYLE_LEVELS = [
+    {
+      id: 'seated',
+      label: t('onboarding.lifestyleSeated'),
+      sub: t('onboarding.lifestyleSeatedEx'),
+      icon: <Monitor size={22} color="#6B7280" />,
+      color: '#6B7280'
+    },
+    {
+      id: 'standing_sometimes',
+      label: t('onboarding.lifestyleStandingSometimes'),
+      sub: t('onboarding.lifestyleStandingSometimesEx'),
+      icon: <Coffee size={22} color="#10B981" />,
+      color: '#10B981'
+    },
+    {
+      id: 'standing_mostly',
+      label: t('onboarding.lifestyleStandingMostly'),
+      sub: t('onboarding.lifestyleStandingMostlyEx'),
+      icon: <Briefcase size={22} color="#3B82F6" />,
+      color: '#3B82F6'
+    },
+    {
+      id: 'moving',
+      label: t('onboarding.lifestyleMoving'),
+      sub: t('onboarding.lifestyleMovingEx'),
+      icon: <Footprints size={22} color="#F59E0B" />,
+      color: '#F59E0B'
+    },
+    {
+      id: 'physical_work',
+      label: t('onboarding.lifestylePhysical'),
+      sub: t('onboarding.lifestylePhysicalEx'),
+      icon: <Hammer size={22} color="#EF4444" />,
+      color: '#EF4444'
+    },
+  ] as const;
+
+  return (
+    <View style={step.container}>
+      <View style={step.headerSection}>
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary, elevation: 12 }]}>
+          <Building2 size={42} color={colors.primary} />
+        </View>
+        <Text style={[step.title, { color: colors.textPrimary }]}>{t('onboarding.lifestyleTitle')}</Text>
+        <Text style={[step.sub, { color: colors.textSecondary }]}>{t('onboarding.lifestyleSub')}</Text>
+      </View>
+
+      <View style={step.optionList}>
+        {LIFESTYLE_LEVELS.map((lv) => {
+          const isActive = data.lifestyle === lv.id;
+          return (
+            <TouchableOpacity
+              key={lv.id}
+              style={[
+                step.optionCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isActive && { borderColor: lv.color, backgroundColor: lv.color + '10' }
+              ]}
+              onPress={() => onChange({ lifestyle: lv.id })}
+              activeOpacity={0.7}
+            >
+              <View style={[step.iconContainer, { backgroundColor: colors.background, borderColor: isActive ? lv.color : 'rgba(255,255,255,0.05)' }]}>
+                {lv.icon}
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{lv.label}</Text>
+                <Text style={[step.optionSub, { color: colors.textSecondary }]}>{lv.sub}</Text>
+              </View>
+              <View style={[step.radioOuter, { borderColor: isActive ? lv.color : colors.border }]}>
+                {isActive && <View style={[step.radioInner, { backgroundColor: lv.color }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -262,7 +454,7 @@ function HealthProfileStep({
   
   const selected = data[fieldKey] || [];
   const predefinedKeys = Object.keys(itemsObj);
-  const customValues = selected.filter(k => !predefinedKeys.includes(k));
+  const customValues = selected.filter(k => !predefinedKeys.includes(k) && !k.startsWith('anabolics:'));
   const customText = customValues.length > 0 ? customValues[0].replace('custom:', '') : '';
 
   const toggle = (id: string) => {
@@ -270,6 +462,21 @@ function HealthProfileStep({
       onChange({ [fieldKey]: ['none'] });
       return;
     }
+    
+    // If it's anabolics, we keep the 'anabolics' key or 'anabolics:...' key
+    const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
+    
+    if (id === 'anabolics') {
+      if (currentAnabolics) {
+        // Remove it
+        onChange({ [fieldKey]: selected.filter(x => x !== currentAnabolics) });
+      } else {
+        // Add it
+        onChange({ [fieldKey]: [...selected.filter(x => x !== 'none'), 'anabolics'] });
+      }
+      return;
+    }
+
     const newSelection = selected.includes(id) 
       ? selected.filter(x => x !== id) 
       : [...selected.filter(x => x !== 'none'), id];
@@ -277,13 +484,32 @@ function HealthProfileStep({
   };
 
   const setCustomText = (text: string) => {
-    const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none');
+    const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none' && !k.startsWith('anabolics'));
+    const anabolicsPart = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:')) || '';
+    
     if (text.trim() === '') {
-      onChange({ [fieldKey]: base.length > 0 ? base : [] });
+      const final = [...base];
+      if (anabolicsPart) final.push(anabolicsPart);
+      onChange({ [fieldKey]: final });
     } else {
-      onChange({ [fieldKey]: [...base, `custom:${text}`] });
+      const final = [...base, `custom:${text}`];
+      if (anabolicsPart) final.push(anabolicsPart);
+      onChange({ [fieldKey]: final });
     }
   };
+
+  const setAnabolicsText = (text: string) => {
+    const base = selected.filter(k => k !== 'anabolics' && !k.startsWith('anabolics:'));
+    if (text.trim() === '') {
+      onChange({ [fieldKey]: [...base, 'anabolics'] });
+    } else {
+      onChange({ [fieldKey]: [...base, `anabolics:${text}`] });
+    }
+  };
+
+  const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
+  const anabolicsText = currentAnabolics?.startsWith('anabolics:') ? currentAnabolics.replace('anabolics:', '') : '';
+
 
   return (
     <View style={step.container}>
@@ -297,42 +523,119 @@ function HealthProfileStep({
 
       <View style={{ gap: 12 }}>
         {Object.entries(itemsObj).map(([key, label]) => {
-          const isActive = selected.includes(key);
+          const isActive = selected.includes(key) || (key === 'anabolics' && !!currentAnabolics);
           return (
-            <TouchableOpacity
-              key={key}
-              style={[
-                step.optionCard, 
-                { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12 }, 
-                isActive && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
-              ]}
-              onPress={() => toggle(key)}
-              activeOpacity={0.7}
-            >
-              <Text style={[step.optionTitle, { color: colors.textPrimary, flex: 1, marginLeft: 8 }]}>{label}</Text>
-              <View style={[step.radioOuter, { borderColor: colors.border, borderRadius: 6 }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: colors.primary, borderRadius: 3 }]} />}
-              </View>
-            </TouchableOpacity>
+            <View key={key} style={{ gap: 8 }}>
+              <TouchableOpacity
+                style={[
+                  step.optionCard, 
+                  { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 14, paddingHorizontal: 16 }, 
+                  isActive && { 
+                    borderColor: colors.primary, 
+                    backgroundColor: colors.primary + '12',
+                    shadowColor: colors.primary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 8,
+                  }
+                ]}
+                onPress={() => toggle(key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  step.optionTitle, 
+                  { color: colors.textPrimary, flex: 1, fontSize: 16 },
+                  isActive && { color: colors.primary, fontWeight: '800' }
+                ]}>
+                  {label}
+                </Text>
+                
+                <View style={[
+                  step.radioOuter, 
+                  { 
+                    borderColor: isActive ? colors.primary : colors.border, 
+                    borderRadius: 8,
+                    backgroundColor: isActive ? colors.primary : 'transparent',
+                    borderWidth: 2
+                  }
+                ]}>
+                  {isActive && <Check size={14} color="#fff" strokeWidth={4} />}
+                </View>
+              </TouchableOpacity>
+
+              {key === 'anabolics' && isActive && (
+                <View style={{ marginHorizontal: 4, gap: 10 }}>
+                  <View style={{ 
+                    backgroundColor: colors.error + '08', 
+                    padding: 14, 
+                    borderRadius: 16, 
+                    borderWidth: 1, 
+                    borderColor: colors.error + '20' 
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <AlertCircle size={18} color={colors.error} />
+                      <Text style={{ color: colors.error, fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {t('common.warning', 'Aviso')}
+                      </Text>
+                    </View>
+                    <Text style={{ color: colors.error, fontSize: 13, lineHeight: 20, opacity: 0.9 }}>
+                      {t('onboarding.anabolicsDisclaimer')}
+                    </Text>
+                  </View>
+                  
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.background,
+                      color: colors.textPrimary,
+                      padding: 14,
+                      borderRadius: 16,
+                      borderWidth: 1.5,
+                      borderColor: colors.border,
+                      fontSize: 15,
+                      fontWeight: '600'
+                    }}
+                    placeholder={t('onboarding.otherPlaceholder')}
+                    placeholderTextColor={colors.textMuted}
+                    value={anabolicsText}
+                    onChangeText={setAnabolicsText}
+                  />
+                </View>
+              )}
+            </View>
           );
         })}
+
         
         {/* Custom Input */}
         <View style={[
             step.optionCard, 
-            { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12, flexDirection: 'column', alignItems: 'stretch' },
-            customText.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+            { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 14, flexDirection: 'column', alignItems: 'stretch' },
+            customText.length > 0 && { 
+              borderColor: colors.primary, 
+              backgroundColor: colors.primary + '12',
+              shadowColor: colors.primary,
+              shadowOpacity: 0.1,
+              shadowRadius: 10
+            }
           ]}>
-          <Text style={[step.optionTitle, { color: colors.textPrimary, marginLeft: 8, marginBottom: 8 }]}>{t('onboarding.otherSpecify')}</Text>
+          <Text style={[
+            step.optionTitle, 
+            { color: colors.textPrimary, marginLeft: 16, marginBottom: 12, fontSize: 16 },
+            customText.length > 0 && { color: colors.primary, fontWeight: '800' }
+          ]}>
+            {t('onboarding.otherSpecify')}
+          </Text>
           <TextInput
             style={{
               backgroundColor: colors.background,
               color: colors.textPrimary,
-              padding: 12,
-              borderRadius: 8,
-              borderWidth: 1,
+              padding: 14,
+              borderRadius: 16,
+              borderWidth: 1.5,
               borderColor: colors.border,
-              marginHorizontal: 8
+              marginHorizontal: 16,
+              fontSize: 15,
+              fontWeight: '600'
             }}
             placeholder={t('onboarding.otherPlaceholder')}
             placeholderTextColor={colors.textMuted}
@@ -371,11 +674,41 @@ function DietTypeStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
   const colors = useTheme();
 
   const DIET_TYPES = [
-    { id: 'recommended',  title: t('onboarding.dietTypeRecommendedTitle'),  sub: t('onboarding.dietTypeRecommendedSub'), icon: <Sparkles size={24} color={colors.primary} /> },
-    { id: 'high_protein', title: t('onboarding.dietTypeHighProteinTitle'), sub: t('onboarding.dietTypeHighProteinSub'), icon: <Activity size={24} color={colors.primary} /> },
-    { id: 'low_carb',     title: t('onboarding.dietTypeLowCarbTitle'),     sub: t('onboarding.dietTypeLowCarbSub'),     icon: <Droplets size={24} color={colors.primary} /> },
-    { id: 'keto',         title: t('onboarding.dietTypeKetoTitle'),         sub: t('onboarding.dietTypeKetoSub'),         icon: <Flame size={24} color={colors.primary} /> },
-    { id: 'low_fat',      title: t('onboarding.dietTypeLowFatTitle'),      sub: t('onboarding.dietTypeLowFatSub'),      icon: <Leaf size={24} color={colors.primary} /> },
+    { 
+      id: 'recommended',  
+      title: t('onboarding.dietTypeRecommendedTitle'),  
+      sub: t('onboarding.dietTypeRecommendedSub'), 
+      icon: <Sparkles size={24} />,
+      color: '#8B5CF6'
+    },
+    { 
+      id: 'high_protein', 
+      title: t('onboarding.dietTypeHighProteinTitle'), 
+      sub: t('onboarding.dietTypeHighProteinSub'), 
+      icon: <Dumbbell size={24} />,
+      color: '#F59E0B'
+    },
+    { 
+      id: 'low_carb',     
+      title: t('onboarding.dietTypeLowCarbTitle'),     
+      sub: t('onboarding.dietTypeLowCarbSub'),     
+      icon: <Droplets size={24} />,
+      color: '#3B82F6'
+    },
+    { 
+      id: 'keto',         
+      title: t('onboarding.dietTypeKetoTitle'),         
+      sub: t('onboarding.dietTypeKetoSub'),         
+      icon: <Zap size={24} />,
+      color: '#10B981'
+    },
+    { 
+      id: 'low_fat',      
+      title: t('onboarding.dietTypeLowFatTitle'),      
+      sub: t('onboarding.dietTypeLowFatSub'),      
+      icon: <Leaf size={24} />,
+      color: '#06B6D4'
+    },
   ] as const;
 
   return (
@@ -389,28 +722,39 @@ function DietTypeStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
       </View>
 
       <View style={step.optionList}>
-        {DIET_TYPES.map((d) => {
-          const isActive = data.dietType === d.id;
+        {DIET_TYPES.map((dt) => {
+          const isActive = data.dietType === dt.id;
           return (
             <TouchableOpacity
-              key={d.id}
+              key={dt.id}
               style={[
-                step.optionCard, 
-                { backgroundColor: colors.surface, borderColor: colors.border }, 
-                isActive && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+                step.optionCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isActive && { 
+                  borderColor: dt.color, 
+                  backgroundColor: dt.color + '12',
+                  shadowColor: dt.color,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 8,
+                }
               ]}
-              onPress={() => onChange({ dietType: d.id })}
+              onPress={() => onChange({ dietType: dt.id as any })}
               activeOpacity={0.7}
             >
-              <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
-                {d.icon}
+              <View style={[
+                step.iconContainer, 
+                { backgroundColor: colors.background, borderColor: isActive ? dt.color : 'rgba(255,255,255,0.05)' },
+                isActive && { shadowColor: dt.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 }
+              ]}>
+                {React.cloneElement(dt.icon as any, { color: isActive ? dt.color : colors.textSecondary })}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{d.title}</Text>
-                <Text style={[step.optionSub, { color: colors.textSecondary }]}>{d.sub}</Text>
+              <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: dt.color }]}>{dt.title}</Text>
+                <Text style={[step.optionSub, { color: colors.textSecondary }]}>{dt.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: colors.primary }]} />}
+              <View style={[step.radioOuter, { borderColor: isActive ? dt.color : colors.border }]}>
+                {isActive && <View style={[step.radioInner, { backgroundColor: dt.color }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -430,13 +774,19 @@ const FOOD_CATEGORIES = [
       { id: 'chicken', label: 'chicken', emoji: '🍗' },
       { id: 'beef', label: 'beef', emoji: '🥩' },
       { id: 'fish', label: 'fish', emoji: '🐟' },
+      { id: 'salmon', label: 'salmon', emoji: '🍣' },
+      { id: 'tuna', label: 'tuna', emoji: '🐟' },
       { id: 'turkey', label: 'turkey', emoji: '🦃' },
       { id: 'pork', label: 'pork', emoji: '🥩' },
       { id: 'eggs', label: 'eggs', emoji: '🥚' },
       { id: 'tofu', label: 'tofu', emoji: '🧊' },
+      { id: 'greek_yogurt', label: 'greek_yogurt', emoji: '🍦' },
+      { id: 'cottage_cheese', label: 'cottage_cheese', emoji: '🧀' },
       { id: 'protein_powder', label: 'protein_powder', emoji: '🥛' },
       { id: 'shrimp', label: 'shrimp', emoji: '🦐' },
       { id: 'seitan', label: 'seitan', emoji: '🌾' },
+      { id: 'tempeh', label: 'tempeh', emoji: '🧊' },
+      { id: 'lamb', label: 'lamb', emoji: '🍖' },
     ]
   },
   {
@@ -450,11 +800,15 @@ const FOOD_CATEGORIES = [
       { id: 'pasta', label: 'pasta', emoji: '🍝' },
       { id: 'oats', label: 'oats', emoji: '🥣' },
       { id: 'quinoa', label: 'quinoa', emoji: '🥗' },
+      { id: 'couscous', label: 'couscous', emoji: '🍚' },
+      { id: 'bulgur', label: 'bulgur', emoji: '🥣' },
       { id: 'beans', label: 'beans', emoji: '🫘' },
       { id: 'lentils', label: 'lentils', emoji: '🥘' },
       { id: 'bread', label: 'bread', emoji: '🍞' },
+      { id: 'rice_cakes', label: 'rice_cakes', emoji: '🍘' },
       { id: 'corn', label: 'corn', emoji: '🌽' },
       { id: 'tortilla', label: 'tortilla', emoji: '🫓' },
+      { id: 'plantain', label: 'plantain', emoji: '🍌' },
     ]
   },
   {
@@ -465,12 +819,16 @@ const FOOD_CATEGORIES = [
       { id: 'avocado', label: 'avocado', emoji: '🥑' },
       { id: 'nuts', label: 'nuts', emoji: '🥜' },
       { id: 'almonds', label: 'almonds', emoji: '🫘' },
+      { id: 'walnuts', label: 'walnuts', emoji: '🥜' },
       { id: 'peanut_butter', label: 'peanut_butter', emoji: '🍯' },
       { id: 'olive_oil', label: 'olive_oil', emoji: '🫒' },
       { id: 'cheese', label: 'cheese', emoji: '🧀' },
       { id: 'yogurt', label: 'yogurt', emoji: '🍦' },
       { id: 'chia_seeds', label: 'chia_seeds', emoji: '🌱' },
+      { id: 'pumpkin_seeds', label: 'pumpkin_seeds', emoji: '🎃' },
+      { id: 'sunflower_seeds', label: 'sunflower_seeds', emoji: '🌻' },
       { id: 'coconut_oil', label: 'coconut_oil', emoji: '🥥' },
+      { id: 'ghee', label: 'ghee', emoji: '🧈' },
     ]
   },
   {
@@ -481,11 +839,15 @@ const FOOD_CATEGORIES = [
       { id: 'banana', label: 'banana', emoji: '🍌' },
       { id: 'apple', label: 'apple', emoji: '🍎' },
       { id: 'berries', label: 'berries', emoji: '🍓' },
+      { id: 'grapes', label: 'grapes', emoji: '🍇' },
+      { id: 'watermelon', label: 'watermelon', emoji: '🍉' },
       { id: 'orange', label: 'orange', emoji: '🍊' },
       { id: 'mango', label: 'mango', emoji: '🥭' },
       { id: 'pineapple', label: 'pineapple', emoji: '🍍' },
+      { id: 'peach', label: 'peach', emoji: '🍑' },
       { id: 'pear', label: 'pear', emoji: '🍐' },
       { id: 'kiwi', label: 'kiwi', emoji: '🥝' },
+      { id: 'cherry', label: 'cherry', emoji: '🍒' },
     ]
   },
   {
@@ -495,6 +857,7 @@ const FOOD_CATEGORIES = [
     items: [
       { id: 'broccoli', label: 'broccoli', emoji: '🥦' },
       { id: 'spinach', label: 'spinach', emoji: '🥬' },
+      { id: 'kale', label: 'kale', emoji: '🥬' },
       { id: 'carrot', label: 'carrot', emoji: '🥕' },
       { id: 'tomato', label: 'tomato', emoji: '🍅' },
       { id: 'onion', label: 'onion', emoji: '🧅' },
@@ -502,6 +865,10 @@ const FOOD_CATEGORIES = [
       { id: 'cucumber', label: 'cucumber', emoji: '🥒' },
       { id: 'bell_pepper', label: 'bell_pepper', emoji: '🫑' },
       { id: 'zucchini', label: 'zucchini', emoji: '🥒' },
+      { id: 'asparagus', label: 'asparagus', emoji: '🥬' },
+      { id: 'cauliflower', label: 'cauliflower', emoji: '🥦' },
+      { id: 'mushroom', label: 'mushroom', emoji: '🍄' },
+      { id: 'eggplant', label: 'eggplant', emoji: '🍆' },
     ]
   },
   {
@@ -513,9 +880,16 @@ const FOOD_CATEGORIES = [
       { id: 'pepper', label: 'pepper', emoji: '🌶️' },
       { id: 'soy_sauce', label: 'soy_sauce', emoji: '🍶' },
       { id: 'hot_sauce', label: 'hot_sauce', emoji: '🥫' },
+      { id: 'sriracha', label: 'sriracha', emoji: '🔥' },
       { id: 'garlic', label: 'garlic', emoji: '🧄' },
       { id: 'mustard', label: 'mustard', emoji: '🍯' },
       { id: 'lemon_juice', label: 'lemon_juice', emoji: '🍋' },
+      { id: 'balsamic', label: 'balsamic', emoji: '🍶' },
+      { id: 'cinnamon', label: 'cinnamon', emoji: '🪵' },
+      { id: 'turmeric', label: 'turmeric', emoji: '🟡' },
+      { id: 'ginger', label: 'ginger', emoji: '🫚' },
+      { id: 'mayonnaise', label: 'mayonnaise', emoji: '🍯' },
+      { id: 'ketchup', label: 'ketchup', emoji: '🥫' },
     ]
   }
 ];
@@ -573,16 +947,29 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
                   style={[
                     step.dietPill, 
                     { backgroundColor: colors.surface, borderColor: colors.border }, 
-                    active && { borderColor: colors.primary, backgroundColor: colors.primary + '10' }
+                    active && { 
+                      borderColor: colors.primary, 
+                      backgroundColor: colors.primary + '15',
+                      shadowColor: colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                    }
                   ]}
                   onPress={() => toggle(item.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 16, marginRight: 6 }}>{item.emoji}</Text>
+                  {active && (
+                    <LinearGradient
+                      colors={[colors.primary + '10', colors.primary + '05']}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                  <Text style={{ fontSize: 16, marginRight: 8 }}>{item.emoji}</Text>
                   <Text style={[
                     step.dietPillText, 
                     { color: colors.textSecondary }, 
-                    active && { color: colors.textPrimary, fontWeight: '700' }
+                    active && { color: colors.textPrimary, fontWeight: '800' }
                   ]}>
                     {t(`onboarding.foodItems.${item.label}`) || item.label}
                   </Text>
@@ -602,23 +989,29 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
 
   useEffect(() => {
     // Initialize or sync target weight based on goal
-    const cur = data.weight ?? 70;
+    const defaultW = data.weightUnit === 'lbs' ? 154 : 70;
+    const cur = data.weight ?? defaultW;
     const tar = data.targetWeight ?? cur;
 
     if (data.goal === 'maintain' && tar !== cur) {
       onChange({ targetWeight: cur });
     } else if (data.goal === 'lose' && tar >= cur) {
-      onChange({ targetWeight: cur - 2 }); // Default 2kg loss
+      onChange({ targetWeight: data.weightUnit === 'lbs' ? cur - 4 : cur - 2 }); 
     } else if (data.goal === 'gain' && tar <= cur) {
-      onChange({ targetWeight: cur + 2 }); // Default 2kg gain
+      onChange({ targetWeight: data.weightUnit === 'lbs' ? cur + 4 : cur + 2 }); 
     }
-  }, [data.goal]);
+  }, [data.goal, data.weightUnit]);
 
   const heightM = (data.height ?? 170) / 100;
-  const currentVal = data.targetWeight ?? data.weight ?? 70;
-  const targetBMI = currentVal / (heightM * heightM);
+  const defaultW = data.weightUnit === 'lbs' ? 154 : 70;
+  const currentVal = data.targetWeight ?? data.weight ?? defaultW;
+  const currentValKg = data.weightUnit === 'lbs' ? currentVal / 2.20462 : currentVal;
+  const targetBMI = currentValKg / (heightM * heightM);
   const idealMin = Math.round(18.5 * heightM * heightM);
   const idealMax = Math.round(24.9 * heightM * heightM);
+  const idealMinDisplay = data.weightUnit === 'lbs' ? Math.round(idealMin * 2.20462) : idealMin;
+  const idealMaxDisplay = data.weightUnit === 'lbs' ? Math.round(idealMax * 2.20462) : idealMax;
+  const unitLabel = data.weightUnit === 'lbs' ? 'lbs' : 'kg';
 
   let statusColor = '#10B981';
   let statusIcon = <Sparkles size={16} color={statusColor} />;
@@ -628,11 +1021,11 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
     if (targetBMI < 18.5) {
       statusColor = '#EF4444';
       statusIcon = <AlertCircle size={16} color={statusColor} />;
-      statusText = t('onboarding.warningUnderweight', `Este objetivo es demasiado bajo. Tu rango ideal es ${idealMin}-${idealMax} kg.`);
+      statusText = t('onboarding.warningUnderweight', { min: idealMinDisplay, max: idealMaxDisplay, unit: unitLabel, defaultValue: `Este objetivo es demasiado bajo. Tu rango ideal es ${idealMinDisplay}-${idealMaxDisplay} ${unitLabel}.` });
     } else if (targetBMI > 24.9) {
       statusColor = '#F59E0B';
       statusIcon = <AlertCircle size={16} color={statusColor} />;
-      statusText = t('onboarding.recOverweightStep', `Buen paso inicial. Recuerda que tu peso ideal a largo plazo es ${idealMin}-${idealMax} kg.`);
+      statusText = t('onboarding.recOverweightStep', { min: idealMinDisplay, max: idealMaxDisplay, unit: unitLabel, defaultValue: `Buen paso inicial. Recuerda que tu peso ideal a largo plazo es ${idealMinDisplay}-${idealMaxDisplay} ${unitLabel}.` });
     } else {
       statusText = t('onboarding.loseHealthy', `¡Excelente meta! Alcanzarás un peso muy saludable para tu estatura.`);
     }
@@ -640,11 +1033,11 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
     if (targetBMI > 27.5) {
       statusColor = '#F59E0B';
       statusIcon = <AlertCircle size={16} color={statusColor} />;
-      statusText = t('onboarding.warningOverweightGain', `Cuidado con subir demasiada grasa. Tu rango saludable base es ${idealMin}-${idealMax} kg.`);
+      statusText = t('onboarding.warningOverweightGain', { min: idealMinDisplay, max: idealMaxDisplay, unit: unitLabel, defaultValue: `Cuidado con subir demasiada grasa. Tu rango saludable base es ${idealMinDisplay}-${idealMaxDisplay} ${unitLabel}.` });
     } else if (targetBMI < 18.5) {
       statusColor = '#EF4444';
       statusIcon = <AlertCircle size={16} color={statusColor} />;
-      statusText = t('onboarding.warningUnderweight', `Este objetivo sigue siendo bajo. Tu rango ideal es ${idealMin}-${idealMax} kg.`);
+      statusText = t('onboarding.warningUnderweightGain', { min: idealMinDisplay, max: idealMaxDisplay, unit: unitLabel, defaultValue: `Este objetivo sigue siendo bajo. Tu rango ideal es ${idealMinDisplay}-${idealMaxDisplay} ${unitLabel}.` });
     } else {
       statusText = t('onboarding.gainHealthy', `¡Perfecto para ganar masa muscular manteniendo un peso saludable!`);
     }
@@ -662,8 +1055,10 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
     }
   }
 
-  const minAllowedWeight = Math.max(30, Math.floor(15.0 * heightM * heightM));
-  const maxAllowedWeight = Math.min(250, Math.ceil(40.0 * heightM * heightM));
+  const minAllowedWeightKg = Math.max(30, Math.floor(15.0 * heightM * heightM));
+  const maxAllowedWeightKg = Math.min(250, Math.ceil(40.0 * heightM * heightM));
+  const minAllowedWeight = data.weightUnit === 'lbs' ? Math.round(minAllowedWeightKg * 2.20462) : minAllowedWeightKg;
+  const maxAllowedWeight = data.weightUnit === 'lbs' ? Math.round(maxAllowedWeightKg * 2.20462) : maxAllowedWeightKg;
 
   return (
     <View style={step.container}>
@@ -686,7 +1081,7 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
             <Scale size={22} color={colors.primary} />
           </View>
           <Text style={[step.optionTitle, { color: colors.textPrimary, flex: 1 }]}>{t('onboarding.currentWeight')}</Text>
-          <Text style={[step.optionSub, { color: colors.textPrimary, fontWeight: '700' }]}>{data.weight} kg</Text>
+          <Text style={[step.optionSub, { color: colors.textPrimary, fontWeight: '700' }]}>{data.weight} {unitLabel}</Text>
           <ChevronRight size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
@@ -718,7 +1113,7 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
                 <Text style={{ color: colors.primary }}>-</Text>
               </TouchableOpacity>
               
-              <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{currentVal} kg</Text>
+              <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{currentVal} {unitLabel}</Text>
               
               <TouchableOpacity 
                 onPress={() => {
@@ -784,20 +1179,129 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
   );
 }
 
+// ─── Step 7: Projection ──────────────────────────────────────────────────────
+function ProjectionStep({ data }: { data: Partial<OnboardingData> }) {
+  const { t } = useTranslation();
+  const colors = useTheme();
+
+  const isLbs = data.weightUnit === 'lbs';
+  const unitLabel = isLbs ? 'lbs' : 'kg';
+  const wKg = isLbs ? (data.weight ?? 154) / 2.20462 : (data.weight ?? 70);
+  const tKg = isLbs ? (data.targetWeight ?? 143) / 2.20462 : (data.targetWeight ?? 65);
+  
+  const diffKg = Math.abs(tKg - wKg);
+  // Velocity in kg/week roughly
+  const velocityMap = { slow: 0.25, moderate: 0.5, fast: 1.0 };
+  const vKg = velocityMap[data.velocity ?? 'moderate'];
+  
+  const weeks = diffKg / vKg;
+  const days = Math.max(1, Math.round(weeks * 7));
+  
+  const today = new Date();
+  const endD = new Date();
+  endD.setDate(today.getDate() + days);
+  
+  const q1 = new Date(); q1.setDate(today.getDate() + Math.round(days * 0.33));
+  const q2 = new Date(); q2.setDate(today.getDate() + Math.round(days * 0.66));
+  
+  const formatDate = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const labels = [t('common.today', 'Hoy'), formatDate(q1), formatDate(q2), formatDate(endD)];
+
+  const isLosing = tKg < wKg;
+  const isMaintaining = Math.abs(tKg - wKg) < 0.5;
+  
+  const cW = 320;
+  const cH = 120;
+  const startY = isMaintaining ? cH/2 : isLosing ? 20 : cH - 20;
+  const endY = isMaintaining ? cH/2 : isLosing ? cH - 20 : 20;
+
+  // Draw curve using simple SVG path
+  const curvePath = `M 20 ${startY} Q ${cW/2} ${startY + (endY - startY)*0.2} ${cW - 20} ${endY}`;
+  // Or a wavy path to simulate ups and downs but trending
+  const mY = (startY + endY) / 2;
+  const wavyPath = isMaintaining 
+    ? `M 20 ${startY} L ${cW-20} ${endY}` 
+    : `M 20 ${startY} C ${cW*0.3} ${startY}, ${cW*0.3} ${mY}, ${cW*0.5} ${mY} S ${cW*0.7} ${endY}, ${cW-20} ${endY}`;
+
+  return (
+    <View style={step.container}>
+      <View style={{ alignItems: 'center', marginBottom: 30, marginTop: 20 }}>
+        <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', marginBottom: 30 }}>
+          <Check size={36} color="#FFF" strokeWidth={3} />
+        </View>
+        <Text style={[step.title, { color: colors.textPrimary, fontSize: 24 }]}>{t('onboarding.projectionTitle', '...y así será tu progreso')}</Text>
+      </View>
+
+      <View style={{ backgroundColor: colors.surface, borderRadius: 24, borderWidth: 1, borderColor: colors.border, padding: 20, paddingTop: 30, position: 'relative', overflow: 'hidden' }}>
+        {/* Top Labels */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+          <View style={{ alignItems: 'center', width: 80 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>{t('onboarding.currentGoal', 'Objetivo actual')}</Text>
+          </View>
+          <View style={{ alignItems: 'center', width: 90 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>{t('onboarding.nextGoal', 'Siguiente objetivo')}</Text>
+            <Trophy size={16} color="#F59E0B" />
+          </View>
+        </View>
+
+        {/* SVG Chart */}
+        <View style={{ height: cH, marginVertical: 10 }}>
+          <Svg width="100%" height="100%" viewBox={`0 0 ${cW} ${cH}`}>
+            <Defs>
+              <SvgLinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#F59E0B" stopOpacity="0.3" />
+                <Stop offset="1" stopColor="#F59E0B" stopOpacity="0" />
+              </SvgLinearGradient>
+            </Defs>
+            {/* Guide lines */}
+            <SvgLine x1="20" y1="0" x2="20" y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="4,4" />
+            <SvgLine x1={cW-20} y1="0" x2={cW-20} y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="4,4" />
+            
+            {/* Area under curve (approximate) */}
+            <Path d={`${wavyPath} L ${cW-20} ${cH} L 20 ${cH} Z`} fill="url(#grad)" />
+            
+            {/* Main curve */}
+            <Path d={wavyPath} fill="none" stroke="#F59E0B" strokeWidth="3" />
+
+            {/* Start and End Points */}
+            <Circle cx="20" cy={startY} r="6" fill="#FFF" stroke="#F59E0B" strokeWidth="3" />
+            <Circle cx={cW-20} cy={endY} r="6" fill="#FFF" stroke="#F59E0B" strokeWidth="3" />
+          </Svg>
+
+          {/* Value Tooltips */}
+          <View style={{ position: 'absolute', left: 20, top: startY - 35, transform: [{ translateX: -30 }], backgroundColor: '#F59E0B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+            <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>{data.weight} {unitLabel}</Text>
+          </View>
+          <View style={{ position: 'absolute', left: cW - 20, top: endY - 35, transform: [{ translateX: -30 }], backgroundColor: '#F59E0B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+            <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>{data.targetWeight} {unitLabel}</Text>
+          </View>
+        </View>
+
+        {/* X Axis Labels */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+          {labels.map((lbl, idx) => (
+            <Text key={idx} style={{ color: colors.textSecondary, fontSize: 11 }}>{lbl}</Text>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Shared step styles ────────────────────────────────────────────────────────
 const step = StyleSheet.create({
   container:        { flex: 1 },
   headerSection:    { alignItems: 'center', marginBottom: 20 },
   targetCircle:     { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 40, 
+    width: 90, 
+    height: 90, 
+    borderRadius: 45, 
     justifyContent: 'center', 
     alignItems: 'center', 
     marginBottom: 24,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
     elevation: 10
   },
   title:            { fontSize: 22, fontWeight: '900', marginBottom: 6, textAlign: 'center' },
@@ -806,92 +1310,109 @@ const step = StyleSheet.create({
   optionCard:       { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    gap: 12, 
-    padding: 14, 
-    borderRadius: 18, 
+    gap: 16, 
+    padding: 18, 
+    borderRadius: 24, 
     borderWidth: 2,
   },
   iconContainer:    {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)'
   },
-  optionTitle:      { fontSize: 15, fontWeight: '800', marginBottom: 2, flexShrink: 1 },
-  optionSub:        { fontSize: 12, opacity: 0.6, lineHeight: 16, flexShrink: 1 },
+  optionTitle:      { fontSize: 17, fontWeight: '900', marginBottom: 4, flexShrink: 1 },
+  optionSub:        { fontSize: 13, opacity: 0.7, lineHeight: 18, flexShrink: 1 },
   radioOuter:       {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 6
+    marginLeft: 4
   },
   radioInner:       {
-    width: 10,
-    height: 10,
-    borderRadius: 5
+    width: 12,
+    height: 12,
+    borderRadius: 6
   },
-  statsGrid:        { gap: 20, paddingBottom: 16 },
-  field:            { marginBottom: 4 },
-  fieldLabel:       { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, marginBottom: 10, textTransform: 'uppercase', opacity: 0.5 },
-  sexRow:           { flexDirection: 'row', gap: 10 },
+  statsGrid:        { gap: 24, paddingBottom: 16 },
+  field:            { marginBottom: 8 },
+  fieldLabel:       { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12, textTransform: 'uppercase', opacity: 0.6 },
+  sexRow:           { flexDirection: 'row', gap: 12 },
   sexBtn:           { 
     flex: 1, 
-    borderRadius: 16, 
+    borderRadius: 24, 
     borderWidth: 2, 
-    paddingVertical: 14,
-    paddingHorizontal: 4, 
+    paddingVertical: 18,
     alignItems: 'center', 
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6 
+    gap: 10,
+    overflow: 'hidden'
   },
   sexIconWrap:      {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  sexLabel:         { fontSize: 15, fontWeight: '700' },
-  numRow:           { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  numBtn:           { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
-  numBtnText:       { fontSize: 24, fontWeight: '400', lineHeight: 30 },
+  sexLabel:         { fontSize: 17, fontWeight: '700' },
+  numRow:           { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  numBtn:           { 
+    width: 56, 
+    height: 56, 
+    borderRadius: 28, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
   numDisplay:       { 
     flex: 1, 
-    borderRadius: 16, 
+    borderRadius: 24, 
     borderWidth: 2, 
-    padding: 12, 
+    padding: 16, 
     alignItems: 'center', 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    gap: 4,
-    height: 50
+    gap: 6,
+    height: 64,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
   },
-  numValue:         { fontSize: 22, fontWeight: '900' },
-  numUnit:          { fontSize: 12, fontWeight: '600', opacity: 0.4, marginTop: 4 },
+  numValue:         { fontSize: 28, fontWeight: '900' },
+  numUnit:          { fontSize: 14, fontWeight: '700', opacity: 0.5, marginTop: 6 },
   miniNumRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
   miniNumBtn:       { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
   numValueSmall:    { fontSize: 16, fontWeight: '700', minWidth: 60, textAlign: 'center' },
-  categoryTitle:    { fontSize: 18, fontWeight: '900', marginBottom: 4 },
-  categorySub:      { fontSize: 13, opacity: 0.6 },
-  dietGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
+  categoryTitle:    { fontSize: 20, fontWeight: '900', marginBottom: 4, letterSpacing: -0.5 },
+  categorySub:      { fontSize: 13, opacity: 0.6, fontWeight: '600' },
+  dietGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },
   dietPill:         { 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    paddingHorizontal: 12, 
-    paddingVertical: 10,
+    borderRadius: 20, 
+    borderWidth: 1.5, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12,
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    overflow: 'hidden'
   },
   dietPillActive:   { backgroundColor: '#7C5CFC22' },
-  dietPillText:     { fontSize: 14, fontWeight: '600' },
+  dietPillText:     { fontSize: 15, fontWeight: '600' },
   dietPillTextActive:{ fontWeight: '800' },
 });
 
@@ -908,11 +1429,14 @@ export default function OnboardingScreen() {
     height: 170, 
     dietType: 'recommended',
     targetWeight: 65,
-    velocity: 'moderate'
+    velocity: 'moderate',
+    weightUnit: 'kg',
+    heightUnit: 'cm'
   });
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const { setProfile, profile }       = useAuthStore();
+  const { setMassUnit, setLengthUnit } = useSettingsStore();
 
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -985,6 +1509,7 @@ export default function OnboardingScreen() {
     if (stepId === 'goal')     return !!data.goal;
     if (stepId === 'stats')    return !!data.sex && !!data.age && !!data.weight && !!data.height;
     if (stepId === 'activity') return !!data.activityLevel;
+    if (stepId === 'lifestyle') return !!data.lifestyle;
     if (stepId === 'dietType') return !!data.dietType;
     if (stepId === 'personalization') return !!data.targetWeight && !!data.velocity;
     return true;
@@ -1036,9 +1561,19 @@ export default function OnboardingScreen() {
     setSaving(true);
     try {
       const d = data as OnboardingData;
+      
+      // Convert weights to kg for database
+      const isLbs = d.weightUnit === 'lbs';
+      const isFt = d.heightUnit === 'ft';
+      const wKg = isLbs ? Math.round(d.weight / 2.20462) : d.weight;
+      const tKg = isLbs ? Math.round(d.targetWeight / 2.20462) : d.targetWeight;
+      const hCm = isFt ? Math.round(d.height * 30.48) : d.height;
+
       const { tdee } = calculateTDEE({
-        weight: d.weight, height: d.height,
-        age: d.age, sex: d.sex, activityLevel: d.activityLevel,
+        weight: wKg, height: hCm,
+        age: d.age, sex: d.sex, 
+        activityLevel: d.activityLevel,
+        lifestyleLevel: d.lifestyle,
       });
       
       // Calculate macros based on dietType
@@ -1067,15 +1602,15 @@ export default function OnboardingScreen() {
         email:          authData.user.email ?? '',
         sex:            d.sex,
         age:            d.age,
-        weight:         d.weight,
-        height:         d.height,
+        weight:         wKg,
+        height:         hCm,
         activityLevel:  d.activityLevel,
         goal:           d.goal,
         tdee,
         targetCalories,
         macros:         { protein: finalProtein, carbs: finalCarbs, fat: finalFat },
-        targetWeight:   d.targetWeight,
-        startingWeight: d.weight,
+        targetWeight:   tKg,
+        startingWeight: wKg,
         availableFoods: d.availableFoods,
         preferences:    [d.dietType, d.velocity],
         isPro:          false,
@@ -1084,6 +1619,7 @@ export default function OnboardingScreen() {
         dietaryRestrictions: d.dietaryRestrictions ?? [],
         medicalConditions: d.medicalConditions ?? [],
         medicationsSupplements: d.medicationsSupplements ?? [],
+        lifestyle:      d.lifestyle,
       };
 
       const { error: upsertError } = await supabase.from('users').upsert({
@@ -1108,10 +1644,16 @@ export default function OnboardingScreen() {
         dietary_restrictions: profileData.dietaryRestrictions,
         medical_conditions: profileData.medicalConditions,
         medications_supplements: profileData.medicationsSupplements,
+        lifestyle:        profileData.lifestyle,
+        lifestyle_level:  profileData.lifestyle,
         updated_at:       new Date().toISOString(),
       });
 
       if (upsertError) throw upsertError;
+
+      // Persist unit choices to settings store
+      setMassUnit(isLbs ? 'lb' : 'kg');
+      setLengthUnit(isFt ? 'ft' : 'cm');
 
       setProfile(profileData);
       router.replace('/(tabs)/dashboard');
@@ -1127,12 +1669,14 @@ export default function OnboardingScreen() {
     goal:     <GoalStep     data={data} onChange={updateData} />,
     stats:    <StatsStep    data={data} onChange={updateData} />,
     activity: <ActivityStep data={data} onChange={updateData} />,
+    lifestyle: <LifestyleStep data={data} onChange={updateData} />,
     dietaryRestrictions: <DietaryRestrictionsStep data={data} onChange={updateData} />,
     medicalConditions:   <MedicalConditionsStep data={data} onChange={updateData} />,
     medications:         <MedicationsStep data={data} onChange={updateData} />,
     dietType: <DietTypeStep data={data} onChange={updateData} />,
     diet:     <DietStep     data={data} onChange={updateData} />,
     personalization: <PersonalizationStep data={data} onChange={updateData} />,
+    projection: <ProjectionStep data={data} />,
   };
 
   return (

@@ -27,7 +27,7 @@ export default function ScanModal() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned]           = useState(false);
   const [loading, setLoading]           = useState(false);
-  const [mode, setMode]                 = useState<ScanMode>('barcode');
+  const [mode, setMode]                 = useState<ScanMode>('photo');
   const [textInput, setTextInput]       = useState('');
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 500);
@@ -43,7 +43,7 @@ export default function ScanModal() {
   } | null>(null);
   const [editedFoods, setEditedFoods] = useState<{
     name: string; grams: number; calories: number; protein: number; carbs: number; fat: number;
-    sugar?: number; fiber?: number; sodium?: number; iron?: number; saturatedFat?: number; transFat?: number;
+    sugar?: number; fiber?: number; sodium?: number; iron?: number; calcium?: number; saturatedFat?: number; transFat?: number;
     originalGrams: number; originalCal: number; originalProt: number; originalCarbs: number; originalFat: number;
     originalSugar?: number; originalFiber?: number; originalSodium?: number; originalIron?: number; originalCalcium?: number; originalSatFat?: number; originalTransFat?: number;
   }[]>([]);
@@ -110,11 +110,11 @@ export default function ScanModal() {
 
   const checkAiLimit = (): boolean => {
     if (isProActually) return true;
-    if (aiUsageCount >= 15) {
+    if (aiUsageCount >= 5) {
       showAlert(
         'confirm',
         t('scan.limitReached') || 'AI Limit Reached',
-        t('scan.limitReachedSub') || 'You have reached the daily limit of 15 AI-powered registrations. Upgrade to Pro for unlimited use!',
+        t('scan.limitReachedSub') || 'You have reached the daily limit of 5 AI-powered registrations. Upgrade to Pro for unlimited use!',
         () => router.push('/modals/paywall'),
         () => {},
         t('onboarding.proBtn'),
@@ -256,8 +256,9 @@ export default function ScanModal() {
       })));
       setCapturedUri('text'); // Flag to indicate text mode
       incrementAiUsage();
-    } catch (err) {
-      showAlert('error', t('common.error'), 'AI analysis failed');
+    } catch (err: any) {
+      console.error('[ScanModal] Text analyze error:', err);
+      showAlert('error', t('common.error'), t('scan.analysisFailed') || 'AI analysis failed. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -419,7 +420,8 @@ export default function ScanModal() {
   };
 
   const handleAddAllFoods = async () => {
-    if (!editedFoods.length) return;
+    if (!editedFoods.length || loading) return;
+    setLoading(true);
 
     const targetMeal = initialMeal || getAutoMeal();
     const logDate = date || getLocalDateString();
@@ -460,39 +462,43 @@ export default function ScanModal() {
       transFat:     food.transFat,
     }));
 
-    if (profile?.id) {
-      const dbItems = editedFoods.map(food => ({
-        user_id: profile.id,
-        food_name: food.name,
-        calories: food.calories,
-        protein: food.protein,
-        carbs: food.carbs,
-        fat: food.fat,
-        grams: food.grams,
-        meal: targetMeal,
-        logged_at: logDate,
-        sugar: food.sugar,
-        fiber: food.fiber,
-        sodium: food.sodium,
-        iron: food.iron,
-        calcium: food.calcium,
-        saturated_fat: food.saturatedFat,
-        trans_fat: food.transFat,
-      }));
+    try {
+      if (profile?.id) {
+        const dbItems = editedFoods.map(food => ({
+          user_id: profile.id,
+          food_name: food.name,
+          calories: food.calories,
+          protein: food.protein,
+          carbs: food.carbs,
+          fat: food.fat,
+          grams: food.grams,
+          meal: targetMeal,
+          logged_at: logDate,
+          sugar: food.sugar,
+          fiber: food.fiber,
+          sodium: food.sodium,
+          iron: food.iron,
+          calcium: food.calcium,
+          saturated_fat: food.saturatedFat,
+          trans_fat: food.transFat,
+        }));
 
-      const { error } = await supabase.from('food_logs').insert(dbItems);
-      
-      if (!error) {
-        await fetchLogs(profile.id, selectedDate || logDate);
-        setShowSuccess(true);
+        const { error } = await supabase.from('food_logs').insert(dbItems);
+        
+        if (!error) {
+          await fetchLogs(profile.id, selectedDate || logDate);
+          setShowSuccess(true);
+        } else {
+          showAlert('error', t('common.error'), 'Failed to save foods');
+          return;
+        }
       } else {
-        showAlert('error', t('common.error'), 'Failed to save foods');
-        return;
+        // Local fallback if no profile
+        localLogs.forEach(log => addLog(log));
+        setShowSuccess(true);
       }
-    } else {
-      // Local fallback if no profile
-      localLogs.forEach(log => addLog(log));
-      setShowSuccess(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -676,7 +682,7 @@ export default function ScanModal() {
                       <Text style={{ fontSize: 20 }}>🔄</Text>
                     </TouchableOpacity>
                   </View>
-                  {!isProActually && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 15 - aiUsageCount }) || `${15 - aiUsageCount} AI scans left today`}</Text>}
+                  {!isProActually && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 5 - aiUsageCount }) || `${5 - aiUsageCount} AI scans left today`}</Text>}
                 </View>
               </>
             ) : (
@@ -704,7 +710,7 @@ export default function ScanModal() {
                     {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.analyzeText}>{t('scan.analyze') || 'Analyze with AI'}</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
-                {!profile?.isPro && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 15 - aiUsageCount }) || `${15 - aiUsageCount} AI scans left today`}</Text>}
+                {!profile?.isPro && <Text style={s.limitNote}>{t('scan.aiLimitNote', { count: 5 - aiUsageCount }) || `${5 - aiUsageCount} AI scans left today`}</Text>}
               </ScrollView>
             )}
           </View>

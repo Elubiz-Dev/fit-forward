@@ -118,6 +118,7 @@
     "gainWeightValidation": "Il peso obiettivo deve essere superiore a quello attuale",
     "maintainWeightInfo": "Il tuo peso obiettivo è uguale a quello attuale",
     "currentWeight": "Qual è il tuo peso attuale ?",
+    "targetWeight": "Peso obiettivo",
     "updateGoals": "Aggiorna obiettivi",
     "mealPlanFoods": "Alimenti Disponibili",
     "reminders": "Promemoria",
@@ -179,8 +180,6 @@
       "suggest4": "Quali sono i segni della disidratazione? 💧"
     }
   },
-  "nutritionist": {},
-  "trainer": {},
   "about": {
     "title": "Su FitGO",
     "social": "Social Media",
@@ -425,7 +424,11 @@
     "noWorkouts": "Nessun allenamento pianificato",
     "restDayHint": "Oggi è un giorno di riposo! Prendi questo tempo per recuperare.",
     "noPlanYet": "Non hai ancora un piano",
-    "restDay": "Giorno di riposo"
+    "restDay": "Giorno di riposo",
+    "reps": "Rip.",
+    "rest": "Riposo",
+    "sets": "Serie",
+    "exercises": "Esercizi"
   },
   "recipes": {
     "title": "Ricette IA",
@@ -545,6 +548,7 @@
     "medicalConditionsSub": "Questo ci aiuta a fare raccomandazioni più sicure",
     "medicationsTitle": "Stai assumendo farmaci o integratori?",
     "medicationsSub": "Questo ci aiuta a evitare conflitti con il tuo piano nutrizionale",
+    "anabolicsDisclaimer": "Sotto la tua responsabilità. L'app non supporta l'uso di queste sostanze.",
     "skipStep": "Salta questo passaggio",
     "otherSpecify": "Altro (specificare)",
     "otherPlaceholder": "Scrivi qui...",
@@ -558,7 +562,8 @@
       "halal": "Halal / Kosher",
       "intermittent_fasting": "Digiuno Intermittente",
       "low_sodium": "Dieta Povera di Sodio",
-      "low_carb": "Dieta Povera di Carboidrati"
+      "low_carb": "Dieta Povera di Carboidrati",
+      "none": "Nessuno"
     },
     "medicalItems": {
       "diabetes_type1": "Diabete Tipo 1",
@@ -583,6 +588,7 @@
       "multivitamins": "Vitamine / Multivitaminici",
       "omega3": "Omega-3",
       "iron": "Ferro",
+      "anabolics": "Anabolizzanti",
       "none": "Nessuno"
     },
     "dietTypeTitle": "Che tipo di dieta preferisci?",

@@ -118,6 +118,7 @@
     "gainWeightValidation": "Das Zielgewicht muss höher sein als das aktuelle Gewicht",
     "maintainWeightInfo": "Dein Zielgewicht entspricht deinem aktuellen Gewicht",
     "currentWeight": "Was ist dein aktuelles Gewicht?",
+    "targetWeight": "Zielgewicht",
     "updateGoals": "Ziele aktualisieren",
     "mealPlanFoods": "Verfügbare Lebensmittel",
     "reminders": "Erinnerungen",
@@ -179,8 +180,6 @@
       "suggest4": "Was sind Anzeichen einer Dehydration? 💧"
     }
   },
-  "nutritionist": {},
-  "trainer": {},
   "about": {
     "title": "Über FitGO",
     "social": "Soziale Medien",
@@ -425,7 +424,11 @@
     "noWorkouts": "Keine Workouts geplant",
     "restDayHint": "Heute ist Ruhetag! Nutze die Zeit zur Erholung.",
     "noPlanYet": "Du hast noch keinen Plan",
-    "restDay": "Ruhetag"
+    "restDay": "Ruhetag",
+    "reps": "Wdh.",
+    "rest": "Pause",
+    "sets": "Sätze",
+    "exercises": "Übungen"
   },
   "recipes": {
     "title": "KI Rezepte",
@@ -544,7 +547,8 @@
     "medicalConditionsTitle": "Hast du medizinische Erkrankungen?",
     "medicalConditionsSub": "Hilft uns, sichere Empfehlungen zu geben",
     "medicationsTitle": "Nimmst du Medikamente oder Nahrungsergänzungsmittel?",
-    "medicationsSub": "Hilft uns, Konflikte mit deinem Ernährungsplan zu vermeiden",
+    "medicationsSub": "Dies hilft uns, Konflikte mit Ihrem Ernährungsplan zu vermeiden",
+    "anabolicsDisclaimer": "Auf eigene Verantwortung. Die App unterstützt die Verwendung dieser Substanzen nicht.",
     "skipStep": "Diesen Schritt überspringen",
     "otherSpecify": "Sonstiges (angeben)",
     "otherPlaceholder": "Hier tippen...",
@@ -558,7 +562,8 @@
       "halal": "Halal / Koscher",
       "intermittent_fasting": "Intervallfasten",
       "low_sodium": "Natriumarme Diät",
-      "low_carb": "Kohlenhydratarme Diät"
+      "low_carb": "Kohlenhydratarme Diät",
+      "none": "Keine"
     },
     "medicalItems": {
       "diabetes_type1": "Diabetes Typ 1",
@@ -583,6 +588,7 @@
       "multivitamins": "Vitamine / Multivitamine",
       "omega3": "Omega-3",
       "iron": "Eisen",
+      "anabolics": "Anabolika",
       "none": "Keines"
     },
     "dietTypeTitle": "Welche Ernährungsform bevorzugst du?",

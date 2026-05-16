@@ -5,9 +5,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { FoodItem } from '../../services/foodDatabase';
-import { useAuthStore, useNutritionStore } from '../../store';
+import { useAuthStore, useNutritionStore, useSettingsStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { convertEnergy } from '../../utils/units';
 import { supabase } from '../../services/supabase';
 import { getLocalDateString } from '../../utils/date';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
@@ -43,6 +44,8 @@ export default function FoodDetailModal() {
   };
 
   const [meal, setMeal]       = useState<Meal>(initialMeal || getAutoMeal());
+  const { energyUnit } = useSettingsStore();
+  const energyLabel = energyUnit.toUpperCase();
   
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -233,7 +236,9 @@ export default function FoodDetailModal() {
           <View style={s.macroCardHeader}>
             <View style={{ flex: 1 }}>
               <Text style={[s.macroTitle, { color: colors.textMuted }]}>{t('foodDetail.per')} {grams || '?'}g</Text>
-              <Text style={[s.caloriesVal, { color: colors.textPrimary }]}>{cal} <Text style={s.caloriesUnit}>kcal</Text></Text>
+              <Text style={[s.caloriesVal, { color: colors.textPrimary }]}>
+                {Math.round(convertEnergy(cal, 'kcal', energyUnit))} <Text style={s.caloriesUnit}>{energyLabel}</Text>
+              </Text>
             </View>
             <View style={s.pieWrap}>
               {pieData.length > 0 ? (

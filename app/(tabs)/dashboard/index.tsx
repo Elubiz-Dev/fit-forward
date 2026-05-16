@@ -6,18 +6,25 @@ import {
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { Spacing, Radius, Shadow } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore, useBodyStore } from '../../../store';
+import { useAuthStore, useNutritionStore, useSettingsStore, useBodyStore, UserProfile } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
+import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
 import { getLocalDateString, addDays } from '../../../utils/date';
 // import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 // import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { AnimatedCard } from '../../../components/AnimatedCard';
+import { Trophy, Flame, Dumbbell, Heart, ChevronRight, Scale, Target } from 'lucide-react-native';
+import { useAchievements, Achievement } from '../../../hooks/useAchievements';
+import { GoalWizardModal, ACTIVITY_TO_EXERCISE } from '../../../components/GoalWizardModal';
+
 
 const { width } = Dimensions.get('window');
+import { CustomAlert, AlertType } from '../../../components/CustomAlert';
+
 const WIDGET_WIDTH = (width - Spacing.base * 2 - Spacing.md) / 2;
 
 const RING_SIZE     = 180;
@@ -37,10 +44,16 @@ function ScoreRing({ consumed, target, dateLabel }: { consumed: number; target: 
       <Text style={[ring.topLabel, { color: colors.textSecondary }]}>{dateLabel}</Text>
       <View style={{ height: 16 }} />
       <Svg width={RING_SIZE} height={RING_SIZE}>
+        <Defs>
+          <SvgLinearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={pct > 0.9 ? colors.error : "#00F0FF"} />
+            <Stop offset="1" stopColor={pct > 0.9 ? "#FF4B4B" : "#7C5CFC"} />
+          </SvgLinearGradient>
+        </Defs>
         <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
           stroke={colors.surfaceAlt} strokeWidth={STROKE_WIDTH} fill="transparent" />
         <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RADIUS}
-          stroke={pct > 0.9 ? colors.error : colors.primary}
+          stroke="url(#scoreGrad)"
           strokeWidth={STROKE_WIDTH}
           strokeDasharray={CIRCUMFERENCE}
           strokeDashoffset={strokeDashoffset}
@@ -50,7 +63,7 @@ function ScoreRing({ consumed, target, dateLabel }: { consumed: number; target: 
       <View style={ring.textWrap}>
         <Text style={[ring.consumed, { color: colors.textPrimary }]}>{consumed}</Text>
         <Text style={[ring.label, { color: colors.textSecondary }]}>
-          {consumed < target * 0.3 ? t('dashboard.low') : consumed > target * 0.9 ? t('dashboard.high') : t('dashboard.medium')}
+          {consumed < target * 0.3 ? t('dashboard.low', 'Bajo') : consumed > target * 0.9 ? t('dashboard.high', 'Alto') : t('dashboard.medium', 'Medio')}
         </Text>
       </View>
     </View>
@@ -72,20 +85,32 @@ function WidgetCard({ title, value, subValue, icon, onPress, customContent, onLo
   return (
     <AnimatedCard index={index} direction="up" style={{ width: WIDGET_WIDTH }}>
       <TouchableOpacity 
-        style={[w.card, { backgroundColor: colors.surface }, isEditing && { borderColor: colors.primary, borderWidth: 2 }]} 
+        style={[
+          w.card, 
+          { backgroundColor: colors.surface, borderColor: isEditing ? '#7C5CFC' : 'transparent' },
+          isEditing && { borderWidth: 2 }
+        ]} 
         onPress={isEditing ? undefined : onPress} 
         activeOpacity={0.8} 
         delayLongPress={500} 
         onLongPress={onLongPress}
       >
+        <LinearGradient
+          colors={['rgba(124, 92, 252, 0.08)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: Radius.xl }]}
+        />
         <View style={w.header}>
-          <Text style={w.icon}>{icon}</Text>
-          <Text style={[w.title, { color: colors.textPrimary }]}>{title}</Text>
+          <View style={[w.iconWrap, { backgroundColor: 'rgba(124, 92, 252, 0.15)' }]}>
+            <Text style={w.icon}>{icon}</Text>
+          </View>
+          <Text style={[w.title, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
         </View>
         {customContent ? customContent : (
           <View style={w.content}>
-            <Text style={[w.value, { color: colors.textPrimary }]}>{value}</Text>
-            {subValue && <Text style={[w.subValue, { color: colors.textSecondary }]}>{subValue}</Text>}
+            <Text style={[w.value, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+            {subValue && <Text style={[w.subValue, { color: colors.textSecondary }]} numberOfLines={1}>{subValue}</Text>}
           </View>
         )}
         
@@ -112,14 +137,46 @@ function WidgetCard({ title, value, subValue, icon, onPress, customContent, onLo
   );
 }
 
+// ─── Achievement Preview ───────────────────────────────────────────────────────
+function AchievementPreview({ achievements, onPress }: { achievements: Achievement[]; onPress: () => void }) {
+  const colors = useTheme();
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  
+  return (
+    <TouchableOpacity style={ap.container} onPress={onPress} activeOpacity={0.7}>
+      <LinearGradient
+        colors={['#FFD700', '#FFA500']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={ap.trophyCircle}
+      >
+        <Trophy size={18} color="#FFF" />
+      </LinearGradient>
+      <View style={ap.textWrap}>
+        <Text style={[ap.label, { color: colors.textSecondary }]}>Logros</Text>
+        <Text style={[ap.value, { color: colors.textPrimary }]}>{unlockedCount} / {achievements.length}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const ap = StyleSheet.create({
+  container: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255, 215, 0, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.2)' },
+  trophyCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  textWrap: { justifyContent: 'center' },
+  label: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  value: { fontSize: 14, fontWeight: '800' },
+});
+
 const w = StyleSheet.create({
-  card: { width: WIDGET_WIDTH, height: 160, borderRadius: Radius.xl, padding: Spacing.md, ...Shadow.sm, justifyContent: 'space-between' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  icon: { fontSize: 16 },
-  title: { fontSize: 14, fontWeight: '600' },
-  content: { flex: 1, justifyContent: 'center' },
-  value: { fontSize: 28, fontWeight: '800' },
-  subValue: { fontSize: 12, marginTop: 4 },
+  card: { width: WIDGET_WIDTH, height: 160, borderRadius: Radius.xl, padding: Spacing.lg, justifyContent: 'space-between', borderWidth: 1, overflow: 'hidden' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconWrap: { width: 34, height: 34, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  icon: { fontSize: 18 },
+  title: { fontSize: 15, fontWeight: '700', flex: 1, letterSpacing: -0.3 },
+  content: { flex: 1, justifyContent: 'flex-end', paddingBottom: 4 },
+  value: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
+  subValue: { fontSize: 13, marginTop: 4, fontWeight: '500', opacity: 0.8 },
   editOverlay: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: Radius.xl, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10 },
   moveBtn: { backgroundColor: '#7C5CFC', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   moveIcon: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
@@ -132,7 +189,8 @@ export default function DashboardScreen() {
   const { language } = useSettingsStore();
   const { profile, setProfile } = useAuthStore();
   const { todayLogs, dailySleep, selectedDate, totals, fetchLogs, setDate } = useNutritionStore();
-  const { latest, fetchMeasurements, getForDate } = useBodyStore();
+  const { latest, fetchMeasurements, getForDate, measurements } = useBodyStore();
+  const { achievements } = useAchievements();
   
   const totalsData = useMemo(() => totals(), [todayLogs, selectedDate]);
   const { calories } = totalsData;
@@ -151,7 +209,11 @@ export default function DashboardScreen() {
   }, [profile?.id, selectedDate]);
 
   const dateMeasurement = getForDate(selectedDate);
-  const initialWeight = profile?.startingWeight || profile?.weight || 0;
+  const oldestWeight = measurements.length > 0
+    ? measurements[measurements.length - 1].weight
+    : profile?.weight || 0;
+    
+  const initialWeight = profile?.startingWeight || oldestWeight;
   const currentWeight = dateMeasurement?.weight || profile?.weight || 0;
   const targetWeight  = profile?.targetWeight || currentWeight;
   const sleepHours = dailySleep[selectedDate] || 0;
@@ -161,11 +223,21 @@ export default function DashboardScreen() {
   if (profile?.goal === 'lose') {
     const totalToLose = initialWeight - targetWeight;
     const lostSoFar = initialWeight - currentWeight;
-    progressPct = totalToLose > 0 ? Math.max(0, Math.min(100, (lostSoFar / totalToLose) * 100)) : 100;
+    if (totalToLose > 0) {
+      progressPct = Math.max(0, Math.min(100, (lostSoFar / totalToLose) * 100));
+    } else {
+      // Target is >= Initial: already "lost" if current is <= target, but contradictory
+      progressPct = currentWeight <= targetWeight ? 100 : 0;
+    }
   } else if (profile?.goal === 'gain') {
     const totalToGain = targetWeight - initialWeight;
     const gainedSoFar = currentWeight - initialWeight;
-    progressPct = totalToGain > 0 ? Math.max(0, Math.min(100, (gainedSoFar / totalToGain) * 100)) : 100;
+    if (totalToGain > 0) {
+      progressPct = Math.max(0, Math.min(100, (gainedSoFar / totalToGain) * 100));
+    } else {
+      // Target is <= Initial: contradictory for GAIN goal
+      progressPct = currentWeight >= targetWeight && initialWeight > targetWeight ? 0 : (currentWeight >= targetWeight ? 100 : 0);
+    }
   } else {
     // Maintain: 100% as long as they are within 1.5kg of target
     const diff = Math.abs(currentWeight - targetWeight);
@@ -187,11 +259,60 @@ export default function DashboardScreen() {
   }
 
   const [isEditing, setIsEditing] = useState(false);
-  const [widgetsOrder, setWidgetsOrder] = useState(
-    profile?.widgetsOrder?.length 
-      ? profile.widgetsOrder 
-      : ['weight', 'bodyFat', 'sleep', 'calories', 'macros', 'measurements', 'photos', 'achievements']
-  );
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setAlert(prev => ({ ...prev, visible: false }));
+      } : undefined,
+    });
+  };
+
+  const [widgetsOrder, setWidgetsOrder] = useState(() => {
+
+    let defaultOrder = ['weight', 'bodyFat', 'sleep', 'calories', 'macros', 'measurements', 'photos', 'muscle_directory'];
+    if (profile?.widgetsOrder?.length) {
+      let order = profile.widgetsOrder.filter(id => id !== 'achievements');
+      if (!order.includes('muscle_directory')) order.push('muscle_directory');
+      return order;
+    }
+    return defaultOrder;
+  });
 
   const saveWidgetsOrder = async () => {
     setIsEditing(false);
@@ -201,14 +322,15 @@ export default function DashboardScreen() {
     }
   };
 
-  const getGoalInfo = () => {
+  const goalInfo = useMemo(() => {
     switch (profile?.goal) {
-      case 'lose': return { label: t('profile.loseWeight', 'Pérdida de Peso'), icon: '📉' };
-      case 'gain': return { label: t('profile.gainMuscle', 'Ganancia Muscular'), icon: '💪' };
-      default: return { label: t('profile.maintain', 'Mantenimiento'), icon: '⚖️' };
+      case 'lose': return { label: t('profile.loseWeight', 'Pérdida de Peso'), icon: <Flame size={28} color="#FF4D4D" />, accent: '#FF4D4D' };
+      case 'gain': return { label: t('profile.gainMuscle', 'Ganancia Muscular'), icon: <Dumbbell size={28} color="#4D94FF" />, accent: '#4D94FF' };
+      default: return { label: t('profile.maintain', 'Mantenimiento'), icon: <Heart size={28} color="#4DFF88" />, accent: '#4DFF88' };
     }
-  };
-  const goalInfo = getGoalInfo();
+  }, [profile?.goal, t]);
+
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
 
   const moveWidget = (index: number, direction: 1 | -1) => {
     if (index + direction < 0 || index + direction >= widgetsOrder.length) return;
@@ -291,28 +413,30 @@ export default function DashboardScreen() {
         );
       case 'photos':
         return (
-          <WidgetCard key={id} {...commonProps} title={t('dashboard.photosWidget')} icon=""
+          <WidgetCard key={id} {...commonProps} title={t('dashboard.evaluationWidget', 'Evaluación IA')} icon="🤖"
             customContent={
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 32, color: colors.textSecondary }}>📷</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginTop: 8 }}>{t('dashboard.addPhotos')}</Text>
-                <Text style={[w.subValue, { color: colors.textSecondary }]}>{t('dashboard.seeProgress')}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginTop: 8 }}>{t('dashboard.evaluatePhysique', 'Evaluar Físico')}</Text>
+                <Text style={[w.subValue, { color: colors.textSecondary }]}>{t('dashboard.getAIFeedback', 'Recibe feedback IA')}</Text>
               </View>
             }
-            onPress={() => Alert.alert(t('dashboard.photosWidget'), t('common.comingSoon', 'Próximamente'))}
+            onPress={() => router.push('/modals/progress-evaluation')}
           />
         );
       case 'achievements':
+        return null; // Removed from grid as requested
+      case 'muscle_directory':
         return (
-          <WidgetCard key={id} {...commonProps} title={t('dashboard.achievementsWidget', 'Logros')} icon="🏆"
+          <WidgetCard key={id} {...commonProps} title={t('dashboard.muscleDirWidget', 'Ejercicios')} icon="💪"
             customContent={
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 32, color: colors.textSecondary }}>🏅</Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginTop: 8 }}>{t('dashboard.viewAchievements', 'Ver Medallas')}</Text>
-                <Text style={[w.subValue, { color: colors.textSecondary }]}>{t('dashboard.achievementsSub', 'Desafíos completados')}</Text>
+                <Text style={{ fontSize: 32, color: colors.textSecondary }}>📖</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginTop: 8 }}>{t('dashboard.muscleDirTitle', 'Directorio')}</Text>
+                <Text style={[w.subValue, { color: colors.textSecondary }]}>{t('dashboard.muscleDirSub', 'Por músculos')}</Text>
               </View>
             }
-            onPress={() => Alert.alert(t('dashboard.achievementsWidget', 'Logros'), t('common.comingSoon', 'Próximamente'))}
+            onPress={() => router.push('/modals/muscle-directory' as any)}
           />
         );
       default: return null;
@@ -331,30 +455,34 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       {/* GestureDetector disabled */}
       <View style={{ flex: 1 }}>
+
         <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={s.header}>
           <View>
+            <Text style={[s.greeting, { color: colors.textPrimary }]}>¡Hola, {name}!</Text>
             <Text style={[s.date, { color: colors.textSecondary }]}>
               {new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
           </View>
-          <TouchableOpacity style={s.avatar} onPress={() => router.push('/(tabs)/profile')}>
-            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatarGrad}>
-              {profile?.avatarUrl ? (
-                <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage} />
-              ) : (
-                <Text style={s.avatarText}>{name[0]?.toUpperCase()}</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          <AchievementPreview achievements={achievements} onPress={() => router.push('/modals/achievements')} />
         </View>
 
         {/* Nutritional Score Card */}
         <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.scoreTitle')}</Text>
+          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>⚡ {t('dashboard.scoreTitle', 'Score Nutricional')}</Text>
         </View>
         <View style={[s.cardFull, { backgroundColor: colors.surface }]}>
           <ScoreRing consumed={calories} target={target} dateLabel={dateLabel} />
@@ -362,29 +490,80 @@ export default function DashboardScreen() {
 
         {/* Phase Card */}
         <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.phaseTitle')}</Text>
-        </View>
-        <View style={[s.cardFull, { backgroundColor: colors.surface }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Text style={{ fontSize: 20 }}>{goalInfo.icon}</Text>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary }}>{goalInfo.label}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>{currentWeight} kg</Text>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#7C5CFC' }}>🎯 {targetWeight} kg</Text>
-          </View>
-          <View style={[s.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[s.progressFill, { backgroundColor: '#7C5CFC', width: `${progressPct}%` }]} />
-          </View>
-          <View style={{ height: 24 }} />
-          <TouchableOpacity style={[s.updateBtn, { backgroundColor: '#7C5CFC' }]} onPress={() => router.push('/modals/body-measurements')}>
-            <Text style={[s.updateBtnText, { color: '#FFF' }]}>{t('dashboard.updateProgress')}</Text>
+          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>🎯 {t('dashboard.phaseTitle', 'Fase')}</Text>
+          <TouchableOpacity onPress={() => setGoalModalVisible(true)}>
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>{t('common.edit', 'Editar')}</Text>
           </TouchableOpacity>
         </View>
+        <LinearGradient
+          colors={[colors.surface, colors.surfaceAlt]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.cardFull}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+            <View style={[s.goalIconCircle, { backgroundColor: goalInfo.accent + '20', shadowColor: goalInfo.accent }]}>
+              {goalInfo.icon}
+            </View>
+            <View>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 2 }}>{t('profile.activeGoal', 'Objetivo Activo')}</Text>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: colors.textPrimary }}>{goalInfo.label}</Text>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'flex-end' }}>
+            <View>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 4 }}>{t('profile.currentWeight')}</Text>
+              <Text style={{ fontSize: 26, fontWeight: '900', color: colors.textPrimary }}>{currentWeight} <Text style={{ fontSize: 16, opacity: 0.5 }}>kg</Text></Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 4, textAlign: 'right' }}>{t('profile.targetWeight')}</Text>
+              <Text style={{ fontSize: 26, fontWeight: '900', color: goalInfo.accent }}>{targetWeight} <Text style={{ fontSize: 16, opacity: 0.5 }}>kg</Text></Text>
+            </View>
+          </View>
+
+          <View style={[s.progressBar, { backgroundColor: colors.border, height: 10 }]}>
+            <LinearGradient
+              colors={[goalInfo.accent, '#7C5CFC']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[s.progressFill, { width: `${progressPct}%` }]}
+            />
+          </View>
+          
+          <View style={{ height: 24 }} />
+          
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={{ flex: 1 }} 
+              onPress={() => router.push('/modals/body-measurements')}
+            >
+              <View style={[s.updateBtnSmall, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                <Scale size={18} color={colors.textPrimary} />
+                <Text style={[s.updateBtnTextSmall, { color: colors.textPrimary }]}>{t('dashboard.weight', 'Peso')}</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={{ flex: 1.5 }} 
+              onPress={() => setGoalModalVisible(true)}
+            >
+              <LinearGradient
+                colors={['#7C5CFC', '#6344E0']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.updateBtnSmall}
+              >
+                <Target size={18} color="#FFF" />
+                <Text style={[s.updateBtnTextSmall, { color: '#FFF' }]}>{t('profile.updateGoals', 'Objetivos')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
 
         {/* Statistics Grid */}
         <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.statsTitle')}</Text>
+          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>📊 {t('dashboard.statsTitle', 'Estadísticas')}</Text>
           {isEditing && (
             <TouchableOpacity onPress={saveWidgetsOrder} style={s.doneBtn}>
               <Text style={s.doneText}>{t('common.done', 'Listo')}</Text>
@@ -399,6 +578,93 @@ export default function DashboardScreen() {
       </ScrollView>
       </View>
       {/* </GestureDetector> */}
+      <GoalWizardModal
+        visible={goalModalVisible}
+        onClose={() => setGoalModalVisible(false)}
+        initialData={{
+          weight: profile?.weight || 70,
+          targetWeight: profile?.targetWeight || profile?.weight || 70,
+          goal: profile?.goal || 'maintain',
+          lifestyle: profile?.lifestyle || 'seated',
+          exerciseLevel: profile?.activityLevel || 'none'
+        }}
+        onSave={async (newData) => {
+          if (!profile) return;
+          try {
+            // Combine Lifestyle and Exercise to get final activityLevel for TDEE
+            const LIFESTYLE_MAP: Record<string, number> = { seated: 0, standing_sometimes: 1, standing_mostly: 2, moving: 3, physical_work: 4 };
+            const EXERCISE_MAP: Record<string, number> = { none: 0, '1-2': 1, '3-4': 2, '5-6': 3, daily: 4 };
+            const REVERSE_MAP: Record<number, UserProfile['activityLevel']> = { 0: 'sedentary', 1: 'light', 2: 'moderate', 3: 'active', 4: 'very_active' };
+
+            const lifeScore = LIFESTYLE_MAP[newData.lifestyle] || 0;
+            const exeScore  = EXERCISE_MAP[newData.exerciseLevel] || 0;
+            const finalActivityLevel = REVERSE_MAP[Math.max(lifeScore, exeScore)];
+
+            // Recalculate and update store
+            const { tdee } = calculateTDEE({
+              weight: newData.weight,
+              height: profile.height,
+              age: profile.age,
+              sex: profile.sex,
+              activityLevel: finalActivityLevel,
+              lifestyleLevel: newData.lifestyle
+            });
+            
+            const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, newData.goal);
+
+            // Update Supabase
+            const { error: upsertError } = await supabase
+              .from('users')
+              .update({
+                weight: newData.weight,
+                target_weight: newData.targetWeight,
+                goal: newData.goal,
+                lifestyle: newData.lifestyle,
+                activity_level: finalActivityLevel,
+                tdee,
+                target_calories: targetCalories,
+                macros: { protein, carbs, fat },
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', profile.id);
+
+            if (upsertError) throw upsertError;
+
+            // Also update bodyStore measurement if weight changed
+            const { addMeasurement } = useBodyStore.getState();
+            await addMeasurement({
+              id: `bm-${Date.now()}`,
+              date: getLocalDateString(),
+              weight: newData.weight,
+            });
+
+            setProfile({
+              ...profile,
+              weight: newData.weight,
+              startingWeight: profile.startingWeight || newData.weight,
+              targetWeight: newData.targetWeight,
+              goal: newData.goal,
+              lifestyle: newData.lifestyle,
+              activityLevel: finalActivityLevel,
+              tdee,
+              targetCalories,
+              macros: { protein, carbs, fat }
+            });
+
+            // Sync today's activity in tracker
+            const { setNeat, setExerciseLevel } = useNutritionStore.getState();
+            setNeat(newData.lifestyle);
+            setExerciseLevel(newData.exerciseLevel);
+
+            setGoalModalVisible(false);
+            showAlert('success', t('common.success'), t('profile.updateSuccess'));
+          } catch (err) {
+            console.error('Error updating goals:', err);
+            showAlert('error', t('common.error'), t('profile.updateFailed'));
+          }
+
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -423,4 +689,28 @@ const s = StyleSheet.create({
   widgetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, justifyContent: 'space-between' },
   doneBtn: { backgroundColor: '#7C5CFC', paddingHorizontal: 16, paddingVertical: 6, borderRadius: Radius.full },
   doneText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
+  goalIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  updateBtnSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  updateBtnTextSmall: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
 });

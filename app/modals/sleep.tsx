@@ -28,11 +28,16 @@ export default function SleepModal() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const hours = calculateHours();
     if (hours > 0 && hours <= 24) {
-      await setSleep(hours);
-      router.back();
+      try {
+        setSleep(hours); // Call without await to prevent UI hang
+        router.back();
+      } catch (err) {
+        console.error('Error saving sleep:', err);
+        router.back();
+      }
     }
   };
 
@@ -104,7 +109,11 @@ export default function SleepModal() {
         </View>
 
         {/* Save button */}
-        <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
+        <TouchableOpacity 
+          style={s.saveBtn} 
+          onPress={handleSave} 
+          activeOpacity={0.85}
+        >
           <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.saveGrad}>
             <Text style={s.saveText}>{t('common.save', 'Guardar')}</Text>
           </LinearGradient>

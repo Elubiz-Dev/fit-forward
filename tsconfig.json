@@ -4,10 +4,14 @@
     "strict": true,
     "strictNullChecks": true,
     "target": "ESNext",
-    "module": "ESNext",
-    "jsx": "react-jsx",
-    "moduleResolution": "bundler",
-    "skipLibCheck": true
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "paths": {
+      "expo-linear-gradient": ["./node_modules/expo-linear-gradient/build/LinearGradient.d.ts"],
+      "expo-sharing": ["./node_modules/expo-sharing/build/src/index.d.ts"],
+      "expo-print": ["./node_modules/expo-print/build/Print.d.ts"],
+      "expo-file-system/legacy": ["./node_modules/expo-file-system/build/legacy/index.d.ts"]
+    }
   },
   "include": [
     "**/*.ts",

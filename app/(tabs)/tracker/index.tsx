@@ -1,8 +1,9 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Image, useWindowDimensions, ActivityIndicator
+  TouchableOpacity, useWindowDimensions, ActivityIndicator
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,12 +13,15 @@ import { Spacing, Radius } from '../../../constants';
 import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { useSocialStore } from '../../../store';
 import { getLocalDateString, addDays } from '../../../utils/date';
+import { convertEnergy, convertVolume, formatValue } from '../../../utils/units';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { AnimatedCard } from '../../../components/AnimatedCard';
 import { GlassCard } from '../../../components/GlassCard';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { Users } from 'lucide-react-native';
 
 const RING_SIZE     = 220;
 const STROKE_WIDTH  = 12;
@@ -90,8 +94,10 @@ export default function TrackerScreen() {
     addSteps, dailyNeat, dailyExercise, activityLogs, totals,
     setLogs, setActivityLogs, addExtraSnack, removeExtraSnack
   } = useNutritionStore();
+  const { energyUnit, volumeUnit } = useSettingsStore();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
+  const { totalUnreadCount } = useSocialStore();
 
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -150,6 +156,9 @@ export default function TrackerScreen() {
   useEffect(() => {
     if (profile?.id) {
       fetchHistory(profile.id);
+      useSocialStore.getState().fetchUnreadCounts(profile.id);
+      const unsubscribe = useSocialStore.getState().subscribeToUnreadMessages(profile.id);
+      return () => unsubscribe();
     }
   }, [profile?.id]);
 
@@ -171,14 +180,20 @@ export default function TrackerScreen() {
   }, [profile?.id, selectedDate]);
 
   // Derived state
-  const target = profile?.targetCalories || 2000;
   const macros = {
     protein: profile?.macros?.protein || 150,
-    carbs: profile?.macros?.carbs || 200,
+    carbs: profile?.macros?.carbs || 250,
     fat: profile?.macros?.fat || 65,
   };
 
-  const { calories, protein, carbs, fat, sugar, fiber, sodium, iron, calcium, saturatedFat, transFat } = totals();
+  const { 
+    calories: rawCalories, 
+    protein, carbs, fat, sugar, fiber, sodium, iron, calcium, saturatedFat, transFat 
+  } = totals();
+
+  const calories = Math.round(convertEnergy(rawCalories, 'kcal', energyUnit));
+  const target = Math.round(convertEnergy(profile?.targetCalories || 2000, 'kcal', energyUnit));
+  const energyLabel = energyUnit.toUpperCase();
 
   const allMeals = useMemo(() => {
     const meals = [...MEALS] as string[];
@@ -228,15 +243,14 @@ export default function TrackerScreen() {
   const currentNeat = dailyNeat[selectedDate] || profile?.lifestyle || 'standing_sometimes';
   const currentExercise = dailyExercise[selectedDate] || ACTIVITY_TO_EXERCISE[profile?.activityLevel || 'moderate'] || '3-4';
 
-  const baseline = (NEAT_CALORIES[currentNeat] || 0) + (EXERCISE_CALORIES[currentExercise] || 0);
+  const baselineRaw = (NEAT_CALORIES[currentNeat] || 0) + (EXERCISE_CALORIES[currentExercise] || 0);
+  const dayActivities = useMemo(() => activityLogs.filter(a => a.loggedAt.startsWith(selectedDate)), [activityLogs, selectedDate]);
+  const activitiesRaw = dayActivities.reduce((acc, a) => acc + a.calories, 0);
   
-  const dayActivities = useMemo(() => {
-    return activityLogs.filter(a => a.loggedAt.startsWith(selectedDate));
-  }, [activityLogs, selectedDate]);
+  const totalBurned = Math.round(convertEnergy(baselineRaw + activitiesRaw, 'kcal', energyUnit));
 
-  const totalBurned = baseline + dayActivities.reduce((acc, a) => acc + a.calories, 0);
-
-  const waterIntake = dailyWater[selectedDate] || 0;
+  const rawWater = dailyWater[selectedDate] || 0;
+  const waterIntake = volumeUnit === 'ml' ? rawWater : Number(convertVolume(rawWater, 'ml', volumeUnit).toFixed(1));
   const steps = dailySteps[selectedDate] || 0;
 
   const handleActivityPress = (act: any) => {
@@ -273,14 +287,14 @@ export default function TrackerScreen() {
   // ── Radar: macros vs targets ─────────────────────────────────────────────
   const radarData = useMemo(() => {
     const axes = [
-      { label: 'Proteína', current: protein, target: macros.protein, color: colors.protein },
-      { label: 'Carbos',   current: carbs,   target: macros.carbs,   color: colors.carbs },
-      { label: 'Grasas',   current: fat,     target: macros.fat,     color: colors.fat },
-      { label: 'Fibra',    current: fiber,   target: 30,             color: '#06B6D4' },
-      { label: 'Azúcar',   current: sugar, target: 50, color: '#8B5CF6' },
+      { label: t('profile.protein'), current: protein, target: macros.protein, color: colors.protein },
+      { label: t('profile.carbs'),   current: carbs,   target: macros.carbs,   color: colors.carbs },
+      { label: t('profile.fat'),     current: fat,     target: macros.fat,     color: colors.fat },
+      { label: t('tracker.fiber'),   current: fiber,   target: 30,             color: '#06B6D4' },
+      { label: t('tracker.sugar'),   current: sugar,   target: 50,             color: '#8B5CF6' },
     ];
     return axes.map(a => ({ ...a, pct: Math.min(a.current / Math.max(a.target, 1), 1) }));
-  }, [protein, carbs, fat, fiber, sugar, macros, colors]);
+  }, [protein, carbs, fat, fiber, sugar, macros, colors, t]);
 
   const stackData = useMemo(() => {
     const data = [];
@@ -387,7 +401,28 @@ export default function TrackerScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity 
+          style={s.socialBtn} 
+          onPress={() => router.push('/modals/social' as any)}
+        >
+          {totalUnreadCount > 0 ? (
+            <LinearGradient
+              colors={[colors.primary, colors.secondary || '#A855F7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.socialGradient}
+            >
+              <Users size={20} color="#fff" />
+              <View style={s.badge}>
+                <Text style={s.badgeText}>
+                  {totalUnreadCount > 9 ? '+9' : `+${totalUnreadCount}`}
+                </Text>
+              </View>
+            </LinearGradient>
+          ) : (
+            <Users size={20} color={colors.primary} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <Animated.View style={[{ flex: 1 }, swipeAnimStyle]}>
@@ -471,7 +506,7 @@ export default function TrackerScreen() {
                 <Text style={[s.arcVal, { color: colors.textPrimary }]}>
                   {calories} <Text style={{ fontSize: 18, color: colors.textSecondary, fontWeight: '400' }}>/ {target}</Text>
                 </Text>
-                <Text style={[s.arcLabel, { color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }]}>kcal</Text>
+                <Text style={[s.arcLabel, { color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }]}>{energyLabel}</Text>
               </View>
             </View>
 
@@ -518,7 +553,7 @@ export default function TrackerScreen() {
             <View style={[s.card, { borderWidth: 0, paddingBottom: 10 }]}>
               <View style={s.cardHeader}>
                 <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('dashboard.weeklyAvg', 'Resumen Semanal')}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: 12 }}>kcal</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{energyLabel}</Text>
               </View>
               
               <View style={{ alignItems: 'center', marginTop: 10 }}>
@@ -595,7 +630,7 @@ export default function TrackerScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={[s.mealSub, { color: colors.textSecondary }]}>🔥 {mealCals} kcal</Text>
+              <Text style={[s.mealSub, { color: colors.textSecondary }]}>🔥 {mealCals} {energyLabel}</Text>
               
               {mealLogs.map(log => (
                 <TouchableOpacity 
@@ -613,7 +648,7 @@ export default function TrackerScreen() {
                   } as any)}
                 >
                   <Text style={[s.logName, { color: colors.textPrimary }]}>{log.foodItem.name}</Text>
-                  <Text style={[s.logCal, { color: colors.textSecondary }]}>{log.calories} kcal</Text>
+                  <Text style={[s.logCal, { color: colors.textSecondary }]}>{Math.round(convertEnergy(log.calories, 'kcal', energyUnit))} {energyLabel}</Text>
                 </TouchableOpacity>
               ))}
 
@@ -641,7 +676,7 @@ export default function TrackerScreen() {
           </View>
           <View style={s.activitySummary}>
             <Text style={{ fontSize: 20 }}>🔥</Text>
-            <Text style={[s.activityTotal, { color: colors.textPrimary }]}>{totalBurned} kcal</Text>
+            <Text style={[s.activityTotal, { color: colors.textPrimary }]}>{totalBurned} {energyLabel}</Text>
           </View>
           
           <TouchableOpacity style={[s.nutrientRow, { borderBottomColor: colors.border }]} onPress={() => router.push('/modals/select-activity-level' as any)}>
@@ -649,11 +684,17 @@ export default function TrackerScreen() {
               <Text style={{ fontSize: 24 }}>🔥</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{t('tracker.activity')}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={2}>{t(`exercise.${currentExercise}`)}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={2}>{
+                  t(currentExercise === 'none' ? 'onboarding.activitySedentary' :
+                    currentExercise === '1-2' ? 'onboarding.activityLight' :
+                    currentExercise === '3-4' ? 'onboarding.activityModerate' :
+                    currentExercise === '5-6' ? 'onboarding.activityActive' :
+                    'onboarding.activityVeryActive')
+                }</Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{EXERCISE_CALORIES[currentExercise] || 0} {t('tracker.kcal')}</Text>
+              <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{Math.round(convertEnergy(EXERCISE_CALORIES[currentExercise] || 0, 'kcal', energyUnit))} {energyLabel}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('dashboard.weeklyAvg')}</Text>
             </View>
           </TouchableOpacity>
@@ -666,7 +707,7 @@ export default function TrackerScreen() {
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={2}>{t(`neat.${currentNeat}`)}</Text>
               </View>
             </View>
-            <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{NEAT_CALORIES[currentNeat] || 0} kcal</Text>
+            <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{Math.round(convertEnergy(NEAT_CALORIES[currentNeat] || 0, 'kcal', energyUnit))} {energyLabel}</Text>
           </TouchableOpacity>
 
           {dayActivities.map(act => (
@@ -678,7 +719,7 @@ export default function TrackerScreen() {
                   <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{act.duration} min</Text>
                 </View>
               </View>
-              <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{act.calories} kcal</Text>
+              <Text style={[s.nutrientLabel, { color: colors.textPrimary }]}>{Math.round(convertEnergy(act.calories, 'kcal', energyUnit))} {energyLabel}</Text>
             </TouchableOpacity>
           ))}
 
@@ -696,11 +737,11 @@ export default function TrackerScreen() {
           {/* Header */}
           <View style={[s.cardHeader, { marginBottom: 0 }]}>
             <View>
-              <Text style={[s.cardTitle, { color: colors.textPrimary }]}>⬡ {t('tracker.macroBalance', 'Balance de Macros')}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>vs. tus metas diarias</Text>
+              <Text style={[s.cardTitle, { color: colors.textPrimary }]}>⬡ {t('tracker.macroBalance', 'Macro Balance')}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>{t('tracker.vsGoals', 'vs. daily goals')}</Text>
             </View>
             <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '40' }}>
-              <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>HOY</Text>
+              <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>{t('tracker.today').toUpperCase()}</Text>
             </View>
           </View>
 
@@ -1071,4 +1112,38 @@ const s = StyleSheet.create({
   heatCell:    { width: 18, height: 18 },
   heatLegend:  { flexDirection: 'row', gap: 20, marginTop: 14, paddingLeft: 2 },
   heatLegendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  socialBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  socialGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  }
 });

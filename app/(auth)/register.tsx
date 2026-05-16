@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -22,8 +23,15 @@ export default function RegisterScreen() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{title: string, message: string, type: AlertType}>({ title: '', message: '', type: 'error' });
 
   const redirectTo = makeRedirectUri();
+
+  const showAlert = (title: string, message: string, type: AlertType = 'error') => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
 
   const createSessionFromUrl = async (url: string) => {
     const { params, errorCode } = QueryParams.getQueryParams(url);
@@ -45,11 +53,11 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert(t('common.error'), t('auth.fillFields'));
+      showAlert(t('common.error'), t('auth.fillFields'), 'warning');
       return;
     }
     if (password.length < 8) {
-      Alert.alert(t('common.error'), t('auth.passwordShort'));
+      showAlert(t('common.error'), t('auth.passwordShort'), 'warning');
       return;
     }
 
@@ -62,7 +70,11 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert(t('auth.registerFailed'), error.message);
+      let errorMessage = error.message;
+      if (errorMessage.toLowerCase().includes('already registered')) {
+        errorMessage = 'Este correo electrónico ya está registrado en el sistema de autenticación. Intenta iniciar sesión o recuperar tu contraseña.';
+      }
+      showAlert(t('auth.registerFailed'), errorMessage, 'error');
       return;
     }
     
@@ -92,7 +104,7 @@ export default function RegisterScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message);
+      showAlert(t('common.error'), error.message, 'error');
     }
   };
 
@@ -184,6 +196,15 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertVisible(false)}
+        confirmText="OK"
+      />
     </View>
   );
 }

@@ -126,6 +126,7 @@
     "gainWeightValidation": "Le poids cible doit être supérieur au poids actuel",
     "maintainWeightInfo": "Votre poids cible est fixé à votre poids actuel",
     "currentWeight": "Quel est votre poids actuel ?",
+    "targetWeight": "Poids cible",
     "massUnit": "Unité de masse",
     "volumeUnit": "Unité de volume",
     "lengthUnit": "Unité de longueur",
@@ -179,8 +180,6 @@
       "suggest4": "Quels sont les signes de déshydratation ? 💧"
     }
   },
-  "nutritionist": {},
-  "trainer": {},
   "about": {
     "title": "À propos de FitGO",
     "social": "Réseaux Sociaux",
@@ -425,7 +424,11 @@
     "myStreaks": "Mes Séries",
     "currentStreak": "série actuelle",
     "totalDays": "Jours totaux",
-    "restDay": "Jour de repos"
+    "restDay": "Jour de repos",
+    "reps": "Rép.",
+    "rest": "Repos",
+    "sets": "Séries",
+    "exercises": "Exercices"
   },
   "recipes": {
     "title": "Recettes IA",
@@ -565,8 +568,9 @@
     "medicalConditionsTitle": "Avez-vous des conditions médicales à prendre en compte?",
     "medicalConditionsSub": "Cela nous aide à formuler des recommandations plus sûres",
     "medicationsTitle": "Prenez-vous des médicaments ou suppléments?",
-    "medicationsSub": "Cela nous aide à éviter les conflits avec votre plan nutritionnel",
-    "skipStep": "Ignorer cette étape",
+    "medicationsSub": "Ceci nous aide à éviter les conflits avec votre plan nutritionnel",
+    "anabolicsDisclaimer": "Sous votre propre responsabilité. L'application ne soutient pas l'utilisation de ces substances.",
+    "skipStep": "Passer cette étape",
     "otherSpecify": "Autre (préciser)",
     "otherPlaceholder": "Tapez ici...",
     "dietaryItems": {
@@ -579,7 +583,8 @@
       "halal": "Halal / Casher",
       "intermittent_fasting": "Jeûne Intermittent",
       "low_sodium": "Régime Pauvre en Sel",
-      "low_carb": "Régime Pauvre en Glucides"
+      "low_carb": "Régime Pauvre en Glucides",
+      "none": "Aucune"
     },
     "medicalItems": {
       "diabetes_type1": "Diabète Type 1",
@@ -604,6 +609,7 @@
       "multivitamins": "Vitamines / Multivitamines",
       "omega3": "Oméga-3",
       "iron": "Fer",
+      "anabolics": "Anabolisants",
       "none": "Aucun"
     }
   },

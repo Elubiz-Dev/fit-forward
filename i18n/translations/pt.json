@@ -118,6 +118,7 @@
     "gainWeightValidation": "O peso pretendido deve ser superior ao peso atual",
     "maintainWeightInfo": "O seu peso pretendido é igual ao seu peso atual",
     "currentWeight": "Qual é o seu peso atual?",
+    "targetWeight": "Peso pretendido",
     "updateGoals": "Atualizar objetivos",
     "mealPlanFoods": "Alimentos Disponíveis",
     "reminders": "Lembretes",
@@ -179,8 +180,6 @@
       "suggest4": "Quais os sinais de desidratação? 💧"
     }
   },
-  "nutritionist": {},
-  "trainer": {},
   "about": {
     "title": "Sobre o FitGO",
     "social": "Redes Sociais",
@@ -425,7 +424,11 @@
     "noWorkouts": "Nenhum treino planeado",
     "restDayHint": "Hoje é dia de descanso! Aproveite para recuperar.",
     "noPlanYet": "Ainda não tem um plano",
-    "restDay": "Dia de descanso"
+    "restDay": "Dia de descanso",
+    "reps": "Rep.",
+    "rest": "Descanso",
+    "sets": "Séries",
+    "exercises": "Exercícios"
   },
   "recipes": {
     "title": "Receitas IA",
@@ -545,6 +548,7 @@
     "medicalConditionsSub": "Isso nos ajuda a fazer recomendações mais seguras para você",
     "medicationsTitle": "Você toma algum medicamento ou suplemento?",
     "medicationsSub": "Isso nos ajuda a evitar conflitos com seu plano nutricional",
+    "anabolicsDisclaimer": "Sob sua própria responsabilidade. O aplicativo não apoia o uso dessas substâncias.",
     "skipStep": "Pular esta etapa",
     "otherSpecify": "Outro (especificar)",
     "otherPlaceholder": "Digite aqui...",
@@ -558,7 +562,8 @@
       "halal": "Halal / Kosher",
       "intermittent_fasting": "Jejum Intermitente",
       "low_sodium": "Dieta Pobre em Sódio",
-      "low_carb": "Dieta Pobre em Carboidratos"
+      "low_carb": "Dieta Pobre em Carboidratos",
+      "none": "Nenhum"
     },
     "medicalItems": {
       "diabetes_type1": "Diabetes Tipo 1",
@@ -583,6 +588,7 @@
       "multivitamins": "Vitaminas / Multivitamínicos",
       "omega3": "Omega-3",
       "iron": "Ferro",
+      "anabolics": "Anabolizantes",
       "none": "Nenhum"
     },
     "dietTypeTitle": "Que tipo de dieta prefere?",
@@ -602,9 +608,9 @@
     "currentWeight": "Peso atual",
     "targetWeight": "Peso pretendido",
     "velocity": "Velocidade",
-    "velocitySlow": "Conservador",
-    "velocityModerate": "Recomendado",
-    "velocityFast": "Agressivo",
+    "velocitySlow": "Lento",
+    "velocityModerate": "Normal",
+    "velocityFast": "Rápido",
     "createPlan": "Criar o meu plano"
   },
   "scan": {

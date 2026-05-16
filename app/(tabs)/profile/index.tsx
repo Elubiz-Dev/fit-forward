@@ -12,7 +12,7 @@ import { Colors, Spacing, Radius } from '../../../constants';
 import { 
   useAuthStore, useBodyStore, useSettingsStore, 
   useNutritionStore, useCoachStore, useRecipesStore, useProgressStore,
-  usePurchaseStore, UserProfile 
+  usePurchaseStore, useSocialStore, usePlannerStore, UserProfile 
 } from '../../../store';
 // import RevenueCatUI from 'react-native-purchases-ui';
 import { decode } from 'base64-arraybuffer';
@@ -21,6 +21,7 @@ import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../hooks/useTheme';
 import LanguageModal from '../../../components/LanguageModal';
+import { convertMass, convertLength, formatValue } from '../../../utils/units';
 import { 
   Target, Flame, Dumbbell, Heart, Zap, Monitor, Footprints, 
   Activity, Scale, ChevronLeft, ChevronRight, Construction, 
@@ -28,8 +29,12 @@ import {
   Lock, LogOut, Info, FileText, Smartphone, Mail, 
   MessageSquare, Palette, Languages, Settings, HelpCircle, ShieldCheck, Database,
   Trash2, Key, RefreshCw, Copy, Calendar, Fingerprint, Share2, MoreHorizontal, ChevronDown, ChevronUp,
-  Camera, ExternalLink, Award, Thermometer, Droplets
+  Camera, ExternalLink, Award, Thermometer, Droplets, Hammer, Building2, Mars, Venus, Plus, Minus, Bike,
+  Utensils, Sparkles, Leaf, Clock, Trophy, Check, Briefcase, Coffee, PersonStanding
 } from 'lucide-react-native';
+import * as XLSX from 'xlsx';
+import { cacheDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { Animated, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
@@ -38,13 +43,7 @@ import { WeightProgressPath } from '../../../components/WeightProgressPath';
 import { UnitSelectionModal } from '../../../components/UnitSelectionModal';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const ACTIVITY_TO_EXERCISE: Record<string, string> = {
-  'sedentary':   'none',
-  'light':       '1-2',
-  'moderate':    '3-4',
-  'active':      '5-6',
-  'very_active': 'daily',
-};
+import { GoalWizardModal, ACTIVITY_TO_EXERCISE } from '../../../components/GoalWizardModal';
 
 function CustomToast({ message, type, onHide }: { message: string; type: 'success' | 'error'; onHide: () => void }) {
   const colors = useTheme();
@@ -160,6 +159,82 @@ const em = StyleSheet.create({
 });
 
 
+const ALL_BADGES: Record<string, { id: string, label: string, colors: string[], icon: string }> = {
+  super_admin: { id: 'super_admin', label: 'Super Admin', colors: ['#7C5CFC', '#4338CA'], icon: '⚡' },
+  admin: { id: 'admin', label: 'Administrator', colors: ['#10B981', '#059669'], icon: '🛡️' },
+  pro: { id: 'pro', label: 'Pro Member', colors: ['#F59E0B', '#D97706'], icon: '⭐' },
+  beast_mode: { id: 'beast_mode', label: 'Beast Mode', colors: ['#EF4444', '#991B1B'], icon: '🔥' },
+  verified: { id: 'verified', label: 'Verified User', colors: ['#3B82F6', '#1E40AF'], icon: '✅' },
+  early_adopter: { id: 'early_adopter', label: 'Early Adopter', colors: ['#8B5CF6', '#5B21B6'], icon: '🚀' },
+  fitness_enthusiast: { id: 'fitness_enthusiast', label: 'Fitness Enthusiast', colors: ['#EC4899', '#BE185D'], icon: '🏋️' },
+};
+
+function BadgeSelectionModal({
+  visible, onClose, onSelect, availableBadges, selectedBadge
+}: {
+  visible: boolean; onClose: () => void; onSelect: (id: string) => void; availableBadges: string[]; selectedBadge?: string;
+}) {
+  const colors = useTheme();
+  const { t } = useTranslation();
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={bm.overlay}>
+        <View style={[bm.content, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={bm.header}>
+            <Text style={[bm.title, { color: colors.textPrimary }]}>{t('profile.selectBadge', 'Selecciona tu Badge')}</Text>
+            <TouchableOpacity onPress={onClose} style={bm.closeBtn}>
+              <Plus size={24} color={colors.textSecondary} style={{ transform: [{ rotate: '45deg' }] }} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={bm.list}>
+            {availableBadges.map(badgeId => {
+              const badge = ALL_BADGES[badgeId];
+              if (!badge) return null;
+              const isSelected = selectedBadge === badgeId;
+              return (
+                <TouchableOpacity 
+                  key={badgeId} 
+                  style={[
+                    bm.badgeItem, 
+                    { 
+                      backgroundColor: isSelected ? badge.colors[0] + '20' : colors.surfaceAlt,
+                      borderColor: isSelected ? badge.colors[0] : colors.border 
+                    }
+                  ]}
+                  onPress={() => { onSelect(badgeId); onClose(); }}
+                >
+                  <LinearGradient colors={badge.colors as [string, string, ...string[]]} style={bm.badgeIcon}>
+                    <Text style={bm.badgeIconText}>{badge.icon}</Text>
+                  </LinearGradient>
+                  <Text style={[bm.badgeLabel, { color: colors.textPrimary, fontWeight: isSelected ? '800' : '600' }]}>
+                    {badge.label}
+                  </Text>
+                  {isSelected && <Check size={18} color={badge.colors[0]} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const bm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  content: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', borderWidth: 1, borderBottomWidth: 0 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: '800' },
+  closeBtn: { padding: 4 },
+  list: { gap: 12, paddingBottom: 40 },
+  badgeItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, borderWidth: 1, gap: 16 },
+  badgeIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  badgeIconText: { fontSize: 18 },
+  badgeLabel: { flex: 1, fontSize: 16 },
+});
+
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function StatCard({ label, value, unit, color, onPress }: {
   label: string; value: string | number; unit: string; color: string; onPress?: () => void;
@@ -232,259 +307,7 @@ function MenuRow({ icon, label, value, onPress, onLongPress, isDestructive, righ
   );
 }
 
-// ─── Goal Wizard Modal ────────────────────────────────────────────────────────
-function GoalWizardModal({ visible, onClose, onSave, initialData }: {
-  visible: boolean; onClose: () => void; onSave: (data: any) => void; initialData: any;
-}) {
-  const { t } = useTranslation();
-  const colors = useTheme();
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState(initialData);
 
-  useEffect(() => {
-    if (visible) {
-      setStep(0);
-      setData(initialData);
-    }
-  }, [visible, initialData]);
-
-  const STEPS_COUNT = 5;
-
-  const GOALS = [
-    { id: 'lose',     icon: <Flame size={24} color={colors.primary} />, title: t('onboarding.loseTitle', 'Perder Grasa'),   sub: t('onboarding.loseSub', 'Optimiza la pérdida de peso y conserva tu masa muscular') },
-    { id: 'gain',     icon: <Dumbbell size={24} color={colors.primary} />, title: t('onboarding.gainTitle', 'Ganar Músculo'),   sub: t('onboarding.gainSub', 'Incrementa tu peso y hazte más fuerte') },
-    { id: 'maintain', icon: <Heart size={24} color={colors.primary} />, title: t('onboarding.stayTitle', 'Mantener Peso'),  sub: t('onboarding.staySub', 'Mantén tu peso estable y busca la recomposición corporal') },
-  ];
-
-  const LIFESTYLE_OPTIONS = [
-    { id: 'seated',             label: t('neat.seated', 'Sentado'),             icon: <Monitor size={22} color={colors.primary} />, sub: t('neat.seatedSub') },
-    { id: 'standing_sometimes', label: t('neat.standing_sometimes', 'De pie a veces'), icon: <Footprints size={22} color={colors.primary} />, sub: t('neat.standing_sometimesSub') },
-    { id: 'standing_mostly',    label: t('neat.standing_mostly', 'De pie casi siempre'), icon: <Activity size={22} color={colors.primary} />, sub: t('neat.standing_mostlySub') },
-    { id: 'moving',             label: t('neat.moving', 'En movimiento'),          icon: <Zap size={22} color={colors.primary} />, sub: t('neat.movingSub') },
-    { id: 'physical_work',      label: t('neat.physical_work', 'Trabajo físico'),      icon: <Construction size={22} color={colors.primary} />, sub: t('neat.physical_workSub') },
-  ];
-
-  const ACTIVITIES = [
-    { id: 'none',   label: t('exercise.none', 'No Hago Ejercicio'),    sub: t('onboarding.activitySedentary', 'Poco o nada de ejercicio'),     icon: <Monitor size={22} color={colors.primary} /> },
-    { id: '1-2',    label: t('exercise.1-2', '1-2 Días por Semana'), sub: t('onboarding.activityLight', 'Ejercicio ligero o caminatas'),            icon: <Footprints size={22} color={colors.primary} /> },
-    { id: '3-4',    label: t('exercise.3-4', '3-4 Días por Semana'), sub: t('onboarding.activityModerate', 'Ejercicio regular'),         icon: <Activity size={22} color={colors.primary} /> },
-    { id: '5-6',    label: t('exercise.5-6', '5-6 Días por Semana'),    sub: t('onboarding.activityActive', 'Ejercicio intenso'),              icon: <Dumbbell size={22} color={colors.primary} /> },
-    { id: 'daily',  label: t('exercise.daily', 'Diario'),    sub: t('onboarding.activityVeryActive', 'Entrenamiento diario'),              icon: <Zap size={22} color={colors.primary} /> },
-  ];
-
-  const handleNext = () => {
-    if (step === 4) {
-      // Final step validation
-      if (data.goal === 'lose' && data.targetWeight > data.weight) {
-        Alert.alert(t('common.error'), t('profile.loseWeightValidation', 'El peso objetivo debe ser menor al actual'));
-        return;
-      }
-      if (data.goal === 'gain' && data.targetWeight < data.weight) {
-        Alert.alert(t('common.error'), t('profile.gainWeightValidation', 'El peso objetivo debe ser mayor al actual'));
-        return;
-      }
-    }
-    if (step < STEPS_COUNT - 1) {
-      const nextStep = step + 1;
-      // If maintain, skip or auto-set target weight in final step
-      if (nextStep === 4 && data.goal === 'maintain') {
-        setData({ ...data, targetWeight: data.weight });
-      }
-      setStep(nextStep);
-    } else {
-      onSave(data);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1);
-    else onClose();
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={wm.header}>
-          <TouchableOpacity onPress={handleBack} style={wm.backBtn}>
-            <ChevronLeft size={28} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={wm.progressBg}>
-            <View style={[wm.progressFill, { backgroundColor: colors.primary, width: `${((step + 1) / STEPS_COUNT) * 100}%` }]} />
-          </View>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={wm.scroll}>
-          {step === 0 && (
-            <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('profile.currentWeight', '¿Cuál es tu peso actual?')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('profile.enterWeight', 'Ingresa tu peso en kg')}</Text>
-              <View style={wm.weightControl}>
-                <TouchableOpacity 
-                  style={[wm.weightBtn, { borderColor: colors.border }]} 
-                  onPress={() => setData({...data, weight: Math.max(20, (data.weight || 70) - 1)})}
-                >
-                  <Text style={{ fontSize: 32, color: colors.primary }}>-</Text>
-                </TouchableOpacity>
-                <View style={wm.weightValue}>
-                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.weight || 70}</Text>
-                  <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
-                </View>
-                <TouchableOpacity 
-                  style={[wm.weightBtn, { borderColor: colors.border }]} 
-                  onPress={() => setData({...data, weight: (data.weight || 70) + 1})}
-                >
-                  <Text style={{ fontSize: 32, color: colors.primary }}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {step === 1 && (
-            <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.goalTitle', '¿Cuál es tu objetivo?')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.goalSub', 'Calcularemos tus calorías necesarias para lograrlo')}</Text>
-              <View style={wm.list}>
-                {GOALS.map(g => (
-                  <TouchableOpacity key={g.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.goal === g.id ? colors.primary : colors.border }]} onPress={() => setData({...data, goal: g.id})}>
-                    <View style={wm.iconContainer}>{g.icon}</View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[wm.cardTitle, { color: colors.textPrimary }]}>{g.title}</Text>
-                      <Text style={[wm.cardSub, { color: colors.textSecondary }]}>{g.sub}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {step === 2 && (
-            <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('neat.title', 'Estilo de vida')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.activitySub', '¿Qué tan activo eres en tu día a día?')}</Text>
-              <View style={wm.list}>
-                {LIFESTYLE_OPTIONS.map(a => (
-                  <TouchableOpacity key={a.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.lifestyle === a.id ? colors.primary : colors.border }]} onPress={() => setData({...data, lifestyle: a.id})}>
-                    <View style={wm.iconContainer}>{a.icon}</View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[wm.cardTitle, { color: colors.textPrimary }]}>{a.label}</Text>
-                      <Text style={[wm.cardSub, { color: colors.textSecondary }]}>{a.sub}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {step === 3 && (
-            <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.activityTitle', 'Ejercicio Semanal')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>{t('onboarding.activitySub', '¿Cuántas veces entrenas por semana?')}</Text>
-              <View style={wm.list}>
-                {ACTIVITIES.map(a => (
-                  <TouchableOpacity key={a.id} style={[wm.card, { backgroundColor: colors.surface, borderColor: data.exerciseLevel === a.id ? colors.primary : colors.border }]} onPress={() => setData({...data, exerciseLevel: a.id})}>
-                    <View style={wm.iconContainer}>{a.icon}</View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[wm.cardTitle, { color: colors.textPrimary }]}>{a.label}</Text>
-                      <Text style={[wm.cardSub, { color: colors.textSecondary }]}>{a.sub}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {step === 4 && (
-            <View>
-              <Text style={[wm.title, { color: colors.textPrimary }]}>{t('onboarding.targetWeight', 'Peso objetivo')}</Text>
-              <Text style={[wm.sub, { color: colors.textSecondary }]}>
-                {data.goal === 'maintain' 
-                  ? t('profile.maintainWeightInfo', 'Tu peso objetivo es igual al actual')
-                  : t('profile.enterWeight', 'Ingresa el peso en kg')}
-              </Text>
-              
-              <View style={wm.weightControl}>
-                {/* Botón Decrementar (-) */}
-                <TouchableOpacity 
-                  style={[
-                    wm.weightBtn, 
-                    { borderColor: colors.border },
-                    (data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight || data.weight) <= data.weight)) && { opacity: 0.3 }
-                  ]} 
-                  onPress={() => {
-                    const currentTarget = data.targetWeight || data.weight;
-                    if (data.goal === 'maintain') return;
-                    if (data.goal === 'gain' && currentTarget <= data.weight) return;
-                    setData({...data, targetWeight: Math.max(20, currentTarget - 1)});
-                  }}
-                  disabled={data.goal === 'maintain' || (data.goal === 'gain' && (data.targetWeight || data.weight) <= data.weight)}
-                >
-                  <Text style={{ fontSize: 32, color: colors.primary }}>-</Text>
-                </TouchableOpacity>
-
-                <View style={wm.weightValue}>
-                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.targetWeight || data.weight}</Text>
-                  <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
-                </View>
-
-                {/* Botón Incrementar (+) */}
-                <TouchableOpacity 
-                  style={[
-                    wm.weightBtn, 
-                    { borderColor: colors.border },
-                    (data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight || data.weight) >= data.weight)) && { opacity: 0.3 }
-                  ]} 
-                  onPress={() => {
-                    const currentTarget = data.targetWeight || data.weight;
-                    if (data.goal === 'maintain') return;
-                    if (data.goal === 'lose' && currentTarget >= data.weight) return;
-                    setData({...data, targetWeight: currentTarget + 1});
-                  }}
-                  disabled={data.goal === 'maintain' || (data.goal === 'lose' && (data.targetWeight || data.weight) >= data.weight)}
-                >
-                  <Text style={{ fontSize: 32, color: colors.primary }}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        <View style={wm.footer}>
-          <TouchableOpacity style={wm.nextBtn} onPress={handleNext}>
-            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={wm.nextGrad}>
-              <Text style={wm.nextText}>{step === STEPS_COUNT - 1 ? t('common.save', 'Guardar') : t('common.continue', 'Continuar')}</Text>
-              <ChevronRight size={20} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
-const wm = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', padding: Spacing.base, gap: 16 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  progressBg: { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
-  scroll: { padding: Spacing.xl },
-  title: { fontSize: 28, fontWeight: '900', marginBottom: 8 },
-  sub: { fontSize: 15, opacity: 0.7, marginBottom: 32 },
-  list: { gap: 12 },
-  card: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: Radius.xl, borderWidth: 2, gap: 16 },
-  iconContainer: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(124, 92, 252, 0.1)', justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
-  cardSub: { fontSize: 13, opacity: 0.6, lineHeight: 18 },
-  weightControl: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginTop: 40 },
-  weightBtn: { width: 64, height: 64, borderRadius: Radius.xl, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
-  weightValue: { alignItems: 'center' },
-  weightText: { fontSize: 48, fontWeight: '900' },
-  weightUnit: { fontSize: 18, fontWeight: '600', opacity: 0.5 },
-  footer: { padding: Spacing.xl, paddingBottom: Platform.OS === 'ios' ? 0 : Spacing.xl },
-  nextBtn: { borderRadius: Radius.xl, overflow: 'hidden' },
-  nextGrad: { paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  nextText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
 
 const mr = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: Spacing.base, borderBottomWidth: 1 },
@@ -535,6 +358,31 @@ export default function ProfileScreen() {
     selectedValue: string;
     onSelect: (val: any) => void;
   }>({ visible: false, title: '', options: [], selectedValue: '', onSelect: () => {} });
+  
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+
+  const availableBadges = useMemo(() => {
+    const list = ['verified', 'early_adopter'];
+    if (profile?.role === 'super_admin') {
+      list.push('super_admin', 'admin', 'pro', 'beast_mode', 'fitness_enthusiast');
+    } else if (profile?.role === 'admin') {
+      list.push('admin', 'pro', 'beast_mode');
+    } else if (profile?.isPro) {
+      list.push('pro', 'fitness_enthusiast');
+    }
+    
+    // Add any specific badges the user might have from the profile field
+    if (profile?.badges) {
+      profile.badges.forEach(b => {
+        if (!list.includes(b)) list.push(b);
+      });
+    }
+    
+    return list;
+  }, [profile]);
+
+  const currentBadgeId = profile?.selectedBadge || (profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.isPro ? 'pro' : 'verified');
+  const currentBadge = ALL_BADGES[currentBadgeId] || ALL_BADGES.verified;
   
   const toggleSection = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -642,6 +490,9 @@ export default function ProfileScreen() {
         macros:           newProfile.macros,
         available_foods:  newProfile.availableFoods,
         extra_snacks:     newProfile.extraSnacks,
+        // Remove selected_badge and badges if they don't exist in DB yet
+        // selected_badge:   newProfile.selectedBadge,
+        // badges:           newProfile.badges,
       }).eq('id', userId);
 
       if (error) throw error;
@@ -658,11 +509,12 @@ export default function ProfileScreen() {
         });
       }
 
-      setToastMsg({ text: t('profile.updateSuccess'), type: 'success' });
+      showAlert('success', t('common.success'), t('profile.updateSuccess'));
     } catch (err) {
       console.error('Update profile error:', err);
-      setToastMsg({ text: t('profile.updateFailed'), type: 'error' });
+      showAlert('error', t('common.error'), t('profile.updateFailed'));
     }
+
   };
 
   const updateProfileField = async (field: string, value: any) => {
@@ -756,6 +608,7 @@ export default function ProfileScreen() {
       age: profile.age,
       sex: profile.sex,
       activityLevel: finalActivityLevel,
+      lifestyleLevel: newData.lifestyle
     });
     const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, newData.goal);
 
@@ -786,6 +639,7 @@ export default function ProfileScreen() {
           tdee,
           target_calories: targetCalories,
           macros: { protein, carbs, fat },
+          starting_weight: profile?.startingWeight || profile?.weight || newData.weight,
         })
         .eq('id', profile.id);
       
@@ -812,10 +666,10 @@ export default function ProfileScreen() {
         });
       }
 
-      setToastMsg({ text: t('profile.updateSuccess'), type: 'success' });
+      showAlert('success', t('common.success'), t('profile.updateSuccess'));
     } catch (err) {
       console.error(err);
-      setToastMsg({ text: t('profile.updateFailed'), type: 'error' });
+      showAlert('error', t('common.error'), t('profile.updateFailed'));
     }
   };
 
@@ -925,21 +779,114 @@ export default function ProfileScreen() {
   const { measurements } = useBodyStore();
   const weightData = useMemo(() => {
     if (!measurements || measurements.length === 0) {
-      return [{ value: profile?.weight || 0, label: t('tracker.today'), dataPointText: `${profile?.weight || 0}kg` }];
+      const w = profile?.weight || 0;
+      const displayW = Number(convertMass(w, 'kg', massUnit).toFixed(1));
+      return [{ value: displayW, label: t('tracker.today'), dataPointText: `${displayW}${massUnit}` }];
     }
     return measurements
-      .filter(m => m.weight !== undefined)
+      .filter(m => m && m.weight != null)
       .slice(0, 7) // Last 7 entries
       .reverse()   // Chronological order
-      .map(m => ({
-        value: m.weight!,
-        label: new Date(m.date + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' }),
-        dataPointText: `${m.weight}kg`,
-      }));
-  }, [measurements, profile?.weight, language]);
+      .map(m => {
+        const rawW = m?.weight ?? 0;
+        const displayW = Number(convertMass(rawW, 'kg', massUnit).toFixed(1));
+        return {
+          value: displayW,
+          label: new Date(m.date + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' }),
+          dataPointText: `${displayW}${massUnit}`,
+        };
+      });
+  }, [measurements, profile?.weight, language, massUnit]);
 
   const handleNotImplemented = () => {
     showAlert('info', t('common.comingSoon'), t('common.notImplemented'));
+  };
+
+  const handleExportData = async () => {
+    try {
+      setToastMsg({ text: t('profile.exporting', 'Exportando datos...'), type: 'success' });
+      
+      // 1. Profile Sheet
+      const profileData = [
+        { [t('profile.field', 'Campo')]: t('profile.editName', 'Nombre'), [t('profile.value', 'Valor')]: profile?.name },
+        { [t('profile.field', 'Campo')]: t('auth.email', 'Email'), [t('profile.value', 'Valor')]: profile?.email },
+        { [t('profile.field', 'Campo')]: 'ID', [t('profile.value', 'Valor')]: profile?.id },
+        { [t('profile.field', 'Campo')]: t('onboarding.goal', 'Meta'), [t('profile.value', 'Valor')]: profile?.goal },
+        { [t('profile.field', 'Campo')]: t('profile.weight', 'Peso Actual'), [t('profile.value', 'Valor')]: profile?.weight },
+        { [t('profile.field', 'Campo')]: t('profile.height', 'Altura'), [t('profile.value', 'Valor')]: profile?.height },
+        { [t('profile.field', 'Campo')]: t('profile.age', 'Edad'), [t('profile.value', 'Valor')]: profile?.age },
+        { [t('profile.field', 'Campo')]: t('profile.sex', 'Sexo'), [t('profile.value', 'Valor')]: profile?.sex },
+        { [t('profile.field', 'Campo')]: 'TDEE', [t('profile.value', 'Valor')]: profile?.tdee },
+        { [t('profile.field', 'Campo')]: t('tracker.target', 'Objetivo Calorías'), [t('profile.value', 'Valor')]: profile?.targetCalories },
+      ];
+      const profileWs = XLSX.utils.json_to_sheet(profileData);
+
+      // 2. Weight History Sheet
+      const weightWs = XLSX.utils.json_to_sheet(measurements.map(m => ({
+        [t('common.date', 'Fecha')]: m.date,
+        [t('profile.weight', 'Peso')]: m.weight,
+        [t('profile.bodyFat', 'Grasa %')]: m.bodyFat,
+        [t('profile.waist', 'Cintura')]: m.waist,
+        [t('profile.hips', 'Cadera')]: m.hips,
+        [t('profile.chest', 'Pecho')]: m.chest,
+        [t('profile.arms', 'Brazos')]: m.arms,
+        [t('profile.legs', 'Piernas')]: m.legs,
+        [t('profile.neck', 'Cuello')]: m.neck,
+        [t('common.notes', 'Notas')]: m.notes
+      })));
+
+      // 3. Nutrition Logs Sheet
+      const nutritionWs = XLSX.utils.json_to_sheet(useNutritionStore.getState().todayLogs.map(l => ({
+        [t('common.date', 'Fecha')]: l.loggedAt,
+        [t('tracker.meal', 'Comida')]: l.meal,
+        [t('tracker.food', 'Alimento')]: l.foodItem.name,
+        [t('tracker.grams', 'Gramos')]: l.grams,
+        [t('tracker.calories', 'Calorías')]: l.calories,
+        [t('tracker.protein', 'Proteínas')]: l.protein,
+        [t('tracker.carbs', 'Carbohidratos')]: l.carbs,
+        [t('tracker.fat', 'Grasas')]: l.fat
+      })));
+
+      // 4. Daily Metrics Sheet (Steps, Water, Sleep)
+      const ns = useNutritionStore.getState();
+      const dates = Array.from(new Set([
+        ...Object.keys(ns.dailyWater),
+        ...Object.keys(ns.dailySteps),
+        ...Object.keys(ns.dailySleep)
+      ])).sort().reverse();
+
+      const metricsWs = XLSX.utils.json_to_sheet(dates.map(date => ({
+        [t('common.date', 'Fecha')]: date,
+        [t('tracker.steps', 'Pasos')]: ns.dailySteps[date] || 0,
+        [t('tracker.water', 'Agua (ml)')]: ns.dailyWater[date] || 0,
+        [t('tracker.sleep', 'Sueño (h)')]: ns.dailySleep[date] || 0,
+        NEAT: ns.dailyNeat[date] || '',
+        [t('profile.activity', 'Ejercicio')]: ns.dailyExercise[date] || ''
+      })));
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, profileWs, t('profile.sheetProfile', "Perfil"));
+      XLSX.utils.book_append_sheet(wb, weightWs, t('profile.sheetWeight', "Peso"));
+      XLSX.utils.book_append_sheet(wb, nutritionWs, t('profile.sheetNutrition', "Nutrición"));
+      XLSX.utils.book_append_sheet(wb, metricsWs, t('profile.sheetMetrics', "Métricas"));
+
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+      const uri = cacheDirectory + `FitGO_Data_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      await writeAsStringAsync(uri, wbout, {
+        encoding: EncodingType.Base64
+      });
+
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: t('profile.exportData', 'Exportar Data (Excel)'),
+        UTI: 'com.microsoft.excel.xlsx'
+      });
+      
+    } catch (err) {
+      console.error('Export error:', err);
+      setToastMsg({ text: t('profile.exportFailed', 'Error al exportar datos'), type: 'error' });
+    }
   };
 
   const handleManageSubscription = async () => {
@@ -1009,18 +956,39 @@ export default function ProfileScreen() {
     showAlert(
       'confirm',
       t('profile.deleteAccount', 'Eliminar Cuenta'),
-      t('profile.deleteAccountConfirm', '¿Estás seguro de que quieres eliminar tu cuenta? Esta acción es permanente y no se puede deshacer.'),
+      t('profile.deleteAccountConfirm', '¿Estás seguro de que quieres eliminar tu cuenta? Esta acción es permanente y se borrarán todos tus datos (planes, histórico, fotos y comunidad).'),
       async () => {
         try {
           const { error } = await supabase.rpc('delete_user'); 
           if (error) throw error;
           
+          // Deep clear all stores on delete account
+          useNutritionStore.getState().reset();
+          useCoachStore.getState().resetAll();
+          useBodyStore.getState().reset();
+          useRecipesStore.getState().reset();
+          useProgressStore.getState().reset();
+          useSocialStore.getState().reset();
+          usePlannerStore.getState().clearPlans();
+          usePurchaseStore.setState({ isPro: false, customerInfo: null });
+
           await supabase.auth.signOut();
           clearAuth();
           router.replace('/(auth)/welcome');
-        } catch (e) {
+        } catch (e: any) {
           console.error('Delete account error:', e);
-          Alert.alert(t('common.error', 'Error'), t('profile.deleteAccountError', 'No se pudo eliminar la cuenta. Por favor contacta a soporte.'));
+          
+          // Improved visual error notice
+          setTimeout(() => {
+            showAlert(
+              'error',
+              t('common.error', 'Error'),
+              t('profile.deleteAccountError', 'No se pudo eliminar la cuenta. Esto suele deberse a un problema de permisos en la base de datos o conexión. Por favor, intenta cerrar sesión e iniciarla de nuevo, o contacta a soporte.'),
+              () => {},
+              undefined,
+              t('common.ok', 'Entendido')
+            );
+          }, 500);
         }
       },
       () => {},
@@ -1061,6 +1029,7 @@ export default function ProfileScreen() {
         useBodyStore.getState().reset();
         useRecipesStore.getState().reset();
         useProgressStore.getState().reset();
+        useSocialStore.getState().reset();
 
         await supabase.auth.signOut();
         clearAuth();
@@ -1119,12 +1088,12 @@ export default function ProfileScreen() {
         onClose={() => setGoalModalVisible(false)} 
         onSave={handleSaveGoal}
         initialData={{ 
-          weight: profile?.weight || 70,
+          weight: lastMeasure?.weight || profile?.weight || 70,
           goal: profile?.goal, 
           activityLevel: profile?.activityLevel, 
           lifestyle: profile?.lifestyle || 'standing_sometimes',
           exerciseLevel: ACTIVITY_TO_EXERCISE[profile?.activityLevel || 'moderate'],
-          targetWeight: profile?.targetWeight || profile?.weight || 70
+          targetWeight: profile?.targetWeight || lastMeasure?.weight || profile?.weight || 70
         }} 
       />
 
@@ -1135,6 +1104,14 @@ export default function ProfileScreen() {
         selectedValue={unitModal.selectedValue}
         onSelect={unitModal.onSelect}
         onClose={() => setUnitModal(p => ({ ...p, visible: false }))}
+      />
+
+      <BadgeSelectionModal
+        visible={badgeModalVisible}
+        onClose={() => setBadgeModalVisible(false)}
+        onSelect={(id) => updateProfileField('selectedBadge', id)}
+        availableBadges={availableBadges}
+        selectedBadge={currentBadgeId}
       />
 
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
@@ -1157,25 +1134,18 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <Text style={[s.email, { color: colors.textSecondary }]}>{profile?.email ?? ''}</Text>
           </View>
-          {profile?.role === 'super_admin' ? (
-            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>⚡ {t('profile.roleSuperAdmin', 'Super Admin')}</Text>
+          <TouchableOpacity 
+            onPress={() => setBadgeModalVisible(true)}
+            activeOpacity={0.8}
+            style={s.badgeContainer}
+          >
+            <LinearGradient colors={currentBadge.colors as [string, string, ...string[]]} style={s.proBadge}>
+              <Text style={s.proBadgeText}>{currentBadge.icon} {currentBadge.label}</Text>
             </LinearGradient>
-          ) : profile?.role === 'admin' ? (
-            <LinearGradient colors={['#10B981', '#059669']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>🛡️ {t('profile.roleAdmin', 'Administrator')}</Text>
-            </LinearGradient>
-          ) : profile?.isPro ? (
-            <LinearGradient colors={['#F59E0B', '#D97706']} style={s.proBadge}>
-              <Text style={s.proBadgeText}>⭐ {t('profile.rolePro', 'Pro Member')}</Text>
-            </LinearGradient>
-          ) : (
-            <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/modals/paywall')}>
-              <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.upgradeGrad}>
-                <Text style={s.upgradeText}>{t('profile.upgradePro')} 🚀</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+            <View style={[s.badgeAddIcon, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Plus size={10} color={colors.primary} strokeWidth={3} />
+            </View>
+          </TouchableOpacity>
         </LinearGradient>
 
         {/* ── Progress Chart ── Gamified Weight Journey */}
@@ -1189,9 +1159,9 @@ export default function ProfileScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <View>
               <Text style={[s.sectionTitle, { padding: 0, color: colors.textPrimary, fontSize: 16, fontWeight: '800' }]}>
-                {t('profile.weightTrend', 'Ruta de Progreso')}
+                {t('profile.weightPath', 'Ruta de Progreso')}
               </Text>
-              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>Tu camino hacia la meta</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}>{t('profile.weightGoalSubtitle', 'Tu camino hacia la meta')}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/modals/body-measurements' as any)}>
               <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{t('common.viewAll', 'Historial')} ›</Text>
@@ -1199,26 +1169,17 @@ export default function ProfileScreen() {
           </View>
 
           {/* Gamified progress path */}
-          {profile?.startingWeight && profile?.weight && profile?.targetWeight ? (
-            <WeightProgressPath
-              startingWeight={profile.startingWeight}
-              currentWeight={profile.weight}
-              targetWeight={profile.targetWeight}
-              width={SCREEN_WIDTH - 72}
-            />
-          ) : (
-            <WeightProgressPath
-              startingWeight={profile?.weight ?? 80}
-              currentWeight={profile?.weight ?? 80}
-              targetWeight={profile?.targetWeight ?? 70}
-              width={SCREEN_WIDTH - 72}
-            />
-          )}
+          <WeightProgressPath
+            startingWeight={profile?.startingWeight || (measurements.length > 0 ? (measurements[measurements.length - 1].weight || profile?.weight || 80) : (profile?.weight || 80))}
+            currentWeight={lastMeasure?.weight || profile?.weight || 80}
+            targetWeight={profile?.targetWeight || (profile?.goal === 'lose' ? (profile?.weight || 80) - 5 : (profile?.weight || 80) + 5)}
+            width={SCREEN_WIDTH - 72}
+          />
 
           {/* Existing weight trend line chart */}
           {weightData.length >= 2 && (
             <View style={{ marginLeft: -20, marginTop: 16, borderTopWidth: 1, borderTopColor: colors.border + '40', paddingTop: 16 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 20, marginBottom: 8 }}>Historial reciente</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginLeft: 20, marginBottom: 8 }}>{t('profile.recentHistory', 'Historial reciente')}</Text>
               <LineChart
                 data={weightData}
                 height={140}
@@ -1277,7 +1238,7 @@ export default function ProfileScreen() {
               <MenuRow icon={ShieldCheck} label={t('profile.medicationsSupplements', 'Medicamentos')} value={profile?.medicationsSupplements?.includes('none') || !profile?.medicationsSupplements?.length ? t('profile.none') : `${profile.medicationsSupplements.length} seleccionados`} indent onPress={() => router.push('/modals/health-profile' as any)} iconColor="#10B981" />
             </View>
           )}
-          <MenuRow icon={Bell} label={t('profile.reminders', 'Recordatorios')} onPress={handleNotImplemented} iconColor="#F59E0B" />
+          <MenuRow icon={Bell} label={t('profile.reminders', 'Recordatorios')} onPress={() => router.push('/modals/reminders' as any)} iconColor="#F59E0B" />
           <MenuRow icon={Palette} label={t('profile.interface', 'Interfaz')} rightIcon={showInterface ? '▼' : '›'} onPress={() => toggleSection(setShowInterface, showInterface)} iconColor="#8B5CF6" />
           {showInterface && (
             <View style={{ backgroundColor: colors.surfaceAlt + '10', borderBottomWidth: 1, borderBottomColor: colors.border + '10' }}>
@@ -1344,12 +1305,12 @@ export default function ProfileScreen() {
           {showAccount && (
             <View style={{ backgroundColor: colors.surfaceAlt + '10', borderBottomWidth: 1, borderBottomColor: colors.border + '10' }}>
               <MenuRow icon={User} label={t('profile.editName', 'Nombre')} value={profile?.name ?? '--'} indent onPress={() => openEdit('name', t('profile.editName'), t('profile.enterName'))} iconColor="#6366F1" />
-              <MenuRow icon={Scale} label={t('profile.weight', 'Peso')} value={`${profile?.weight ?? '--'} ${t('profile.kg')}`} indent onPress={() => openEdit('weight', t('profile.weight'), t('profile.enterWeight'), 'numeric')} iconColor="#10B981" />
-              <MenuRow icon={Ruler} label={t('profile.height', 'Altura')} value={`${profile?.height ?? '--'} ${t('profile.cm')}`} indent onPress={() => openEdit('height', t('profile.height'), t('profile.enterHeight'), 'numeric')} iconColor="#3B82F6" />
+              <MenuRow icon={Scale} label={t('profile.weight', 'Peso')} value={`${profile?.weight ? convertMass(profile.weight, 'kg', massUnit).toFixed(1) : '--'} ${massUnit}`} indent onPress={() => openEdit('weight', t('profile.weight'), t('profile.enterWeight'), 'numeric')} iconColor="#10B981" />
+              <MenuRow icon={Ruler} label={t('profile.height', 'Altura')} value={`${profile?.height ? convertLength(profile.height, 'cm', lengthUnit).toFixed(1) : '--'} ${lengthUnit}`} indent onPress={() => openEdit('height', t('profile.height'), t('profile.enterHeight'), 'numeric')} iconColor="#3B82F6" />
               <MenuRow icon={Calendar} label={t('profile.age', 'Edad')} value={`${profile?.age ?? '--'}`} indent onPress={() => openEdit('age', t('profile.age'), t('profile.enterAge'), 'numeric')} iconColor="#F59E0B" />
               <MenuRow icon={Activity} label={t('profile.sex', 'Sexo')} value={profile?.sex ? (profile.sex === 'male' ? t('profile.male') : t('profile.female')) : '--'} indent onPress={handleEditSex} iconColor="#8B5CF6" />
               
-              <MenuRow icon={Database} label={t('profile.exportData', 'Exportar Data (Excel)')} rightIcon={!profile?.isPro ? '🔒' : undefined} indent onPress={profile?.isPro ? handleNotImplemented : () => router.push('/modals/paywall')} iconColor="#10B981" />
+              <MenuRow icon={Database} label={t('profile.exportData', 'Exportar Data (Excel)')} rightIcon={!profile?.isPro ? '🔒' : undefined} indent onPress={profile?.isPro ? handleExportData : () => router.push('/modals/paywall')} iconColor="#10B981" />
               <MenuRow icon={Zap} label={t('profile.manageSubscription', 'Gestionar Suscripción')} indent onPress={handleManageSubscription} iconColor="#F59E0B" />
               {profile?.isPro ? (
                 <MenuRow icon={RefreshCw} label={t('profile.cancelSubscription', 'Cancelar Suscripción')} indent onPress={handleCancelSubscription} iconColor="#EF4444" />
@@ -1431,8 +1392,10 @@ const s = StyleSheet.create({
   avatarText:  { fontSize: 38, fontWeight: '800', color: '#fff' },
   name:        { fontSize: 24, fontWeight: '900', marginBottom: 2, letterSpacing: -0.5 },
   email:       { fontSize: 13, marginBottom: 16, opacity: 0.7 },
-  proBadge:    { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+  proBadge:    { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4, flexDirection: 'row', alignItems: 'center' },
   proBadgeText:{ color: '#fff', fontWeight: '700', fontSize: 13 },
+  badgeContainer: { position: 'relative' },
+  badgeAddIcon: { position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
   upgradeBtn:  { borderRadius: Radius.lg, overflow: 'hidden' },
   upgradeGrad: { paddingHorizontal: 20, paddingVertical: 10 },
   upgradeText: { color: '#fff', fontWeight: '700', fontSize: 14 },
