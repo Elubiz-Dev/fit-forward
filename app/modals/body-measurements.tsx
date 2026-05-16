@@ -1,134 +1,336 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform,
+  Dimensions, FlatList, NativeSyntheticEvent, NativeScrollEvent,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { Spacing, Radius } from '../../constants';
-import { useBodyStore, useAuthStore, BodyMeasurement, useProgressStore } from '../../store';
-import { decode } from 'base64-arraybuffer';
-import { supabase } from '../../services/supabase';
+import { useBodyStore, useAuthStore, BodyMeasurement, useNutritionStore, useSettingsStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
+import { useTranslation } from 'react-i18next';
+import { convertMass, convertLength, formatValue } from '../../utils/units';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
+
+import { 
+  Scale, 
+  Percent, 
+  Ruler, 
+  ChevronLeft, 
+  X, 
+  Save, 
+  History, 
+  TrendingDown, 
+  TrendingUp,
+  ChevronRight,
+  Info
+} from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
+const ITEM_WIDTH = 12;
 
 interface Field {
   key: keyof BodyMeasurement;
   label: string;
   unit: string;
   emoji: string;
+  icon: any;
 }
 
-const FIELDS: Field[] = [
-  { key: 'weight',  label: 'Weight',    unit: 'kg',  emoji: '⚖️' },
-  { key: 'bodyFat', label: 'Body Fat',  unit: '%',   emoji: '📊' },
-  { key: 'waist',   label: 'Waist',     unit: 'cm',  emoji: '📏' },
-  { key: 'hips',    label: 'Hips',      unit: 'cm',  emoji: '🦵' },
-  { key: 'chest',   label: 'Chest',     unit: 'cm',  emoji: '💪' },
-  { key: 'arms',    label: 'Arms',      unit: 'cm',  emoji: '💪' },
-  { key: 'legs',    label: 'Legs',      unit: 'cm',  emoji: '🦵' },
-  { key: 'neck',    label: 'Neck',      unit: 'cm',  emoji: '📏' },
+const OTHER_FIELDS: Field[] = [
+  { key: 'waist',   label: 'profile.waist',     unit: 'cm',  emoji: '📏', icon: Ruler },
+  { key: 'hips',    label: 'profile.hips',      unit: 'cm',  emoji: '🦵', icon: Ruler },
+  { key: 'chest',   label: 'profile.chest',     unit: 'cm',  emoji: '💪', icon: Ruler },
+  { key: 'arms',    label: 'profile.arms',      unit: 'cm',  emoji: '💪', icon: Ruler },
+  { key: 'legs',    label: 'profile.legs',      unit: 'cm',  emoji: '🦵', icon: Ruler },
+  { key: 'neck',    label: 'profile.neck',      unit: 'cm',  emoji: '📏', icon: Ruler },
 ];
 
-export default function BodyMeasurementsModal() {
-  const colors = useTheme();
-  const { profile } = useAuthStore();
-  const { measurements, addMeasurement } = useBodyStore();
-  const { addPhoto } = useProgressStore();
-  const [values, setValues] = useState<Partial<Record<keyof BodyMeasurement, string>>>({});
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const pickImage = async () => {
-    const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-    if (!granted) {
-      Alert.alert('Permission needed', 'Please allow camera access to take progress photos.');
-      return;
+const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
+  const flatListRef = useRef<FlatList>(null);
+  const isUserScrolling = useRef(false);
+  const lastSentValue = useRef(value);
+  
+  const data = useMemo(() => {
+    const items = [];
+    for (let i = min * 10; i <= max * 10; i++) {
+      items.push(i / 10);
     }
+    return items;
+  }, [min, max]);
+
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!isUserScrolling.current) return;
     
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled && result.assets && result.assets[0].base64) {
-      setPhoto(result.assets[0].base64);
+    const x = event.nativeEvent.contentOffset.x;
+    const index = Math.round(x / ITEM_WIDTH);
+    const val = data[index];
+    
+    if (val !== undefined) {
+      const formattedValue = val.toFixed(1);
+      if (formattedValue !== lastSentValue.current) {
+        lastSentValue.current = formattedValue;
+        onValueChange(formattedValue);
+      }
     }
   };
 
+  useEffect(() => {
+    // If the user is scrolling, don't interfere with the position
+    if (isUserScrolling.current) return;
+    
+    // If the value is already what we think it is, don't scroll
+    if (value === lastSentValue.current) return;
+
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) return;
+
+    const index = Math.round((numericValue - min) * 10);
+    if (index >= 0 && index < data.length) {
+      lastSentValue.current = value;
+      // Use animated: false when syncing from external prop (like typing) 
+      // to avoid fighting the user or causing jittery animations
+      flatListRef.current?.scrollToOffset({ 
+        offset: index * ITEM_WIDTH, 
+        animated: false 
+      });
+    }
+  }, [value, min]);
+
+  const RULER_WIDTH = width - 72; // width - (spacing*2) - (cardPadding*2)
+  const CENTER_OFFSET = RULER_WIDTH / 2;
+
+  return (
+    <View style={s.rulerContainer}>
+      <LinearGradient
+        colors={[colors.surface, 'transparent', 'transparent', colors.surface]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        locations={[0, 0.1, 0.9, 1]}
+        style={s.rulerFadeOverlay}
+        pointerEvents="none"
+      />
+      
+      <View style={[s.rulerPointerContainer, { left: CENTER_OFFSET - 1.5 }]}>
+        <View style={[s.rulerPointer, { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 4, elevation: 3 }]} />
+        <View style={[s.rulerPointerDot, { backgroundColor: colors.primary }]} />
+      </View>
+
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={ITEM_WIDTH}
+        snapToAlignment="center"
+        decelerationRate="fast"
+        onScroll={onScroll}
+        onScrollBeginDrag={() => { isUserScrolling.current = true; }}
+        onScrollEndDrag={() => { 
+          // We set it to false here so the next effect can potentially sync if needed,
+          // but we wait for momentum to actually stop for full control.
+        }}
+        onMomentumScrollBegin={() => { isUserScrolling.current = true; }}
+        onMomentumScrollEnd={() => { isUserScrolling.current = false; }}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingHorizontal: CENTER_OFFSET - ITEM_WIDTH / 2 }}
+        keyExtractor={(item) => item.toString()}
+        getItemLayout={(_, index) => ({
+          length: ITEM_WIDTH,
+          offset: ITEM_WIDTH * index,
+          index,
+        })}
+        initialNumToRender={50}
+        windowSize={11}
+        maxToRenderPerBatch={20}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={true}
+        renderItem={({ item }) => {
+          const isMajor = Math.abs(item % 1) < 0.01;
+          const isMid = Math.abs(item % 0.5) < 0.01 && !isMajor;
+          const isMultipleOf5 = Math.abs(item % 5) < 0.01;
+
+          return (
+            <View style={s.rulerItem}>
+              <View style={[
+                s.rulerLine, 
+                { 
+                  backgroundColor: isMajor ? colors.textPrimary : colors.textSecondary, 
+                  height: isMajor ? 32 : isMid ? 20 : 12,
+                  width: isMajor ? 2 : 1,
+                  opacity: isMajor ? 1 : isMid ? 0.6 : 0.3
+                }
+              ]} />
+              {isMajor && (
+                <Text 
+                  numberOfLines={1}
+                  style={[
+                    s.rulerText, 
+                    { 
+                      color: isMultipleOf5 ? colors.textPrimary : colors.textMuted,
+                      fontWeight: isMultipleOf5 ? '800' : '600',
+                      fontSize: isMultipleOf5 ? 11 : 9,
+                      opacity: isMultipleOf5 ? 1 : 0.7
+                    }
+                  ]}>
+                  {item}
+                </Text>
+              )}
+            </View>
+          );
+        }}
+      />
+    </View>
+  );
+};
+
+
+export default function BodyMeasurementsModal() {
+  const { t } = useTranslation();
+  const colors = useTheme();
+  const { profile } = useAuthStore();
+  const { measurements, addMeasurement } = useBodyStore();
+  const { massUnit, lengthUnit } = useSettingsStore();
+  const [values, setValues] = useState<Partial<Record<keyof BodyMeasurement, string>>>({});
+  const [saving, setSaving] = useState(false);
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setAlert(prev => ({ ...prev, visible: false }));
+      } : undefined,
+    });
+  };
+
+
+  const { selectedDate } = useNutritionStore();
+  const last = measurements[0];
+
+  useEffect(() => {
+    if (last && last.date === selectedDate) {
+      const initial: any = {};
+      Object.keys(last).forEach(k => {
+        const val = last[k as keyof BodyMeasurement];
+        if (val != null && typeof val === 'number') {
+          if (k === 'weight') {
+            initial[k] = convertMass(val, 'kg', massUnit).toFixed(1);
+          } else if (['waist', 'hips', 'chest', 'arms', 'legs', 'neck'].includes(k)) {
+            initial[k] = convertLength(val, 'cm', lengthUnit).toFixed(1);
+          } else {
+            initial[k] = val.toString();
+          }
+        }
+      });
+      setValues(initial);
+    }
+  }, [last, selectedDate, massUnit, lengthUnit]);
+
   const handleSave = async () => {
-    const hasAtLeastOne = FIELDS.some(f => values[f.key]?.trim());
+    const hasAtLeastOne = [...OTHER_FIELDS.map(f => f.key), 'weight', 'bodyFat'].some(k => values[k as keyof BodyMeasurement]?.trim());
     if (!hasAtLeastOne) {
-      Alert.alert('No data', 'Please enter at least one measurement.');
+      showAlert('error', t('common.error'), t('foodDetail.invalidAmount'));
       return;
     }
 
+
     setSaving(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
       const measurement: BodyMeasurement = {
         id:      `bm-${Date.now()}`,
-        date:    today,
-        weight:  values.weight  ? parseFloat(values.weight)  : undefined,
+        date:    selectedDate,
+        weight:  values.weight  ? convertMass(parseFloat(values.weight), massUnit, 'kg')  : undefined,
         bodyFat: values.bodyFat ? parseFloat(values.bodyFat) : undefined,
-        waist:   values.waist   ? parseFloat(values.waist)   : undefined,
-        hips:    values.hips    ? parseFloat(values.hips)    : undefined,
-        chest:   values.chest   ? parseFloat(values.chest)   : undefined,
-        arms:    values.arms    ? parseFloat(values.arms)    : undefined,
-        legs:    values.legs    ? parseFloat(values.legs)    : undefined,
-        neck:    values.neck    ? parseFloat(values.neck)    : undefined,
+        waist:   values.waist   ? convertLength(parseFloat(values.waist), lengthUnit, 'cm')   : undefined,
+        hips:    values.hips    ? convertLength(parseFloat(values.hips), lengthUnit, 'cm')    : undefined,
+        chest:   values.chest   ? convertLength(parseFloat(values.chest), lengthUnit, 'cm')   : undefined,
+        arms:    values.arms    ? convertLength(parseFloat(values.arms), lengthUnit, 'cm')    : undefined,
+        legs:    values.legs    ? convertLength(parseFloat(values.legs), lengthUnit, 'cm')    : undefined,
+        neck:    values.neck    ? convertLength(parseFloat(values.neck), lengthUnit, 'cm')    : undefined,
       };
 
-      addMeasurement(measurement);
+      await addMeasurement(measurement);
 
-      if (profile?.id) {
-        // Save photo if exists
-        if (photo) {
-          const fileExt = 'jpg';
-          const fileName = `${profile.id}/progress_${Date.now()}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('progress-photos')
-            .upload(fileName, decode(photo), {
-              contentType: `image/${fileExt}`,
-            });
-
-          if (!uploadError && uploadData) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('progress-photos')
-              .getPublicUrl(fileName);
-            
-            addPhoto({ id: `p-${Date.now()}`, uri: publicUrl, date: today });
-          }
+      if (measurement.weight !== undefined && profile) {
+        const isLatest = !measurements.length || measurement.date >= measurements[0].date;
+        if (isLatest) {
+          const { setProfile } = useAuthStore.getState();
+          const { calculateTDEE, calculateMacros } = await import('../../services/foodDatabase');
+          const { tdee } = calculateTDEE({
+            weight: measurement.weight,
+            height: profile.height,
+            age: profile.age,
+            sex: profile.sex,
+            activityLevel: profile.activityLevel,
+          });
+          const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, profile.goal);
+          const updatedProfile = {
+            ...profile,
+            weight: measurement.weight,
+            startingWeight: profile.startingWeight || measurement.weight,
+            tdee,
+            targetCalories,
+            macros: { protein, carbs, fat }
+          };
+          setProfile(updatedProfile);
+          const { supabase } = await import('../../services/supabase');
+          await supabase.from('users').update({
+            weight: measurement.weight,
+            starting_weight: profile.startingWeight || measurement.weight,
+            tdee,
+            target_calories: targetCalories,
+            macros: { protein, carbs, fat }
+          }).eq('id', profile.id);
         }
-
-        await supabase.from('body_measurements').insert({
-          user_id:  profile.id,
-          date:     today,
-          weight:   measurement.weight,
-          body_fat: measurement.bodyFat,
-          waist:    measurement.waist,
-          hips:     measurement.hips,
-          chest:    measurement.chest,
-          arms:     measurement.arms,
-          legs:     measurement.legs,
-          neck:     measurement.neck,
-        });
       }
-
-      Alert.alert('✅ Saved', 'Your measurements have been recorded!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showAlert('success', t('common.success'), t('profile.updateSuccess'), () => {
+        router.back();
+      });
     } catch (err) {
-      Alert.alert('Error', 'Failed to save measurements.');
+      showAlert('error', t('common.error'), t('profile.saveMeasurementsFailed'));
     } finally {
+
       setSaving(false);
     }
   };
 
-  // Calculate change vs last measurement
-  const last = measurements[0];
   const getChange = (key: keyof BodyMeasurement) => {
     const lastVal = last?.[key] as number | undefined;
     const currStr = values[key];
@@ -138,131 +340,267 @@ export default function BodyMeasurementsModal() {
     return diff;
   };
 
+  const renderMainWidget = (key: 'weight' | 'bodyFat', Icon: any, color: string, min: number, max: number) => {
+    const val = values[key] || (last?.[key] ? (key === 'weight' ? convertMass(last[key]!, 'kg', massUnit).toFixed(1) : last[key]?.toString()) : min.toString()) || min.toString();
+    const change = getChange(key);
+    const unit = key === 'weight' ? massUnit : '%';
+
+    return (
+      <View style={[s.mainCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={s.mainHeader}>
+          <View style={[s.iconCircle, { backgroundColor: color + '15' }]}>
+            <Icon size={20} color={color} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.mainLabel, { color: colors.textPrimary }]}>{t(key === 'weight' ? 'profile.weight' : 'profile.bodyFat')}</Text>
+            {last?.[key] != null && (
+              <Text style={[s.mainPrev, { color: colors.textMuted }]}>
+                {t('dashboard.recentLogs')}: {key === 'weight' ? convertMass(last[key]!, 'kg', massUnit).toFixed(1) : last[key]} {unit}
+              </Text>
+            )}
+          </View>
+          <View style={s.mainValueContainer}>
+            <View style={s.inputRow}>
+              <TextInput
+                style={[s.mainValueInput, { color: colors.textPrimary }]}
+                value={val}
+                onChangeText={(v) => {
+                  const clean = v.replace(/[^0-9.]/g, '');
+                  setValues(p => ({ ...p, [key]: clean }));
+                }}
+                onBlur={() => {
+                  if (val && !isNaN(parseFloat(val))) {
+                    setValues(p => ({ ...p, [key]: parseFloat(val).toFixed(1) }));
+                  }
+                }}
+                keyboardType="numeric"
+                maxLength={5}
+                placeholderTextColor={colors.textMuted}
+                selectTextOnFocus
+                underlineColorAndroid="transparent"
+                autoCorrect={false}
+              />
+              <Text style={[s.mainUnit, { color: colors.textMuted }]}>{unit}</Text>
+            </View>
+          </View>
+        </View>
+
+        <RulerPicker 
+          value={val} 
+          min={min} 
+          max={max} 
+          unit={unit} 
+          colors={colors}
+          onValueChange={(v: string) => {
+            if (v !== values[key]) {
+              setValues(p => ({ ...p, [key]: v }));
+            }
+          }}
+        />
+
+
+        {change !== null && Math.abs(change) > 0.01 && (
+          <View style={[s.changeBadge, { backgroundColor: (change < 0 ? colors.success : colors.error) + '15' }]}>
+            {change < 0 ? <TrendingDown size={12} color={colors.success} /> : <TrendingUp size={12} color={colors.error} />}
+            <Text style={[s.changeText, { color: change < 0 ? colors.success : colors.error }]}>
+              {change > 0 ? '+' : ''}{change.toFixed(1)} {unit}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Header */}
-        <View style={[s.header, { borderBottomColor: colors.border }]}>
+        <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()} style={[s.closeBtn, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={[s.closeText, { color: colors.textSecondary }]}>✕</Text>
+            <X size={20} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[s.title, { color: colors.textPrimary }]}>Body Measurements</Text>
+          <Text style={[s.title, { color: colors.textPrimary }]}>{t('profile.bodyMeasurements')}</Text>
           <TouchableOpacity onPress={handleSave} disabled={saving} style={s.saveBtn}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.saveGrad}>
-              <Text style={s.saveText}>{saving ? '...' : 'Save'}</Text>
+              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>{t('common.save')}</Text>}
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <Text style={[s.subtitle, { color: colors.textSecondary }]}>
-            {last ? `Last logged: ${last.date}` : 'First measurement — establish your baseline!'}
-          </Text>
+          <View style={s.infoSection}>
+            <View style={[s.infoBadge, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+              <Info size={14} color={colors.primary} />
+              <Text style={[s.infoBadgeText, { color: colors.textSecondary }]}>
+                {last ? `${t('profile.lastMeasurement')}: ${last.date}` : t('profile.bodyMeasurements')}
+              </Text>
+            </View>
+          </View>
 
-          {FIELDS.map((field) => {
-            const change = getChange(field.key);
-            return (
-              <View key={field.key} style={[s.fieldRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={s.fieldLeft}>
-                  <Text style={s.fieldEmoji}>{field.emoji}</Text>
-                  <View>
-                    <Text style={[s.fieldLabel, { color: colors.textPrimary }]}>{field.label}</Text>
-                    {last?.[field.key] !== undefined && (
-                      <Text style={[s.fieldPrev, { color: colors.textMuted }]}>Previous: {last[field.key]} {field.unit}</Text>
+          {/* Main Selectors */}
+          <View style={s.section}>
+            {renderMainWidget('weight', Scale, colors.primary, 30, 250)}
+            <View style={{ height: 16 }} />
+            {renderMainWidget('bodyFat', Percent, '#10B981', 3, 60)}
+          </View>
+
+          {/* Other Measurements */}
+          <View style={s.section}>
+            <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>{t('profile.otherMeasurements', 'Otras Medidas')}</Text>
+            {OTHER_FIELDS.map((field) => {
+              const change = getChange(field.key);
+              return (
+                <View key={field.key} style={[s.fieldRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={s.fieldLeft}>
+                    <View style={[s.fieldIcon, { backgroundColor: colors.surfaceAlt }]}>
+                      <field.icon size={18} color={colors.textSecondary} />
+                    </View>
+                    <View>
+                      <Text style={[s.fieldLabel, { color: colors.textPrimary }]}>{t(field.label)}</Text>
+                      {last?.[field.key] != null && (
+                        <Text style={[s.fieldPrev, { color: colors.textMuted }]}>
+                          {convertLength(last[field.key] as number, 'cm', lengthUnit).toFixed(1)} {lengthUnit}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={s.inputWrap}>
+                    <TextInput
+                      style={[s.fieldInput, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]}
+                      value={values[field.key] ?? ''}
+                      onChangeText={(v) => setValues(p => ({ ...p, [field.key]: v }))}
+                      placeholder="--"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="numeric"
+                      selectTextOnFocus
+                      underlineColorAndroid="transparent"
+                      autoCorrect={false}
+                    />
+                    <Text style={[s.fieldUnit, { color: colors.textMuted }]}>{lengthUnit}</Text>
+                    {change !== null && Math.abs(change) > 0.01 && (
+                      <Text style={[s.fieldChange, { color: change < 0 ? colors.success : colors.error }]}>
+                        {change > 0 ? '+' : ''}{change.toFixed(1)}
+                      </Text>
                     )}
                   </View>
                 </View>
-                <View style={s.inputWrap}>
-                  <TextInput
-                    style={[s.fieldInput, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]}
-                    value={values[field.key] ?? ''}
-                    onChangeText={(v) => setValues(p => ({ ...p, [field.key]: v }))}
-                    placeholder="--"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="numeric"
-                  />
-                  <Text style={[s.fieldUnit, { color: colors.textMuted }]}>{field.unit}</Text>
-                  {change !== null && (
-                    <Text style={[s.fieldChange, { color: change < 0 ? colors.success : colors.error }]}>
-                      {change > 0 ? '+' : ''}{change.toFixed(1)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-
-          {/* Photo Section */}
-          <View style={s.photoSection}>
-            <Text style={[s.historyTitle, { color: colors.textPrimary }]}>Progress Photo</Text>
-            <TouchableOpacity style={[s.photoBtn, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={pickImage}>
-              {photo ? (
-                <View style={{ position: 'relative' }}>
-                  <Text style={{ fontSize: 40 }}>📸</Text>
-                  <Text style={{ fontSize: 12, color: colors.success, fontWeight: '700' }}>Photo Attached!</Text>
-                </View>
-              ) : (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 32 }}>📷</Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>Add Today's Photo</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* History */}
           {measurements.length > 0 && (
-            <View style={[s.historySection, { borderTopColor: colors.border }]}>
-              <Text style={[s.historyTitle, { color: colors.textPrimary }]}>Recent History</Text>
-              {measurements.slice(0, 5).map((m) => (
-                <View key={m.id} style={[s.historyRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[s.historyDate, { color: colors.textSecondary }]}>{m.date}</Text>
-                  <View style={s.historyStats}>
-                    {m.weight   !== undefined && <Text style={[s.historyStat, { color: colors.textPrimary }]}>{m.weight}kg</Text>}
-                    {m.bodyFat  !== undefined && <Text style={[s.historyStat, { color: colors.textPrimary }]}>{m.bodyFat}% fat</Text>}
-                    {m.waist    !== undefined && <Text style={[s.historyStat, { color: colors.textPrimary }]}>W:{m.waist}cm</Text>}
+            <View style={s.historySection}>
+              <View style={s.historyHeader}>
+                <History size={18} color={colors.textPrimary} />
+                <Text style={[s.historyTitle, { color: colors.textPrimary }]}>{t('profile.recentHistory')}</Text>
+              </View>
+              <View style={[s.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                {measurements.slice(0, 5).map((m, idx) => (
+                  <View key={m.id} style={[s.historyRow, idx !== 4 && { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+                    <Text style={[s.historyDate, { color: colors.textSecondary }]}>{m.date}</Text>
+                    <View style={s.historyStats}>
+                      {m.weight != null && (
+                        <View style={s.statItem}>
+                          <Scale size={12} color={colors.primary} />
+                          <Text style={[s.historyStat, { color: colors.textPrimary }]}>
+                            {convertMass(m.weight, 'kg', massUnit).toFixed(1)}{massUnit}
+                          </Text>
+                        </View>
+                      )}
+                      {m.bodyFat != null && (
+                        <View style={s.statItem}>
+                          <Percent size={12} color="#10B981" />
+                          <Text style={[s.historyStat, { color: colors.textPrimary }]}>{m.bodyFat}%</Text>
+                        </View>
+                      )}
+                    </View>
+                    <ChevronRight size={16} color={colors.textMuted} />
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           )}
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
     </SafeAreaView>
+
   );
 }
 
 const s = StyleSheet.create({
   safe:          { flex: 1 },
-  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.base, borderBottomWidth: 1 },
-  closeBtn:      { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  closeText:     { fontSize: 16 },
-  title:         { fontSize: 18, fontWeight: '700' },
-  saveBtn:       { borderRadius: Radius.md, overflow: 'hidden' },
-  saveGrad:      { paddingHorizontal: 20, paddingVertical: 9 },
-  saveText:      { color: '#fff', fontWeight: '700', fontSize: 14 },
+  header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.base, paddingBottom: Spacing.md },
+  closeBtn:      { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  title:         { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  saveBtn:       { borderRadius: Radius.lg, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  saveGrad:      { paddingHorizontal: 24, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  saveText:      { color: '#fff', fontWeight: '800', fontSize: 15 },
   content:       { padding: Spacing.base },
-  subtitle:      { fontSize: 13, marginBottom: Spacing.lg, textAlign: 'center' },
-  fieldRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: Radius.lg, padding: Spacing.base, marginBottom: 10, borderWidth: 1 },
-  fieldLeft:     { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  fieldEmoji:    { fontSize: 22 },
-  fieldLabel:    { fontSize: 15, fontWeight: '600' },
-  fieldPrev:     { fontSize: 11, marginTop: 2 },
-  inputWrap:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  fieldInput:    { borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 8, fontSize: 16, width: 72, textAlign: 'center', borderWidth: 1 },
-  fieldUnit:     { fontSize: 12, width: 24 },
-  fieldChange:   { fontSize: 11, fontWeight: '700', width: 36, textAlign: 'right' },
-  historySection:{ marginTop: Spacing.xl, borderTopWidth: 1, paddingTop: Spacing.lg },
-  historyTitle:  { fontSize: 14, fontWeight: '700', marginBottom: Spacing.md },
-  historyRow:    { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1 },
-  historyDate:   { fontSize: 13, fontWeight: '500' },
-  historyStats:  { flexDirection: 'row', gap: 10 },
-  historyStat:   { fontSize: 13, fontWeight: '600' },
-  photoSection:  { marginTop: Spacing.lg, alignItems: 'center' },
-  photoBtn:      { width: '100%', height: 120, borderRadius: Radius.lg, borderStyle: 'dashed', borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  infoSection:   { alignItems: 'center', marginBottom: Spacing.xl },
+  infoBadge:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1 },
+  infoBadgeText: { fontSize: 13, fontWeight: '700' },
+  subtitle:      { fontSize: 13, fontWeight: '600' },
+  section:       { marginBottom: Spacing.xl },
+  sectionTitle:  { fontSize: 18, fontWeight: '900', marginBottom: 16, marginLeft: 4, letterSpacing: -0.5 },
+  
+  // Main Cards
+  mainCard:      { borderRadius: Radius.xl, padding: 20, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3 },
+  mainHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 12 },
+  iconCircle:    { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  mainLabel:     { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  mainPrev:      { fontSize: 12, marginTop: 2, opacity: 0.8 },
+  mainValueContainer: { alignItems: 'flex-end' },
+  inputRow:      { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  mainValueInput:{ fontSize: 28, fontWeight: '900', textAlign: 'right', padding: 0, minWidth: 60 },
+  mainUnit:      { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  
+  // Ruler
+  rulerContainer:{ height: 80, marginVertical: 15, justifyContent: 'center', position: 'relative' },
+  rulerFadeOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
+  rulerPointerContainer: { position: 'absolute', top: 0, bottom: 0, width: 2, alignItems: 'center', zIndex: 10 },
+  rulerPointer:  { width: 3, height: 45, borderRadius: 2 },
+  rulerPointerDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
+  rulerItem:     { width: ITEM_WIDTH, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 10 },
+  rulerLine:     { borderRadius: 1 },
+  rulerText:     { fontSize: 10, marginTop: 8, width: 40, textAlign: 'center' },
+  
+  changeBadge:   { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.md, gap: 4, marginTop: 10 },
+  changeText:    { fontSize: 12, fontWeight: '800' },
+
+  // Field Rows
+  fieldRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: Radius.lg, padding: 18, marginBottom: 12, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 },
+  fieldLeft:     { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  fieldIcon:     { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  fieldLabel:    { fontSize: 15, fontWeight: '700' },
+  fieldPrev:     { fontSize: 11, marginTop: 2, opacity: 0.7 },
+  inputWrap:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fieldInput:    { borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 17, fontWeight: '700', width: 70, textAlign: 'center', borderWidth: 1 },
+  fieldUnit:     { fontSize: 13, fontWeight: '600', width: 28, opacity: 0.6 },
+  fieldChange:   { fontSize: 12, fontWeight: '800', width: 40, textAlign: 'right' },
+
+  // History
+  historySection:{ marginTop: Spacing.sm },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginLeft: 4 },
+  historyTitle:  { fontSize: 16, fontWeight: '800' },
+  historyCard:   { borderRadius: Radius.xl, borderWidth: 1, overflow: 'hidden' },
+  historyRow:    { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  historyDate:   { fontSize: 13, fontWeight: '700', flex: 1 },
+  historyStats:  { flexDirection: 'row', gap: 12 },
+  statItem:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  historyStat:   { fontSize: 13, fontWeight: '800' },
 });
+

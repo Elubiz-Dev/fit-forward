@@ -3,13 +3,14 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { supabase } from '../services/supabase';
-import { useAuthStore, useSettingsStore } from '../store';
+import { useAuthStore, useSettingsStore, usePurchaseStore } from '../store';
 import { Colors } from '../constants';
 import '../i18n';
 import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
+
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,26 +20,35 @@ function NavigationGuard() {
   const segments = useSegments();
 
   useEffect(() => {
-    // Wait until auth state is fully resolved
-    if (isLoading) return;
+    const inAuthGroup   = segments[0] === '(auth)';
+    const inOnboarding  = segments[0] === 'onboarding';
+    const allSegments   = segments as string[];
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
-    const inTabs = segments[0] === '(tabs)';
+    // ── Fast-path: if we already have a cached profile + session, navigate
+    //    immediately WITHOUT waiting for isLoading to resolve. This eliminates
+    //    the ~3-second flash of the onboarding screen on app resume.
+    if (session && profile?.onboardingDone && profile?.id) {
+      if (inAuthGroup || inOnboarding || allSegments.length === 0) {
+        router.replace('/(tabs)/tracker');
+      }
+      return;
+    }
+
+    // ── Slow-path: wait for the network fetch to complete before deciding
+    if (isLoading) return;
 
     if (!session) {
       if (!inAuthGroup) {
         router.replace('/(auth)/welcome');
       }
     } else if (!profile || !profile.onboardingDone || !profile.id) {
-      // Session exists but profile is invalid or incomplete
+      // Session exists but profile is invalid or incomplete → onboarding
       if (!inOnboarding) {
         router.replace('/onboarding');
       }
     } else {
-      const allSegments = segments as string[];
       if (inAuthGroup || inOnboarding || allSegments.length === 0) {
-        router.replace('/(tabs)/dashboard');
+        router.replace('/(tabs)/tracker');
       }
     }
   }, [session, profile, isLoading, segments]);
@@ -47,7 +57,8 @@ function NavigationGuard() {
 }
 
 export default function RootLayout() {
-  const { setSession, setLoading, setProfile } = useAuthStore();
+  const { setSession, setLoading, setProfile, fetchProfile, isLoading } = useAuthStore();
+  const { initialize: initPurchases } = usePurchaseStore();
   const { language, theme } = useSettingsStore();
   const colors = useTheme();
 
@@ -55,50 +66,17 @@ export default function RootLayout() {
     i18n.changeLanguage(language);
   }, [language]);
   useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (data && !error) {
-          setProfile({
-            id:             data.id,
-            email:          data.email,
-            name:           data.name,
-            avatarUrl:      data.avatar_url,
-            sex:            data.sex,
-            age:            data.age,
-            weight:         data.weight,
-            height:         data.height,
-            activityLevel:  data.activity_level,
-            goal:           data.goal,
-            tdee:           data.tdee,
-            targetCalories: data.target_calories,
-            macros:         data.macros,
-            restrictions:   data.restrictions,
-            preferences:    data.preferences,
-            isPro:          data.is_pro,
-            role:           data.role || 'user',
-            onboardingDone: data.onboarding_done,
-          });
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        console.warn('[Auth] Profile fetch error:', err);
-        setProfile(null);
-      }
-    };
 
     const handleAuthStateChange = async (newSession: any) => {
       setSession(newSession);
       if (newSession?.user) {
         await fetchProfile(newSession.user.id);
+        // Initialize RevenueCat with user ID
+        await initPurchases(newSession.user.id);
       } else {
         setProfile(null);
+        // Logout from RevenueCat
+        // await revenueCat.logout();
       }
       
       // Only hide splash/set loading false once we have tried to get the profile
@@ -117,6 +95,17 @@ export default function RootLayout() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── IMPORTANT: Keep the splash screen or a blank view while loading
+  //    to prevent "flashes" of the wrong screens.
+  if (isLoading) {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -144,7 +133,48 @@ export default function RootLayout() {
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
+          name="modals/calendar"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+
+        <Stack.Screen
+          name="modals/add-activity"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/select-neat"
+          options={{ presentation: 'modal', animation: 'slide_from_left' }}
+        />
+        <Stack.Screen
+          name="modals/select-activity-level"
+          options={{ presentation: 'modal', animation: 'slide_from_left' }}
+        />
+        <Stack.Screen
           name="modals/body-measurements"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/sleep"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/food-selection"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/social"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/progress-evaluation"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/achievements"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modals/reminders"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
       </Stack>

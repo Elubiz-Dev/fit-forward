@@ -4,10 +4,12 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, Radius } from '../../constants';
 import { supabase } from '../../services';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../hooks/useTheme';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const colors = useTheme();
   const [email, setEmail]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,7 @@ export default function ForgotPasswordScreen() {
 
   const handleReset = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address.');
+      Alert.alert(t('common.error'), t('auth.emailRequired'));
       return;
     }
     setLoading(true);
@@ -23,7 +25,7 @@ export default function ForgotPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
       return;
     }
     setSent(true);
@@ -34,13 +36,13 @@ export default function ForgotPasswordScreen() {
       <View style={[s.container, { backgroundColor: colors.background }]}>
         <View style={s.content}>
           <Text style={s.emoji}>📧</Text>
-          <Text style={[s.title, { color: colors.textPrimary }]}>Check your email</Text>
+          <Text style={[s.title, { color: colors.textPrimary }]}>{t('auth.checkEmail')}</Text>
           <Text style={[s.sub, { color: colors.textSecondary }]}>
-            We sent a password reset link to{'\n'}
+            {t('auth.emailSentSub')}{'\n'}
             <Text style={{ color: colors.primary, fontWeight: '600' }}>{email}</Text>
           </Text>
           <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-            <Text style={[s.backBtnText, { color: colors.primary }]}>← Back to Login</Text>
+            <Text style={[s.backBtnText, { color: colors.primary }]}>← {t('auth.backToLogin')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -51,14 +53,14 @@ export default function ForgotPasswordScreen() {
     <View style={[s.container, { backgroundColor: colors.background }]}>
       <View style={s.content}>
         <TouchableOpacity onPress={() => router.back()} style={s.back}>
-          <Text style={[s.backText, { color: colors.primary }]}>← Back</Text>
+          <Text style={[s.backText, { color: colors.primary }]}>← {t('common.back')}</Text>
         </TouchableOpacity>
 
-        <Text style={[s.title, { color: colors.textPrimary }]}>Reset Password</Text>
-        <Text style={[s.sub, { color: colors.textSecondary }]}>Enter the email address associated with your account</Text>
+        <Text style={[s.title, { color: colors.textPrimary }]}>{t('auth.resetPassword')}</Text>
+        <Text style={[s.sub, { color: colors.textSecondary }]}>{t('auth.resetPasswordSub')}</Text>
 
         <View style={s.field}>
-          <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>Email</Text>
+          <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>{t('auth.email')}</Text>
           <TextInput
             style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
             value={email}
@@ -78,7 +80,7 @@ export default function ForgotPasswordScreen() {
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.btnGrad}>
-            <Text style={s.btnText}>{loading ? 'Sending…' : 'Send Reset Link'}</Text>
+            <Text style={s.btnText}>{loading ? t('auth.sending') : t('auth.sendResetLink')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

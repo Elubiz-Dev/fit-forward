@@ -4,9 +4,9 @@
     "slug": "fitgo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon.jpg",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "fitgo",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -25,37 +25,34 @@
     "android": {
       "package": "com.fitgo.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.jpg",
         "backgroundColor": "#0D0F14"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "VIBRATE"
-      ]
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "minSdkVersion": 24
     },
     "web": {
       "bundler": "metro",
       "output": "standalone",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.jpg"
     },
     "plugins": [
       "expo-router",
-      "expo-barcode-scanner",
-      "expo-font",
       [
         "expo-camera",
         {
           "cameraPermission": "Allow FitGO to access your camera to scan food barcodes and take progress photos."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#7C5CFC"
         }
       ],
       [
@@ -64,14 +61,26 @@
           "microphonePermission": "Allow FitGO to access your microphone to log food and talk with your AI coach."
         }
       ],
-      "expo-video"
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-asset",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#7C5CFC"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "c7070968-231a-43c2-a62e-37108264a8db"
       }
     }
   }

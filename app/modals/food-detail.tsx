@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { PieChart } from 'react-native-gifted-charts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { FoodItem } from '../../services/foodDatabase';
-import { useAuthStore, useNutritionStore } from '../../store';
+import { useAuthStore, useNutritionStore, useSettingsStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { convertEnergy } from '../../utils/units';
 import { supabase } from '../../services/supabase';
+import { getLocalDateString } from '../../utils/date';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
 
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 type Meal = typeof MEALS[number];
@@ -23,9 +27,71 @@ export default function FoodDetailModal() {
     date?: string;
   }>();
 
-  const food: FoodItem        = JSON.parse(foodJson ?? '{}');
+  let food: FoodItem = {} as FoodItem;
+  try {
+    food = JSON.parse(foodJson ?? '{}');
+  } catch (err) {
+    console.error('Error parsing food JSON:', err);
+  }
   const [grams, setGrams]     = useState(initialGrams || '100');
-  const [meal, setMeal]       = useState<Meal>(initialMeal || 'lunch');
+  
+  const getAutoMeal = (): Meal => {
+    const h = new Date().getHours();
+    if (h < 10) return 'breakfast';
+    if (h < 14) return 'lunch';
+    if (h < 18) return 'snack';
+    return 'dinner';
+  };
+
+  const [meal, setMeal]       = useState<Meal>(initialMeal || getAutoMeal());
+  const { energyUnit } = useSettingsStore();
+  const energyLabel = energyUnit.toUpperCase();
+  
+  // Custom Alert State
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showAlert = (
+    type: AlertType, 
+    title: string, 
+    message: string, 
+    onConfirm?: () => void, 
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string
+  ) => {
+    setAlert({
+      visible: true,
+      type,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+      onCancel: () => {
+        onCancel?.();
+        setAlert(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   const { addLog, updateLog, removeLog } = useNutritionStore();
   const { profile }           = useAuthStore();
 
@@ -35,10 +101,23 @@ export default function FoodDetailModal() {
   const pro    = Math.round(food.protein  * factor);
   const carb   = Math.round(food.carbs    * factor);
   const fat    = Math.round(food.fat      * factor);
+  const sugar  = food.sugar ? Math.round(food.sugar * factor) : 0;
+  const fiber  = food.fiber ? Math.round(food.fiber * factor) : 0;
+  const sodium = food.sodium ? Math.round(food.sodium * factor) : 0;
+  const iron   = food.iron ? Math.round(food.iron * factor) : 0;
+  const calcium = food.calcium ? Math.round(food.calcium * factor) : 0;
+  const satFat = food.saturatedFat ? Math.round(food.saturatedFat * factor) : 0;
+  const transFat = food.transFat ? Math.round(food.transFat * factor) : 0;
+
+  const pieData = [
+    { value: pro,  color: colors.protein, text: 'P' },
+    { value: carb, color: colors.carbs,   text: 'C' },
+    { value: fat,  color: colors.fat,     text: 'F' },
+  ].filter(d => d.value > 0);
 
   const handleSave = async () => {
     if (!g || g <= 0) {
-      Alert.alert(t('common.error'), t('foodDetail.invalidAmount'));
+      showAlert('error', t('common.error'), t('foodDetail.invalidAmount'));
       return;
     }
 
@@ -51,6 +130,13 @@ export default function FoodDetailModal() {
         protein:  pro,
         carbs:    carb,
         fat,
+        sugar,
+        fiber,
+        sodium,
+        iron,
+        calcium,
+        saturatedFat: satFat,
+        transFat,
       });
 
       if (profile?.id) {
@@ -61,6 +147,13 @@ export default function FoodDetailModal() {
           protein:  pro,
           carbs:    carb,
           fat,
+          sugar,
+          fiber,
+          sodium,
+          iron,
+          calcium,
+          saturated_fat: satFat,
+          trans_fat: transFat,
         }).eq('id', logId);
       }
     } else {
@@ -77,6 +170,13 @@ export default function FoodDetailModal() {
         protein:  pro,
         carbs:    carb,
         fat,
+        sugar,
+        fiber,
+        sodium,
+        iron,
+        calcium,
+        saturatedFat: satFat,
+        transFat,
       });
 
       if (profile?.id) {
@@ -89,15 +189,20 @@ export default function FoodDetailModal() {
           fat,
           grams:     g,
           meal,
-          logged_at: date || new Date().toISOString().split('T')[0],
+          logged_at: date || getLocalDateString(),
+          sugar,
+          fiber,
+          sodium,
+          iron,
+          calcium,
+          saturated_fat: satFat,
+          trans_fat: transFat,
         }).select().single();
 
         if (data && !error) {
-          // Replace the temporary ID with the real one from Supabase
+          // Await fetchLogs so the UI reflects the new log before navigating back
           const { fetchLogs, selectedDate } = useNutritionStore.getState();
-          // We could write a specific "replaceId" function, but re-fetching is safer 
-          // and ensures everything is in sync.
-          fetchLogs(profile.id, selectedDate);
+          await fetchLogs(profile.id, selectedDate);
         }
       }
     }
@@ -106,6 +211,16 @@ export default function FoodDetailModal() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
+      <CustomAlert 
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        confirmText={alert.confirmText}
+        cancelText={alert.cancelText}
+        onConfirm={alert.onConfirm}
+        onCancel={alert.onCancel}
+      />
       <View style={[s.handle, { backgroundColor: colors.border }]} />
 
       <ScrollView>
@@ -118,17 +233,45 @@ export default function FoodDetailModal() {
         </View>
 
         <View style={[s.macroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[s.macroTitle, { color: colors.textMuted }]}>{t('foodDetail.per')} {grams || '?'}g</Text>
-          <View style={s.macroRow}>
+          <View style={s.macroCardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.macroTitle, { color: colors.textMuted }]}>{t('foodDetail.per')} {grams || '?'}g</Text>
+              <Text style={[s.caloriesVal, { color: colors.textPrimary }]}>
+                {Math.round(convertEnergy(cal, 'kcal', energyUnit))} <Text style={s.caloriesUnit}>{energyLabel}</Text>
+              </Text>
+            </View>
+            <View style={s.pieWrap}>
+              {pieData.length > 0 ? (
+                <PieChart
+                  data={pieData}
+                  donut
+                  radius={40}
+                  innerRadius={30}
+                  innerCircleColor={colors.surface}
+                  centerLabelComponent={() => (
+                    <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '700' }}>
+                      {Math.round(((pro + carb + fat) > 0 ? (pro / (pro + carb + fat)) * 100 : 0))}%
+                    </Text>
+                  )}
+                />
+              ) : (
+                <View style={[s.emptyPie, { borderColor: colors.border }]} />
+              )}
+            </View>
+          </View>
+
+          <View style={s.macroGrid}>
             {[
-              { label: t('profile.calories'), val: cal, color: colors.accent },
               { label: t('profile.protein'),  val: `${pro}g`,  color: colors.protein },
               { label: t('profile.carbs'),    val: `${carb}g`, color: colors.carbs },
               { label: t('profile.fat'),      val: `${fat}g`,  color: colors.fat },
             ].map(({ label, val, color }) => (
               <View key={label} style={s.macroItem}>
-                <Text style={[s.macroVal, { color }]}>{val}</Text>
-                <Text style={[s.macroLabel, { color: colors.textSecondary }]}>{label}</Text>
+                <View style={[s.macroDot, { backgroundColor: color }]} />
+                <View>
+                  <Text style={[s.macroLabel, { color: colors.textSecondary }]}>{label}</Text>
+                  <Text style={[s.macroVal, { color: colors.textPrimary }]}>{val}</Text>
+                </View>
               </View>
             ))}
           </View>
@@ -168,23 +311,26 @@ export default function FoodDetailModal() {
           <TouchableOpacity 
             style={s.deleteRow} 
             onPress={() => {
-              Alert.alert(
+              showAlert(
+                'confirm',
                 t('tracker.removeEntry'),
                 t('tracker.removeConfirm', { name: food.name }),
-                [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  { 
-                    text: t('common.remove'), 
-                    style: 'destructive',
-                    onPress: async () => {
-                      removeLog(logId);
-                      if (profile?.id) {
-                        await supabase.from('food_logs').delete().eq('id', logId);
-                      }
-                      router.back();
-                    }
+                async () => {
+                  if (!profile?.id) {
+                    showAlert('error', t('common.error'), t('profile.userIdNotFound'));
+                    return;
                   }
-                ]
+                  const { error } = await supabase.from('food_logs').delete().eq('id', logId);
+                  if (!error) {
+                    removeLog(logId);
+                    router.back();
+                  } else {
+                    showAlert('error', t('common.error'), 'Could not delete log. Try again.');
+                  }
+                },
+                () => {},
+                t('common.remove'),
+                t('common.cancel')
               );
             }}
           >
@@ -218,11 +364,17 @@ const s = StyleSheet.create({
   sourcePill:       { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
   sourceText:       { fontSize: 11, textTransform: 'capitalize' },
   macroCard:        { margin: Spacing.base, borderRadius: Radius.xl, padding: Spacing.base, borderWidth: 1 },
-  macroTitle:       { fontSize: 13, marginBottom: 14, fontWeight: '500' },
-  macroRow:         { flexDirection: 'row', justifyContent: 'space-around' },
-  macroItem:        { alignItems: 'center', gap: 4 },
-  macroVal:         { fontSize: 22, fontWeight: '800' },
-  macroLabel:       { fontSize: 12 },
+  macroCardHeader:  { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  caloriesVal:      { fontSize: 32, fontWeight: '900', marginTop: 4 },
+  caloriesUnit:     { fontSize: 16, fontWeight: '500', opacity: 0.6 },
+  pieWrap:          { width: 80, height: 80, justifyContent: 'center', alignItems: 'center' },
+  emptyPie:         { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderStyle: 'dashed' },
+  macroGrid:        { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(150,150,150,0.1)', paddingTop: 16 },
+  macroTitle:       { fontSize: 13, fontWeight: '500' },
+  macroItem:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  macroDot:         { width: 8, height: 8, borderRadius: 4 },
+  macroVal:         { fontSize: 15, fontWeight: '700' },
+  macroLabel:       { fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
   section:          { paddingHorizontal: Spacing.base, marginBottom: Spacing.base },
   sectionLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8, letterSpacing: 0.5 },
   gramsInput:       { borderRadius: Radius.md, borderWidth: 1.5, padding: Spacing.base, fontSize: 20, fontWeight: '700', textAlign: 'center' },

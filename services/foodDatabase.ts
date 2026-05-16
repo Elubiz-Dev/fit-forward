@@ -15,9 +15,13 @@ export interface FoodItem {
   protein:  number;
   carbs:    number;
   fat:      number;
-  fiber?:   number;
+  saturatedFat?: number;
+  transFat?:     number;
   sugar?:   number;
+  fiber?:   number;
   sodium?:  number;
+  iron?:    number;
+  calcium?: number;
   imageUrl?: string;
   source:   'openfoodfacts' | 'edamam' | 'custom';
 }
@@ -33,26 +37,36 @@ export async function searchFoodOFF(query: string, page = 1): Promise<FoodItem[]
       page_size: 20,
       page,
       fields: 'id,product_name,brands,nutriments,image_front_small_url',
+      lc: 'es',
+      categories_lc: 'es'
     },
     timeout: 8000,
   });
 
   return (data.products ?? [])
     .filter((p: any) => p.product_name && p.nutriments)
-    .map((p: any) => ({
-      id:       p.id ?? p.code,
-      name:     p.product_name,
-      brand:    p.brands,
-      calories: Math.round(p.nutriments['energy-kcal_100g'] ?? 0),
-      protein:  Math.round(p.nutriments['proteins_100g']    ?? 0),
-      carbs:    Math.round(p.nutriments['carbohydrates_100g'] ?? 0),
-      fat:      Math.round(p.nutriments['fat_100g']          ?? 0),
-      fiber:    Math.round(p.nutriments['fiber_100g']        ?? 0),
-      sugar:    Math.round(p.nutriments['sugars_100g']       ?? 0),
-      sodium:   Math.round((p.nutriments['sodium_100g'] ?? 0) * 1000),
-      imageUrl: p.image_front_small_url,
-      source:   'openfoodfacts' as const,
-    }));
+    .map((p: any) => {
+      const nut = p.nutriments || {};
+      const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
+      return {
+        id:       p.id ?? p.code,
+        name:     p.product_name,
+        brand:    p.brands,
+        calories: Math.round(cal),
+        protein:  Math.round(nut['proteins_100g']    ?? 0),
+        carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
+        fat:      Math.round(nut['fat_100g']          ?? 0),
+        saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
+        transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
+        fiber:    Math.round(nut['fiber_100g']        ?? 0),
+        sugar:    Math.round(nut['sugars_100g']       ?? 0),
+        sodium:   Math.round((nut['sodium_100g'] ?? 0) * 1000),
+        iron:     Math.round((nut['iron_100g'] ?? 0) * 1000),
+        calcium:  Math.round((nut['calcium_100g'] ?? 0) * 1000),
+        imageUrl: p.image_front_small_url,
+        source:   'openfoodfacts' as const,
+      };
+    });
 }
 
 // ─── OpenFoodFacts barcode lookup ──────────────────────────────────────────────
@@ -64,15 +78,24 @@ export async function getFoodByBarcode(barcode: string): Promise<FoodItem | null
   if (data.status !== 1 || !data.product) return null;
   const p = data.product;
 
+  const nut = p.nutriments || {};
+  const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
+
   return {
     id:       barcode,
     name:     p.product_name ?? 'Unknown product',
     brand:    p.brands,
-    calories: Math.round(p.nutriments?.['energy-kcal_100g'] ?? 0),
-    protein:  Math.round(p.nutriments?.['proteins_100g']    ?? 0),
-    carbs:    Math.round(p.nutriments?.['carbohydrates_100g'] ?? 0),
-    fat:      Math.round(p.nutriments?.['fat_100g']          ?? 0),
-    fiber:    Math.round(p.nutriments?.['fiber_100g']        ?? 0),
+    calories: Math.round(cal),
+    protein:  Math.round(nut['proteins_100g']    ?? 0),
+    carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
+    fat:      Math.round(nut['fat_100g']          ?? 0),
+    saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
+    transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
+    sugar:    Math.round(nut['sugars_100g']        ?? 0),
+    fiber:    Math.round(nut['fiber_100g']         ?? 0),
+    sodium:   Math.round((nut['sodium_100g']       ?? 0) * 1000),
+    iron:     Math.round((nut['iron_100g']       ?? 0) * 1000),
+    calcium:  Math.round((nut['calcium_100g']    ?? 0) * 1000),
     imageUrl: p.image_front_small_url,
     source:   'openfoodfacts' as const,
   };
@@ -100,7 +123,10 @@ export async function searchFoodEdamam(query: string): Promise<FoodItem[]> {
       protein:  Math.round(h.food.nutrients?.PROCNT      ?? 0),
       carbs:    Math.round(h.food.nutrients?.CHOCDF      ?? 0),
       fat:      Math.round(h.food.nutrients?.FAT         ?? 0),
+      sugar:    Math.round(h.food.nutrients?.SUGAR       ?? 0),
       fiber:    Math.round(h.food.nutrients?.FIBTG       ?? 0),
+      iron:     Math.round(h.food.nutrients?.FE          ?? 0),
+      calcium:  Math.round(h.food.nutrients?.CA          ?? 0),
       imageUrl: h.food.image,
       source:   'edamam' as const,
     }));
@@ -136,23 +162,38 @@ export function calculateTDEE(params: {
   age: number;
   sex: 'male' | 'female';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  lifestyleLevel?: 'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
 }): { bmr: number; tdee: number } {
   // Mifflin-St Jeor
   const bmr = params.sex === 'male'
     ? 10 * params.weight + 6.25 * params.height - 5 * params.age + 5
     : 10 * params.weight + 6.25 * params.height - 5 * params.age - 161;
 
-  const activityMultipliers = {
-    sedentary:   1.2,
-    light:       1.375,
-    moderate:    1.55,
-    active:      1.725,
-    very_active: 1.9,
+  // Base multipliers for NEAT (Non-Exercise Activity Thermogenesis)
+  const lifestyleMultipliers = {
+    seated: 1.15,
+    standing_sometimes: 1.25,
+    standing_mostly: 1.35,
+    moving: 1.45,
+    physical_work: 1.55,
   };
+
+  // Additions for EAT (Exercise Activity Thermogenesis)
+  const exerciseAdditions = {
+    sedentary:   0.05,
+    light:       0.15,
+    moderate:    0.25,
+    active:      0.40,
+    very_active: 0.55,
+  };
+
+  const lifestyleBase = lifestyleMultipliers[params.lifestyleLevel || 'seated'];
+  const exerciseBonus = exerciseAdditions[params.activityLevel];
+  const totalMultiplier = lifestyleBase + exerciseBonus;
 
   return {
     bmr: Math.round(bmr),
-    tdee: Math.round(bmr * activityMultipliers[params.activityLevel]),
+    tdee: Math.round(bmr * totalMultiplier),
   };
 }
 

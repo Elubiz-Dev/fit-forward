@@ -45,7 +45,7 @@ export default function RecipesModal() {
           <Text style={[s.paywallTitle, { color: colors.textPrimary }]}>{t('recipes.proTitle')}</Text>
           <Text style={[s.paywallSub, { color: colors.textSecondary }]}>{t('recipes.proSub')}</Text>
           <TouchableOpacity style={s.proBtn} onPress={() => router.push('/modals/paywall')}>
-            <LinearGradient colors={['#F59E0B', '#D97706']} style={s.proGrad}>
+            <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.proGrad}>
               <Text style={s.proText}>{t('recipes.unlockNow')}</Text>
             </LinearGradient>
           </TouchableOpacity>

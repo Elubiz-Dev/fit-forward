@@ -5,10 +5,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { useSettingsStore } from '../../store';
+import LanguageModal from '../../components/LanguageModal';
+import { Settings } from 'lucide-react-native';
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const colors = useTheme();
+  const { language, setLanguage } = useSettingsStore();
+  const [langModalVisible, setLangModalVisible] = React.useState(false);
 
   const FEATURES = [
     { icon: '🍎', label: t('welcome.feature1') },
@@ -22,6 +27,20 @@ export default function WelcomeScreen() {
       {/* Decorative background glow */}
       <View style={styles.glow1} />
       <View style={styles.glow2} />
+
+      <TouchableOpacity 
+        style={[styles.settingsBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+        onPress={() => setLangModalVisible(true)}
+      >
+        <Settings size={20} color={colors.textPrimary} />
+      </TouchableOpacity>
+
+      <LanguageModal 
+        visible={langModalVisible}
+        currentLang={language}
+        onSelect={setLanguage}
+        onClose={() => setLangModalVisible(false)}
+      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Hero */}
@@ -87,6 +106,18 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 120, right: -100,
     width: 240, height: 240, borderRadius: 120,
     backgroundColor: '#22D3EE', opacity: 0.08,
+  },
+  settingsBtn: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   content:        { flexGrow: 1, padding: Spacing.base, paddingTop: 100 },
   hero:           { alignItems: 'center', marginBottom: 48 },

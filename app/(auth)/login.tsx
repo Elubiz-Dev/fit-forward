@@ -10,6 +10,12 @@ import { supabase } from '../../services';
 import { useAuthStore } from '../../store';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import * as WebBrowser from 'expo-web-browser';
+import { CustomAlert, AlertType } from '../../components/CustomAlert';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -18,10 +24,37 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const { setSession }          = useAuthStore();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{title: string, message: string, type: AlertType}>({ title: '', message: '', type: 'error' });
+
+  const showAlert = (title: string, message: string, type: AlertType = 'error') => {
+    setAlertConfig({ title, message, type });
+    setAlertVisible(true);
+  };
+
+  const redirectTo = makeRedirectUri();
+
+  const createSessionFromUrl = async (url: string) => {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
+
+    if (errorCode) throw new Error(errorCode);
+
+    const { access_token, refresh_token } = params;
+
+    if (!access_token) return;
+
+    const { data, error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+    if (error) throw error;
+
+    return data.session;
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(t('common.error'), t('auth.fillFields'));
+      showAlert(t('common.error'), t('auth.fillFields'), 'warning');
       return;
     }
     setLoading(true);
@@ -29,12 +62,35 @@ export default function LoginScreen() {
     
     if (error) {
       setLoading(false);
-      Alert.alert(t('auth.loginFailed'), error.message);
+      showAlert(t('auth.loginFailed'), error.message, 'error');
       return;
     }
-    
-    // Redirection is now handled automatically by NavigationGuard in _layout.tsx
-    // once onAuthStateChange triggers and profile is fetched.
+  };
+
+  const handleOAuth = async (provider: 'google') => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectTo,
+        );
+        if (res.type === 'success') {
+          const { url } = res;
+          await createSessionFromUrl(url);
+        }
+      }
+    } catch (error: any) {
+      showAlert(t('common.error'), error.message, 'error');
+    }
   };
 
   return (
@@ -98,6 +154,23 @@ export default function LoginScreen() {
               <Text style={styles.btnText}>{loading ? t('auth.signingIn') : t('auth.signIn')}</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={[styles.divLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.divText, { color: colors.textMuted }]}>{t('common.or')}</Text>
+            <View style={[styles.divLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          <View style={styles.socialRow}>
+            <TouchableOpacity 
+              style={[styles.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+              activeOpacity={0.8}
+              onPress={() => handleOAuth('google')}
+            >
+              <Text style={[styles.socialText, { color: colors.textPrimary }]}>Google</Text>
+            </TouchableOpacity>
+
+          </View>
         </View>
 
         {/* Footer */}
@@ -108,6 +181,15 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={() => setAlertVisible(false)}
+        confirmText="OK"
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -129,6 +211,12 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   btnGradient: { padding: Spacing.base, alignItems: 'center' },
   btnText:     { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  divider:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 12 },
+  divLine:      { flex: 1, height: 1 },
+  divText:      { fontSize: 13 },
+  socialRow:    { flexDirection: 'row', gap: 12 },
+  socialBtn:    { flex: 1, borderRadius: Radius.md, borderWidth: 1.5, padding: 14, alignItems: 'center' },
+  socialText:   { fontWeight: '600', fontSize: 14 },
   footer:      { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 'auto', paddingTop: 32 },
   footerText:  { fontSize: 14 },
   footerLink:  { fontWeight: '700', fontSize: 14 },
