@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from './types';
 import { Session } from '@supabase/supabase-js';
+import { supabase } from '../services/supabase';
 
 interface AuthState {
   session:     Session | null;
@@ -27,7 +28,6 @@ export const useAuthStore = create<AuthState>()(
       clearAuth:  () => set({ session: null, profile: null, isLoading: false }),
       fetchProfile: async (userId: string) => {
         try {
-          const { supabase } = await import('../services/supabase');
           const { data, error } = await supabase
             .from('users')
             .select('*')

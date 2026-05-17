@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BodyMeasurement } from './types';
 import { useAuthStore } from './authStore';
+import { supabase } from '../services/supabase';
 
 interface BodyState {
   measurements:   BodyMeasurement[];
@@ -32,7 +33,6 @@ export const useBodyStore = create<BodyState>()(
         const { profile } = useAuthStore.getState();
         if (profile?.id) {
           try {
-            const { supabase } = await import('../services/supabase');
             await supabase.from('body_measurements').upsert({
               user_id:      profile.id,
               measured_at:  m.date,
@@ -54,7 +54,6 @@ export const useBodyStore = create<BodyState>()(
       setMeasurements: (measurements) => set({ measurements }),
       fetchMeasurements: async (userId) => {
         try {
-          const { supabase } = await import('../services/supabase');
           const { data, error } = await supabase
             .from('body_measurements')
             .select('*')

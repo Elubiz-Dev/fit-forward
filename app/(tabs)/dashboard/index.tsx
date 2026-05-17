@@ -209,9 +209,9 @@ export default function DashboardScreen() {
   }, [profile?.id, selectedDate]);
 
   const dateMeasurement = getForDate(selectedDate);
-  const oldestWeight = measurements.length > 0
-    ? measurements[measurements.length - 1].weight
-    : profile?.weight || 0;
+  const oldestWeight = (measurements.length > 0 ? measurements[measurements.length - 1].weight : null)
+    || profile?.weight
+    || 70;
     
   const initialWeight = profile?.startingWeight || oldestWeight;
   const currentWeight = dateMeasurement?.weight || profile?.weight || 0;

@@ -14,6 +14,8 @@ import {
   useAudioRecorder, RecordingPresets,
   requestRecordingPermissionsAsync, setAudioModeAsync
 } from 'expo-audio';
+import { transcribeAudio, estimateActivityCalories } from '../../services/groq';
+
 
 /** Preset exercise list with fixed kcal-per-30-min values.
  *  'custom' is a special entry that triggers AI calorie estimation. */
@@ -149,7 +151,6 @@ export default function AddActivityModal() {
       setIsTranscribing(true);
 
       // Transcribe audio using Whisper via Groq proxy
-      const { transcribeAudio, estimateActivityCalories } = await import('../../services/groq');
       const text = await transcribeAudio(uri);
 
       if (!text?.trim()) {
@@ -202,7 +203,6 @@ export default function AddActivityModal() {
     setIsEstimating(true);
     setAiKcal(null); // clear previous result to show fresh loading
     try {
-      const { estimateActivityCalories } = await import('../../services/groq');
       const mins = unit === 'hours'
         ? (parseFloat(duration) || 0) * 60
         : (parseFloat(duration) || 0);

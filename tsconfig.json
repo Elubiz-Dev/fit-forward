@@ -4,7 +4,7 @@
     "strict": true,
     "strictNullChecks": true,
     "target": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "paths": {
       "expo-linear-gradient": ["./node_modules/expo-linear-gradient/build/LinearGradient.d.ts"],

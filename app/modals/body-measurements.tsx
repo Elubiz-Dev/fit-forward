@@ -14,6 +14,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { convertMass, convertLength, formatValue } from '../../utils/units';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
+import { supabase } from '../../services/supabase';
+import { calculateTDEE, calculateMacros } from '../../services/foodDatabase';
 
 import { 
   Scale, 
@@ -292,7 +294,6 @@ export default function BodyMeasurementsModal() {
         const isLatest = !measurements.length || measurement.date >= measurements[0].date;
         if (isLatest) {
           const { setProfile } = useAuthStore.getState();
-          const { calculateTDEE, calculateMacros } = await import('../../services/foodDatabase');
           const { tdee } = calculateTDEE({
             weight: measurement.weight,
             height: profile.height,
@@ -310,7 +311,6 @@ export default function BodyMeasurementsModal() {
             macros: { protein, carbs, fat }
           };
           setProfile(updatedProfile);
-          const { supabase } = await import('../../services/supabase');
           await supabase.from('users').update({
             weight: measurement.weight,
             starting_weight: profile.startingWeight || measurement.weight,
