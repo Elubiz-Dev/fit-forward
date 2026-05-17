@@ -17,7 +17,8 @@
     "continue": "Продолжить",
     "previous": "Пред.",
     "confirm": "Подтвердить",
-    "delete": "Удалить"
+    "delete": "Удалить",
+    "edit": "Редактировать"
   },
   "tabs": {
     "dashboard": "Панель",
@@ -146,7 +147,24 @@
     "notPremiumDesc": "Подписка Pro не найдена.",
     "upgradeNow": "Обновить",
     "verifySubscription": "Подтвердить Подписку",
-    "manageSubscription": "Управление Подпиской"
+    "manageSubscription": "Управление Подпиской",
+    "weightPath": "Путь Прогресса",
+    "weightGoalSubtitle": "Ваш путь к цели",
+    "start": "Начало",
+    "now": "Сейчас",
+    "goal": "Цель",
+    "completed": "Выполнено",
+    "sinceStart": "С начала",
+    "remaining": "Осталось",
+    "editNameSubtitle": "Обновить имя профиля",
+    "editWeightSubtitle": "Записать текущий вес",
+    "editHeightSubtitle": "Указать текущий рост",
+    "editAgeSubtitle": "Указать текущий возраст",
+    "deleteAccountConfirm": "Вы уверены, что хотите удалить аккаунт? Это действие необратимо.",
+    "deleteAccountError": "Не удалось удалить аккаунт. Выйдите и войдите снова, или свяжитесь с поддержкой.",
+    "otherMeasurements": "Другие замеры",
+    "medicationsSupplements": "Лекарства и добавки",
+    "selectBadge": "Выберите значок"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -228,7 +246,18 @@
     "recent": "Недавние",
     "popular": "Популярные",
     "search": "Поиск активности...",
-    "custom": "Своя Активность"
+    "custom": "Своя Активность",
+    "running": "Бег",
+    "cycling": "Велосипед",
+    "walking": "Ходьба",
+    "hiking": "Туризм",
+    "crossfit": "CrossFit",
+    "calisthenics": "Калистеника",
+    "pilates": "Пилатес",
+    "padel": "Падель",
+    "volleyball": "Волейбол",
+    "golf": "Гольф",
+    "martial_arts": "Боевые искусства"
   },
   "welcome": {
     "motto": "Fit-Go: Твоя лучшая версия",
@@ -379,7 +408,10 @@
     "loadFailed": "Не удалось загрузить данные. Пожалуйста, попробуйте еще раз.",
     "addSnack": "Добавить перекус",
     "snack2": "Перекус 2",
-    "snack3": "Перекус 3"
+    "snack3": "Перекус 3",
+    "vsGoals": "от дневной нормы",
+    "calcium": "Кальций",
+    "macroBalance": "Баланс макросов"
   },
   "planner": {
     "title": "Планнер питания",
@@ -428,7 +460,9 @@
     "reps": "Повт.",
     "rest": "Отдых",
     "sets": "Подх.",
-    "exercises": "Упражнения"
+    "exercises": "Упражнения",
+    "addAnotherMeal": "Добавить ещё приём пищи",
+    "askCustomMeal": "Предложи ещё одно здоровое блюдо на сегодня, подходящее к моим оставшимся макросам."
   },
   "recipes": {
     "title": "ИИ Рецепты",
@@ -525,7 +559,9 @@
       "hot_sauce": "Острый соус",
       "garlic": "Чеснок",
       "mustard": "Горчица",
-      "lemon_juice": "Лимонный сок"
+      "lemon_juice": "Лимонный сок",
+      "mayonnaise": "Майонез",
+      "ketchup": "Кетчуп"
     },
     "foodsTitle": "Любимая еда",
     "foodsSub": "Выберите продукты, которые вам нравятся.",
@@ -611,7 +647,47 @@
     "velocitySlow": "Консервативная",
     "velocityModerate": "Рекомендуемая",
     "velocityFast": "Агрессивная",
-    "createPlan": "Создать мой план"
+    "createPlan": "Создать мой план",
+    "lifestyleTitle": "Какой у вас образ жизни?",
+    "lifestyleSub": "Вне спорта — сколько вы движетесь за день?",
+    "lifestyleSeated": "В основном сидя",
+    "lifestyleSeatedEx": "Офис, домашний офис, учёба",
+    "lifestyleStandingSometimes": "Иногда стоя",
+    "lifestyleStandingSometimesEx": "Микс сидячей работы и передвижений",
+    "lifestyleStandingMostly": "В основном стоя",
+    "lifestyleStandingMostlyEx": "Учитель, продавец, механик",
+    "lifestyleMoving": "В движении весь день",
+    "lifestyleMovingEx": "Официант, санитар, курьер, рабочий",
+    "lifestylePhysical": "Тяжёлый физический труд",
+    "lifestylePhysicalEx": "Стройка, грузчики, непрерывные нагрузки",
+    "projectionTitle": "Вот как будет выглядеть ваш прогресс!",
+    "warningUnderweight": "Цель слишком низка для вашего роста. Здоровый диапазон: {{min}}–{{max}} {{unit}}.",
+    "recOverweightStep": "Хорошее начало. Долгосрочная цель: {{min}}–{{max}} {{unit}}.",
+    "loseHealthy": "Отличная цель! Вы достигнете очень здорового веса.",
+    "warningOverweightGain": "Остерегайтесь от лишнего жира. Здоровый диапазон: {{min}}–{{max}} {{unit}}.",
+    "warningUnderweightGain": "Цель всё ещё слишком низкая. Идеальный диапазон: {{min}}–{{max}} {{unit}}.",
+    "gainHealthy": "Отлично для набора мушц при здоровом весе!",
+    "warningUnderweightMaintain": "Ваш вес низкий. Рассмотрите цель набора массы.",
+    "warningOverweightMaintain": "Ваш вес высокий. Рассмотрите цель похудения.",
+    "maintainHealthy": "Отлично! У вас идеальный вес для поддержания формы.",
+    "currentGoal": "Текущий вес",
+    "nextGoal": "Целевой вес",
+    "activitySedentaryEx": "Прогулка · дела по дому",
+    "activityLightEx": "Быстрая ходьба · йога · велосипед",
+    "activityModerateEx": "Зал · кардио · плавание · групповые занятия",
+    "activityActiveEx": "Силовые · HIIT · любительский спорт",
+    "activityVeryActiveEx": "Профессиональный спортсмен · 2 тренировки/день"
+  },
+  "reminders": {
+    "stayOnTrack": "Оставайтесь на цели",
+    "subtitle": "Настройте напоминания для еды, воды и тренировок.",
+    "permissionInfo": "Разрешите уведомления в настройках системы.",
+    "breakfast": "Завтрак",
+    "lunch": "Обед",
+    "dinner": "Ужин",
+    "water": "Вода",
+    "workout": "Тренировка",
+    "testNotif": "Тестовое уведомление"
   },
   "scan": {
     "title": "Сканировать еду",

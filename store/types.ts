@@ -46,8 +46,11 @@ export interface UserProfile extends HealthProfile {
   widgetsOrder?:   string[];
   lifestyle?:      'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
   extraSnacks?:    number;
+  /** Macro distribution type chosen during onboarding. Defaults to 'recommended'. */
+  dietType?:       'recommended' | 'high_protein' | 'low_carb' | 'keto' | 'low_fat';
   badges?:         string[];
   selectedBadge?:  string;
+  unlockedAchievements?: string[];
 }
 
 export interface FoodLog {

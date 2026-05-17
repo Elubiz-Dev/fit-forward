@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { Spacing, Radius, Shadow } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore, useBodyStore, UserProfile } from '../../../store';
+import { useAuthStore, useNutritionStore, selectDailyTotals, useSettingsStore, useBodyStore, UserProfile } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
@@ -36,7 +36,11 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 function ScoreRing({ consumed, target, dateLabel }: { consumed: number; target: number; dateLabel: string }) {
   const { t } = useTranslation();
   const colors = useTheme();
-  const pct = Math.min(consumed / Math.max(target, 1), 1);
+  const safeConsumed = Number(consumed) || 0;
+  const safeTarget = Number(target) || 2000;
+  const pct = Number.isFinite(safeConsumed / Math.max(safeTarget, 1))
+    ? Math.min(Math.max(safeConsumed / Math.max(safeTarget, 1), 0), 1)
+    : 0;
   const strokeDashoffset = useMemo(() => CIRCUMFERENCE - pct * CIRCUMFERENCE, [pct]);
 
   return (
@@ -188,11 +192,11 @@ export default function DashboardScreen() {
   const colors = useTheme();
   const { language } = useSettingsStore();
   const { profile, setProfile } = useAuthStore();
-  const { todayLogs, dailySleep, selectedDate, totals, fetchLogs, setDate } = useNutritionStore();
+  const { todayLogs, dailySleep, selectedDate, fetchLogs, setDate } = useNutritionStore();
   const { latest, fetchMeasurements, getForDate, measurements } = useBodyStore();
   const { achievements } = useAchievements();
   
-  const totalsData = useMemo(() => totals(), [todayLogs, selectedDate]);
+  const totalsData = useNutritionStore(selectDailyTotals);
   const { calories } = totalsData;
   const target = profile?.targetCalories ?? 2000;
   const name = profile?.name?.split(' ')[0] ?? t('dashboard.fallbackName');
@@ -213,10 +217,10 @@ export default function DashboardScreen() {
     || profile?.weight
     || 70;
     
-  const initialWeight = profile?.startingWeight || oldestWeight;
-  const currentWeight = dateMeasurement?.weight || profile?.weight || 0;
-  const targetWeight  = profile?.targetWeight || currentWeight;
-  const sleepHours = dailySleep[selectedDate] || 0;
+  const initialWeight = Number(profile?.startingWeight || oldestWeight) || 70;
+  const currentWeight = Number(dateMeasurement?.weight || profile?.weight) || 70;
+  const targetWeight  = Number(profile?.targetWeight || currentWeight) || 70;
+  const sleepHours = Number(dailySleep[selectedDate]) || 0;
   const bodyFat = dateMeasurement?.bodyFat;
 
   let progressPct = 0;
@@ -243,6 +247,8 @@ export default function DashboardScreen() {
     const diff = Math.abs(currentWeight - targetWeight);
     progressPct = diff <= 1.5 ? 100 : Math.max(0, 100 - (diff * 10));
   }
+
+  const safeProgressPct = Number.isFinite(progressPct) ? progressPct : 0;
 
   const todayStr = getLocalDateString();
   let dateLabel = t('tracker.today', 'Hoy');
@@ -527,7 +533,7 @@ export default function DashboardScreen() {
               colors={[goalInfo.accent, '#7C5CFC']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={[s.progressFill, { width: `${progressPct}%` }]}
+              style={[s.progressFill, { width: `${safeProgressPct}%` }]}
             />
           </View>
           

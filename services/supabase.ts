@@ -2,7 +2,6 @@
  * Supabase client singleton para FitGO.
  * Lee credenciales de variables de entorno (definidas en .env o EAS secrets).
  */
-import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import { SecureStorage } from '../utils/storage';
 

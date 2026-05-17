@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Trophy, Users, Sword, Plus, ArrowLeft, Bot, Check, X, MessageSquare, Heart, Share2, Send, Trash2, Camera } from 'lucide-react-native';
+import { Search, Trophy, Users, Sword, Plus, ArrowLeft, Bot, Check, X, MessageSquare, Heart, Share2, Send, Trash2, Camera, Pencil } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../hooks/useTheme';
 import { Radius, Spacing } from '../../constants';
@@ -161,6 +161,8 @@ export default function SocialModal() {
   const [postComments, setPostComments] = useState<Record<string, any[]>>({});
   const [newComment, setNewComment] = useState('');
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
 
   // Challenges state
   const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
@@ -324,6 +326,31 @@ export default function SocialModal() {
     if (!newComment.trim() || !profile?.id) return;
     await socialStore.addComment(postId, profile.id, newComment);
     setNewComment('');
+    const updatedComments = await socialStore.fetchComments(postId);
+    setPostComments(prev => ({ ...prev, [postId]: updatedComments }));
+  };
+
+  const handleStartEditComment = (commentId: string, currentContent: string) => {
+    setEditingCommentId(commentId);
+    setEditingCommentText(currentContent);
+  };
+
+  const handleCancelCommentEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveCommentEdit = async (commentId: string, postId: string) => {
+    if (!editingCommentText.trim()) return;
+    await socialStore.editComment(commentId, editingCommentText);
+    setEditingCommentId(null);
+    setEditingCommentText('');
+    const updatedComments = await socialStore.fetchComments(postId);
+    setPostComments(prev => ({ ...prev, [postId]: updatedComments }));
+  };
+
+  const handleDeleteComment = async (commentId: string, postId: string) => {
+    await socialStore.deleteComment(commentId);
     const updatedComments = await socialStore.fetchComments(postId);
     setPostComments(prev => ({ ...prev, [postId]: updatedComments }));
   };
@@ -495,11 +522,54 @@ export default function SocialModal() {
                     <View style={[s.commentBubble, { backgroundColor: colors.surfaceAlt }]}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <Text style={[s.commentUser, { color: colors.textPrimary, marginBottom: 0 }]}>{comment.user_profile?.name}</Text>
-                        <Text style={{ color: colors.textMuted, fontSize: 9 }}>
-                          {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ color: colors.textMuted, fontSize: 9 }}>
+                            {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                          {comment.user_id === profile?.id && !editingCommentId && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 6 }}>
+                              <TouchableOpacity onPress={() => handleStartEditComment(comment.id, comment.content)}>
+                                <Pencil size={11} color={colors.textSecondary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => handleDeleteComment(comment.id, post.id)}>
+                                <Trash2 size={11} color={colors.error} />
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
                       </View>
-                      <Text style={[s.commentText, { color: colors.textSecondary }]}>{comment.content}</Text>
+                      {editingCommentId === comment.id ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <TextInput
+                            style={{
+                              flex: 1,
+                              color: colors.textPrimary,
+                              borderBottomColor: colors.primary,
+                              borderBottomWidth: 1,
+                              fontSize: 14,
+                              paddingVertical: 2,
+                            }}
+                            value={editingCommentText}
+                            onChangeText={setEditingCommentText}
+                            autoFocus
+                          />
+                          <TouchableOpacity onPress={() => handleSaveCommentEdit(comment.id, post.id)}>
+                            <Check size={16} color={colors.success} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={handleCancelCommentEdit}>
+                            <X size={16} color={colors.error} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View>
+                          <Text style={[s.commentText, { color: colors.textSecondary }]}>{comment.content}</Text>
+                          {comment.is_edited && (
+                            <Text style={{ fontSize: 10, color: colors.textMuted, fontStyle: 'italic', marginTop: 2 }}>
+                              (editado)
+                            </Text>
+                          )}
+                        </View>
+                      )}
                     </View>
                   </View>
                 ))}

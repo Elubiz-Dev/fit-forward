@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trophy, X, CheckCircle2, Lock } from 'lucide-react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { useAchievements, Achievement } from '../../hooks/useAchievements';
+import { useAchievements, Achievement, ALL_BADGES } from '../../hooks/useAchievements';
 import { Spacing, Radius, Shadow } from '../../constants';
 
 const { width } = Dimensions.get('window');
@@ -83,6 +83,26 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         {achievement.description}
       </Text>
 
+      {achievement.rewardBadgeId && (
+        <View style={[
+          s.rewardRow, 
+          { 
+            backgroundColor: achievement.unlocked ? '#FFD700' + '15' : colors.surfaceAlt,
+            borderColor: achievement.unlocked ? '#FFD700' + '40' : colors.border
+          }
+        ]}>
+          <Text style={[
+            s.rewardText, 
+            { 
+              color: achievement.unlocked ? '#EAB308' : colors.textMuted,
+              fontWeight: achievement.unlocked ? '800' : '600'
+            }
+          ]}>
+            🎁 {ALL_BADGES[achievement.rewardBadgeId]?.icon} {ALL_BADGES[achievement.rewardBadgeId]?.label}
+          </Text>
+        </View>
+      )}
+
       {achievement.unlocked && (
         <View style={s.checkMark}>
           <CheckCircle2 size={16} color="#FFD700" />
@@ -155,5 +175,19 @@ const s = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
   cardDesc: { fontSize: 12, textAlign: 'center', lineHeight: 16 },
-  checkMark: { position: 'absolute', top: 8, right: 8 }
+  checkMark: { position: 'absolute', top: 8, right: 8 },
+  rewardRow: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.sm || 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  rewardText: {
+    fontSize: 9,
+    textAlign: 'center',
+  }
 });

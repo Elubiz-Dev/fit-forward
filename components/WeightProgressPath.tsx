@@ -8,22 +8,16 @@
  * current weight node.
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, {
   Defs, LinearGradient as SvgGradient, Stop,
   Path, Circle, Text as SvgText, G,
 } from 'react-native-svg';
-import Animated, {
-  useSharedValue, useAnimatedProps, withRepeat,
-  withTiming, Easing, ReduceMotion,
-} from 'react-native-reanimated';
 import { useTheme } from '../hooks/useTheme';
 import { useSettingsStore } from '../store';
 import { convertMass } from '../utils/units';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface WeightProgressPathProps {
   startingWeight: number;
@@ -48,20 +42,25 @@ export function WeightProgressPath({
   const padY = 40;
   const midY = H / 2;
 
+  // Sanitize weight inputs to guarantee finite, valid numbers and avoid NaN crashes
+  const startW = Number.isFinite(startingWeight) ? startingWeight : (parseFloat(String(startingWeight)) || 80);
+  const currW = Number.isFinite(currentWeight) ? currentWeight : (parseFloat(String(currentWeight)) || 80);
+  const targetW = Number.isFinite(targetWeight) ? targetWeight : (parseFloat(String(targetWeight)) || 75);
+
   // Convert for display
-  const displayStart = Number(convertMass(startingWeight, 'kg', massUnit).toFixed(1));
-  const displayCurr = Number(convertMass(currentWeight, 'kg', massUnit).toFixed(1));
-  const displayTarget = Number(convertMass(targetWeight, 'kg', massUnit).toFixed(1));
+  const displayStart = Number(convertMass(startW, 'kg', massUnit).toFixed(1));
+  const displayCurr = Number(convertMass(currW, 'kg', massUnit).toFixed(1));
+  const displayTarget = Number(convertMass(targetW, 'kg', massUnit).toFixed(1));
 
   // Clamp pct between 0 and 1 (handle edge cases where user already past goal)
-  const isLoss = targetWeight < startingWeight;
-  const totalRange = Math.abs(startingWeight - targetWeight) || 1;
-  const currentProgress = Math.abs(startingWeight - currentWeight);
+  const isLoss = targetW < startW;
+  const totalRange = Math.abs(startW - targetW) || 1;
+  const currentProgress = Math.abs(startW - currW);
   const rawPct = Math.min(Math.max(currentProgress / totalRange, 0), 1);
   const pct = isLoss
-    ? (startingWeight - currentWeight) / totalRange
-    : (currentWeight - startingWeight) / totalRange;
-  const clampedPct = Math.min(Math.max(pct, 0), 1);
+    ? (startW - currW) / totalRange
+    : (currW - startW) / totalRange;
+  const clampedPct = Number.isFinite(pct) ? Math.min(Math.max(pct, 0), 1) : 0;
 
   // X positions
   const x0 = padX;            // start
@@ -88,22 +87,6 @@ export function WeightProgressPath({
   // Full path
   const completedPath = `M ${x0} ${y0} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x1} ${y1}`;
   const remainingPath = `M ${x1} ${y1} C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${x2} ${y2}`;
-
-  // Pulse animation for current node
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withTiming(2.2, { duration: 1200, easing: Easing.out(Easing.sin), reduceMotion: ReduceMotion.Never }),
-      -1,
-      true,
-    );
-  }, []);
-
-  const animatedProps = useAnimatedProps(() => ({
-    r: 6 * pulse.value,
-    opacity: 1.8 - pulse.value * 0.6,
-  }));
 
   const displayPct = Math.round(clampedPct * 100);
 
@@ -150,10 +133,10 @@ export function WeightProgressPath({
           </SvgText>
         </G>
 
-        {/* ── Current node (pulsing) ── */}
+        {/* ── Current node ── */}
         <G>
-          {/* Outer glow pulse */}
-          <AnimatedCircle cx={x1} cy={y1} fill={colors.primary} fillOpacity={0.2} animatedProps={animatedProps} />
+          {/* Outer glow static */}
+          <Circle cx={x1} cy={y1} r={14} fill={colors.primary} fillOpacity={0.2} />
           {/* Inner ring */}
           <Circle cx={x1} cy={y1} r={8} fill={colors.primary} />
           <Circle cx={x1} cy={y1} r={3} fill="#FFFFFF" fillOpacity={0.95} />

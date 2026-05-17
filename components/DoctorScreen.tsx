@@ -9,6 +9,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
+import { 
+  Sparkles, Send, Camera, Mic, Clock, 
+  MessageSquarePlus, Apple, Salad, Flame, 
+  BarChart2, Edit2, ShieldAlert, Heart, Compass, Zap, Activity, Dumbbell
+} from 'lucide-react-native';
 import { useAuthStore, useCoachStore, CoachMessage, useSettingsStore, usePurchaseStore } from '../store';
 import { sendCoachMessage, buildCoachSystemPrompt, transcribeAudio } from '../services/groq';
 import { supabase } from '../services/supabase';
@@ -21,27 +26,151 @@ import { ImagePickerModal } from './ImagePickerModal';
 
 const FREE_MSG_LIMIT = 5;
 
-// Suggestion chips are now generated inside the component using t()
+// Helper to resolve card icons & colors dynamically
+const getSuggestionDetails = (coachType: string, index: number, colors: any) => {
+  switch (coachType) {
+    case 'nutritionist':
+      if (index === 1) return { icon: Apple, color: '#10B981' };
+      if (index === 2) return { icon: Salad, color: '#34D399' };
+      if (index === 3) return { icon: Flame, color: '#EF4444' };
+      return { icon: BarChart2, color: '#3B82F6' };
+    case 'trainer':
+      if (index === 1) return { icon: Flame, color: '#EF4444' };
+      if (index === 2) return { icon: Dumbbell, color: '#8B5CF6' };
+      if (index === 3) return { icon: Zap, color: '#F59E0B' };
+      return { icon: Compass, color: '#10B981' };
+    case 'doctor':
+      if (index === 1) return { icon: Clock, color: '#3B82F6' };
+      if (index === 2) return { icon: Activity, color: '#EF4444' };
+      if (index === 3) return { icon: Sparkles, color: '#8B5CF6' };
+      return { icon: Heart, color: '#10B981' };
+    default:
+      return { icon: Sparkles, color: colors.primary };
+  }
+};
+
+// Custom rich-text parser that renders Markdown bold text (**text**), bullet points, and numbered lists inside chat bubbles
+const renderFormattedContent = (content: string, isUser: boolean, colors: any) => {
+  const textColor = isUser ? '#FFFFFF' : colors.textPrimary;
+  const boldColor = isUser ? '#FFFFFF' : colors.primary;
+  
+  const lines = content.split('\n');
+  
+  return lines.map((line, lineIdx) => {
+    const isBullet = line.trim().startsWith('* ') || line.trim().startsWith('- ');
+    const isNumberList = /^\d+\.\s/.test(line.trim());
+    
+    let cleanLine = line;
+    let prefix = '';
+    
+    if (isBullet) {
+      cleanLine = line.trim().substring(2);
+      prefix = '• ';
+    } else if (isNumberList) {
+      const match = line.trim().match(/^(\d+\.\s)(.*)/);
+      cleanLine = match ? match[2] : line;
+      prefix = line.trim().match(/^(\d+\.)/)?.[0] + ' ' || '';
+    }
+    
+    // Split bold tags
+    const parts = cleanLine.split(/\*\*/g);
+    const inlineContent = parts.map((part, partIdx) => {
+      const isBold = partIdx % 2 === 1;
+      return (
+        <Text
+          key={partIdx}
+          style={{
+            fontWeight: isBold ? '800' : '400',
+            color: isBold ? boldColor : textColor,
+          }}
+        >
+          {part}
+        </Text>
+      );
+    });
+
+    return (
+      <Text 
+        key={lineIdx} 
+        style={{ 
+          fontSize: 15, 
+          lineHeight: 22, 
+          color: textColor,
+          marginVertical: line.trim() === '' ? 3 : 1.5,
+        }}
+      >
+        {prefix ? (
+          <Text style={{ color: isUser ? '#FFF' : colors.primary, fontWeight: '800' }}>
+            {prefix}
+          </Text>
+        ) : null}
+        {inlineContent}
+      </Text>
+    );
+  });
+};
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 function MessageBubble({ msg, isLastUser, onEdit }: { msg: CoachMessage; isLastUser?: boolean; onEdit?: (m: CoachMessage) => void }) {
   const colors = useTheme();
   const isUser = msg.role === 'user';
 
-  const formatContent = (content: string) =>
-    safe(content.replace(/\*\*(.*?)\*\*/g, '$1'));
+  const renderBubbleBody = () => {
+    if (isUser) {
+      return (
+        <LinearGradient
+          colors={['#7C5CFC', '#5B36D6']}
+          style={[
+            bubble.box, 
+            { 
+              borderBottomRightRadius: 4, 
+              shadowColor: '#7C5CFC', 
+              shadowOffset: { width: 0, height: 4 }, 
+              shadowOpacity: 0.3, 
+              shadowRadius: 8, 
+              elevation: 4 
+            }
+          ]}
+        >
+          {msg.imageUrl && (
+            <Image
+              source={{ uri: msg.imageUrl }}
+              style={{ width: 180, height: 180, borderRadius: 12, marginBottom: 8 }}
+              resizeMode="cover"
+            />
+          )}
+          {renderFormattedContent(msg.content, true, colors)}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
+            {isLastUser && onEdit && (
+              <TouchableOpacity onPress={() => onEdit(msg)} hitSlop={8} style={{ marginRight: 4 }}>
+                <Edit2 size={12} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+            )}
+            <Text style={[bubble.time, { color: 'rgba(255,255,255,0.6)' }]}>
+              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+        </LinearGradient>
+      );
+    }
 
-  return (
-    <View style={[bubble.row, isUser && bubble.rowUser]}>
-      {!isUser && (
-        <Image source={require('../assets/doctor_badge.jpg')} style={bubble.avatar} resizeMode="cover" />
-      )}
-      <View style={[
-        bubble.box, 
-        isUser 
-          ? { backgroundColor: colors.primary, borderBottomRightRadius: 4, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 } 
-          : { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }
-      ]}>
+    return (
+      <View 
+        style={[
+          bubble.box, 
+          { 
+            backgroundColor: colors.surface, 
+            borderWidth: 1.5, 
+            borderColor: colors.border, 
+            borderBottomLeftRadius: 4, 
+            shadowColor: '#000', 
+            shadowOffset: { width: 0, height: 2 }, 
+            shadowOpacity: 0.04, 
+            shadowRadius: 6, 
+            elevation: 2 
+          }
+        ]}
+      >
         {msg.imageUrl && (
           <Image
             source={{ uri: msg.imageUrl }}
@@ -49,42 +178,68 @@ function MessageBubble({ msg, isLastUser, onEdit }: { msg: CoachMessage; isLastU
             resizeMode="cover"
           />
         )}
-        <Text style={[bubble.text, isUser && bubble.textUser, !isUser && { color: colors.textPrimary }]}>
-          {msg.content}
-        </Text>
+        {renderFormattedContent(msg.content, false, colors)}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
-          {isLastUser && onEdit && (
-            <TouchableOpacity onPress={() => onEdit(msg)} hitSlop={8}>
-              <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' }}>{safe('✎')}</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={[bubble.time, isUser ? { color: 'rgba(255,255,255,0.6)' } : { color: colors.textMuted }]}>
+          <Text style={[bubble.time, { color: colors.textMuted }]}>
             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
       </View>
+    );
+  };
+
+  return (
+    <View style={[bubble.row, isUser && bubble.rowUser]}>
+      {!isUser && (
+        <View style={[bubble.avatarContainer, { borderColor: colors.primary + '30' }]}>
+          <Image source={require('../assets/doctor_badge.jpg')} style={bubble.avatar} resizeMode="cover" />
+        </View>
+      )}
+      {renderBubbleBody()}
     </View>
   );
 }
 
 const bubble = StyleSheet.create({
-  row:        { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 4, paddingHorizontal: Spacing.base },
+  row:        { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 6, paddingHorizontal: Spacing.base },
   rowUser:    { flexDirection: 'row-reverse' },
-  avatar:     { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  box:        { maxWidth: '78%', borderRadius: Radius.lg, padding: 12 },
-  text:       { fontSize: 15, lineHeight: 22 },
-  textUser:   { color: '#fff' },
-  time:       { fontSize: 10, marginTop: 4, textAlign: 'right' },
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    padding: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+    backgroundColor: '#fff',
+  },
+  avatar:     { width: '100%', height: '100%', borderRadius: 17 },
+  box:        { maxWidth: '78%', borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 12 },
+  time:       { fontSize: 10, marginTop: 2, textAlign: 'right' },
 });
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
 function TypingIndicator() {
   const colors = useTheme();
   return (
-    <View style={[bubble.row, { paddingHorizontal: Spacing.base, marginTop: 4 }]}>
-      <Image source={require('../assets/fitgo.jpeg')} style={bubble.avatar} resizeMode="cover" />
-      <View style={[bubble.box, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4, paddingHorizontal: 16, paddingVertical: 14 }]}>
+    <View style={[bubble.row, { paddingHorizontal: Spacing.base, marginTop: 6 }]}>
+      <View style={[bubble.avatarContainer, { borderColor: colors.primary + '30' }]}>
+        <Image source={require('../assets/doctor_badge.jpg')} style={bubble.avatar} resizeMode="cover" />
+      </View>
+      <View 
+        style={[
+          bubble.box, 
+          { 
+            backgroundColor: colors.surface, 
+            borderWidth: 1.5, 
+            borderColor: colors.border, 
+            borderBottomLeftRadius: 4, 
+            paddingHorizontal: 16, 
+            paddingVertical: 14 
+          }
+        ]}
+      >
         <ActivityIndicator color={colors.primary} size="small" />
       </View>
     </View>
@@ -96,9 +251,9 @@ export default function DoctorScreen() {
   const [input, setInput]               = useState('');
   const coachType = 'doctor';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isSending, setIsSending]       = useState(false); // local send guard
+  const [isSending, setIsSending]       = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false); // true while Whisper processes audio
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(audioRecorder, 500);
   const isRecording   = recorderState.isRecording;
@@ -120,7 +275,6 @@ export default function DoctorScreen() {
   const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
   const atLimit = !isProActually && msgCount >= FREE_MSG_LIMIT;
 
-  // On mount: reset stuck isTyping + check daily message reset
   useEffect(() => {
     setTyping(false);
     setIsSending(false);
@@ -140,14 +294,12 @@ export default function DoctorScreen() {
 
   useEffect(() => { loadSessions(); }, [profile?.id]);
 
-  // Load coach history from Supabase
   useEffect(() => {
     if (!profile?.id) return;
 
     async function loadHistory() {
       if (isSending) return;
       
-      // If no sessionId, it's a NEW chat. We just show the welcome message.
       if (!sessionId) {
         setMessages([{
           id:        'welcome',
@@ -158,7 +310,6 @@ export default function DoctorScreen() {
         return;
       }
 
-      // If we already have messages for this session, don't re-fetch unless it's empty
       if (messages.length > 1) {
         return; 
       }
@@ -182,7 +333,6 @@ export default function DoctorScreen() {
         }));
         setMessages(formatted, coachType);
       } else if (messages.length === 0) {
-        // Fallback for empty session
         setMessages([{
           id:        'welcome',
           role:      'model',
@@ -195,7 +345,6 @@ export default function DoctorScreen() {
     loadHistory();
   }, [profile?.id, language, sessionId]);
 
-  // Handle starting a new chat
   const handleNewChat = useCallback(() => {
     setCurrentSessionId(null, coachType);
     setMessages([{
@@ -206,7 +355,6 @@ export default function DoctorScreen() {
     }], coachType);
   }, [coachType, t]);
 
-  // Scroll to bottom on new message or typing change
   useEffect(() => {
     if (messages.length > 0) {
       const timer = setTimeout(
@@ -217,7 +365,6 @@ export default function DoctorScreen() {
     }
   }, [messages.length, isTyping]);
 
-  // ─── Pick image (camera or gallery) ─────────────────────────────────────────
   const handlePickImage = useCallback(() => {
     setImagePickerVisible(true);
   }, []);
@@ -258,12 +405,6 @@ export default function DoctorScreen() {
     }
   };
 
-  // ─── Voice Recording ────────────────────────────────────────────────────────
-  /**
-   * Configures the audio session, prepares the recorder, then starts capture.
-   * IMPORTANT: prepareToRecordAsync() MUST be called before record() —
-   * without it, expo-audio never populates recorder.uri after stopping.
-   */
   const startRecording = async () => {
     if (!isProActually) {
       router.push('/modals/paywall');
@@ -275,11 +416,7 @@ export default function DoctorScreen() {
         Alert.alert('Permission needed', 'Please allow microphone access to use voice features.');
         return;
       }
-
-      // Required on iOS: set audio session to recording mode
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-
-      // Must prepare before calling record()
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (err: any) {
@@ -287,14 +424,11 @@ export default function DoctorScreen() {
     }
   };
 
-  /** Stops recording, transcribes via Whisper, and populates the text input. */
   const stopRecording = async () => {
     if (!isRecording) return;
-
     try {
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
-
       if (uri) {
         setIsTranscribing(true);
         try {
@@ -306,7 +440,6 @@ export default function DoctorScreen() {
           Alert.alert('Transcription failed', 'Could not convert voice to text.');
         } finally {
           setIsTranscribing(false);
-          // Restore audio session for normal playback
           await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false }).catch(() => {});
         }
       }
@@ -315,8 +448,6 @@ export default function DoctorScreen() {
     }
   };
 
-  // ─── Send message ─────────────────────────────────────────────────────────────
-  /** Toggle voice recording */
   const toggleRecording = () => {
     if (isRecording) {
       stopRecording();
@@ -363,8 +494,6 @@ export default function DoctorScreen() {
       if (sessionError) {
         console.error('Session Insert Error:', sessionError);
         Alert.alert('Database Error', `Failed to create session: ${sessionError.message}`);
-        setIsSending(false);
-        setTyping(false);
         return;
       }
 
@@ -374,7 +503,6 @@ export default function DoctorScreen() {
       }
     }
 
-    // Optimistic UI: add user message immediately
     const userMsg: CoachMessage = {
       id:        `u-${Date.now()}`,
       role:      'user',
@@ -389,7 +517,6 @@ export default function DoctorScreen() {
     setIsSending(true);
     setTyping(true);
 
-    // Persist user message to Supabase (awaiting to prevent race condition with history loader)
     const { error: insertError } = await supabase.from('coach_conversations').insert({
       user_id: profile.id,
       role:    'user',
@@ -404,17 +531,11 @@ export default function DoctorScreen() {
       Alert.alert('Database Error', `Failed to save message: ${insertError.message}`);
     }
 
-    // If we just created a session, update the store's ID now.
-    // This will trigger the history useEffect, but now the message IS in the DB.
     if (!sessionId && activeSessionId) {
       setCurrentSessionId(activeSessionId, 'doctor');
     }
 
     try {
-      // Build valid history:
-      // 1. Filter the welcome message
-      // 2. Must start with 'user' role
-      // 3. Must alternate user/model (no consecutive same roles)
       let raw = messages
         .filter((m) => m.id !== 'welcome')
         .slice(-20)
@@ -423,16 +544,14 @@ export default function DoctorScreen() {
           parts: [{ text: m.content || ' ' }],
         }));
 
-      // Strip leading model messages
       while (raw.length > 0 && raw[0].role !== 'user') {
         raw = raw.slice(1);
       }
 
-      // Remove consecutive same-role messages (keep last of each run)
       const history: typeof raw = [];
       for (const msg of raw) {
         if (history.length > 0 && history[history.length - 1].role === msg.role) {
-          history[history.length - 1] = msg; // replace with latest
+          history[history.length - 1] = msg;
         } else {
           history.push(msg);
         }
@@ -466,7 +585,6 @@ export default function DoctorScreen() {
       };
       addMessage(botMsg, 'doctor');
 
-      // Persist bot response
       const { error: botInsertError } = await supabase.from('coach_conversations').insert({
         user_id: profile.id,
         role:    'model',
@@ -499,56 +617,61 @@ export default function DoctorScreen() {
   return (
     <View style={[s.safe, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <LinearGradient 
-        colors={[colors.background, colors.surfaceAlt]} 
-        style={[s.header, { borderBottomColor: colors.border }]}
-      >
-        <Image source={require('../assets/doctor_badge.jpg')} style={s.headerAvatar} resizeMode="cover" />
-        <View style={{ flex: 1 }}>
-          <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.doctor.label', 'Personal Doctor')}</Text>
-          <View style={s.onlineRow}>
-            <View style={[s.onlineDot, { backgroundColor: colors.success }]} />
-            <Text style={[s.onlineText, { color: colors.success }]}>{t('coach.online')}</Text>
+      <View style={[s.headerContainer, { borderBottomColor: colors.border }]}>
+        <LinearGradient 
+          colors={[colors.background, colors.surface]} 
+          style={s.header}
+        >
+          <View style={[s.headerAvatarContainer, { borderColor: colors.primary + '40' }]}>
+            <Image source={require('../assets/doctor_badge.jpg')} style={s.headerAvatar} resizeMode="cover" />
+            <View style={[s.headerOnlineDot, { backgroundColor: colors.success }]} />
           </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <TouchableOpacity 
-            onPress={handleNewChat}
-            style={[s.headerIconBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 18 }}>➕</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => setHistoryVisible(true)}
-            style={[s.headerIconBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 18 }}>🕒</Text>
-          </TouchableOpacity>
-
-          {!isProActually && (
-            <View style={[s.countBadge, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-              <Text style={[s.countText, { color: colors.textSecondary }]}>
-                {Math.max(FREE_MSG_LIMIT - msgCount, 0)}/{FREE_MSG_LIMIT}
-              </Text>
+          
+          <View style={{ flex: 1 }}>
+            <Text style={[s.headerName, { color: colors.textPrimary }]}>{t('coach.doctor.label', 'Personal Doctor')}</Text>
+            <View style={s.taglineBadge}>
+              <Sparkles size={10} color={colors.primary} style={{ marginRight: 4 }} />
+              <Text style={[s.taglineText, { color: colors.textSecondary }]}>{t('coach.taglineBadge', 'IA Personalizada • Groq')}</Text>
             </View>
-          )}
-        </View>
-      </LinearGradient>
+          </View>
 
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={handleNewChat}
+              style={[s.headerIconBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '25' }]}
+              activeOpacity={0.7}
+            >
+              <MessageSquarePlus size={18} color={colors.primary} />
+            </TouchableOpacity>
 
+            <TouchableOpacity 
+              onPress={() => setHistoryVisible(true)}
+              style={[s.headerIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Clock size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {!isProActually && (
+              <View style={[s.countBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[s.countText, { color: colors.primary }]}>
+                  {Math.max(FREE_MSG_LIMIT - msgCount, 0)}/{FREE_MSG_LIMIT}
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <FlatList<CoachMessage>
           ref={flatRef}
           data={messages}
+          style={{ flex: 1 }}
           keyExtractor={(m) => m.id}
           renderItem={({ item, index }) => {
             const isLastUser = item.role === 'user' && (index === messages.length - 1 || (index === messages.length - 2 && messages[index+1].role === 'model'));
@@ -559,9 +682,6 @@ export default function DoctorScreen() {
                 onEdit={(m) => {
                   setInput(m.content);
                   removeLastPair('doctor');
-                  // Optional: Delete from Supabase as well?
-                  // For simplicity, we just "continue" by sending a new one and the app logic will handle history.
-                  // But the user said "se vuelva a cargar la respuesta", so we'll just remove from local and Supabase.
                   if (sessionId) {
                      supabase.from('coach_conversations')
                       .delete()
@@ -579,17 +699,34 @@ export default function DoctorScreen() {
             <>
               {isTyping && <TypingIndicator />}
               {showSuggestions && !isTyping && (
-                <View style={s.suggestionsWrap}>
-                  {[1,2,3,4].map((i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[s.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                      onPress={() => handleSend(t(`coach.doctor.suggest${i}`))}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[s.chipText, { color: colors.textSecondary }]}>{t(`coach.doctor.suggest${i}`)}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={s.suggestionsGrid}>
+                  <View style={{ width: '100%', marginBottom: 12, paddingHorizontal: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Sparkles size={16} color={colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                        {t('coach.suggestionsTitle', 'Sugerencias para empezar')}
+                      </Text>
+                    </View>
+                  </View>
+                  {[1, 2, 3, 4].map((i) => {
+                    const details = getSuggestionDetails(coachType, i, colors);
+                    const IconComponent = details.icon;
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        style={[s.suggestionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={() => handleSend(t(`coach.${coachType}.suggest${i}`))}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[s.suggestionIconContainer, { backgroundColor: details.color + '15' }]}>
+                          <IconComponent size={18} color={details.color} />
+                        </View>
+                        <Text style={[s.suggestionCardText, { color: colors.textPrimary }]} numberOfLines={3}>
+                          {t(`coach.${coachType}.suggest${i}`)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </>
@@ -598,66 +735,81 @@ export default function DoctorScreen() {
 
         {/* ── Input area ── */}
         {atLimit ? (
-          <View style={[s.limitBanner, { borderTopColor: colors.border }]}>
-            <Text style={[s.limitText, { color: colors.textSecondary }]}>
-              🔒 {t('coach.upgradePro')}
-            </Text>
+          <View style={[s.limitBanner, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldAlert size={18} color={colors.primary} />
+              <Text style={[s.limitText, { color: colors.textSecondary }]}>
+                {t('coach.upgradePro', 'Has alcanzado el límite diario de mensajes gratis.')}
+              </Text>
+            </View>
             <TouchableOpacity
               style={s.upgradeBtn}
               onPress={() => router.push('/modals/paywall')}
               activeOpacity={0.8}
             >
               <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.upgradeGrad}>
-                <Text style={s.upgradeText}>{t('profile.upgrade')}</Text>
+                <Text style={s.upgradeText}>{t('profile.upgrade', 'Actualizar a Pro')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={[s.inputAreaContainer, { borderTopColor: colors.border }]}>
+          <View style={[s.inputAreaContainer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
             {selectedImage && (
               <View style={s.imagePreviewContainer}>
-                <Image
-                  source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
-                  style={s.imagePreview}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  onPress={() => setSelectedImage(null)}
-                  style={s.removeImageBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={s.removeImageText}>✕</Text>
-                </TouchableOpacity>
+                <View style={[s.imagePreviewWrapper, { borderColor: colors.border }]}>
+                  <Image
+                    source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
+                    style={s.imagePreview}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setSelectedImage(null)}
+                    style={s.removeImageBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={s.removeImageText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
+            
             <View style={s.inputArea}>
               <TouchableOpacity
                 onPress={handlePickImage}
-                style={s.cameraBtn}
+                style={[s.inputIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Text style={s.cameraEmoji}>📷</Text>
+                <Camera size={20} color={colors.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={toggleRecording}
-                style={[s.micBtn, (isRecording || isTranscribing) && s.micBtnActive]}
+                style={[
+                  s.inputIconBtn, 
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  isRecording && { backgroundColor: '#EF444415', borderColor: '#EF444450' }
+                ]}
                 activeOpacity={0.7}
                 disabled={isTranscribing}
               >
-                {isTranscribing
-                  ? <ActivityIndicator size="small" color={colors.primary} />
-                  : <Text style={s.cameraEmoji}>{isRecording ? '🛑' : '🎙️'}</Text>
-                }
-                {!isProActually && <View style={s.lockBadge}><Text style={{ fontSize: 10 }}>🔒</Text></View>}
+                {isTranscribing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Mic size={20} color={isRecording ? '#EF4444' : colors.textSecondary} />
+                )}
+                {!isProActually && (
+                  <View style={s.lockBadge}>
+                    <Text style={{ fontSize: 7 }}>🔒</Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <TextInput
                 style={[s.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder={t('coach.inputPlaceholder')}
+                placeholder={t('coach.inputPlaceholder', 'Escribe tu mensaje aquí...')}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 maxLength={500}
@@ -671,13 +823,21 @@ export default function DoctorScreen() {
                 onPress={() => handleSend()}
                 disabled={!canSend}
                 activeOpacity={0.8}
-                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               >
                 <LinearGradient 
-                  colors={['#7C5CFC', '#4338CA']} 
-                  style={[s.sendGrad, { shadowColor: '#7C5CFC', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }]}
+                  colors={['#7C5CFC', '#4B35C1']} 
+                  style={[
+                    s.sendGrad, 
+                    canSend && {
+                      shadowColor: '#7C5CFC', 
+                      shadowOffset: { width: 0, height: 4 }, 
+                      shadowOpacity: 0.3, 
+                      shadowRadius: 6, 
+                      elevation: 4
+                    }
+                  ]}
                 >
-                  <Text style={s.sendText}>↑</Text>
+                  <Send size={18} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -704,43 +864,44 @@ export default function DoctorScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safe:                 { flex: 1 },
-  header:               { flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.base, borderBottomWidth: 1 },
-  headerAvatar:         { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  headerAvatarText:     { color: '#fff', fontWeight: '800', fontSize: 16 },
-  headerName:           { fontSize: 16, fontWeight: '700' },
-  onlineRow:            { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  onlineDot:            { width: 7, height: 7, borderRadius: 4 },
-  onlineText:           { fontSize: 11 },
-  countBadge:           { borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
-  countText:            { fontSize: 12, fontWeight: '600' },
-  typeTabsContainer:    { flexDirection: 'row', borderBottomWidth: 1 },
-  typeTab:              { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  typeTabText:          { fontSize: 14, fontWeight: '600' },
+  headerContainer:      { borderBottomWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  header:               { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: Spacing.base, paddingVertical: 14 },
+  headerAvatarContainer:{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, padding: 1, backgroundColor: '#fff', position: 'relative' },
+  headerAvatar:         { width: '100%', height: '100%', borderRadius: 21 },
+  headerOnlineDot:      { width: 10, height: 10, borderRadius: 5, position: 'absolute', bottom: -1, right: -1, borderWidth: 2, borderColor: '#fff' },
+  headerName:           { fontSize: 16, fontWeight: '800', lineHeight: 20 },
+  taglineBadge:         { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  taglineText:          { fontSize: 11, fontWeight: '600' },
+  countBadge:           { borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1.5 },
+  countText:            { fontSize: 11, fontWeight: '700' },
   messages:             { paddingVertical: Spacing.base, paddingBottom: 16 },
-  suggestionsWrap:      { padding: Spacing.base, gap: 8 },
-  chip:                 { borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1 },
-  chipText:             { fontSize: 14 },
-  inputAreaContainer:   { borderTopWidth: 1 },
-  imagePreviewContainer:{ padding: Spacing.base, paddingBottom: 0, flexDirection: 'row', alignItems: 'flex-start' },
-  imagePreview:         { width: 64, height: 64, borderRadius: Radius.md },
-  removeImageBtn:       { marginLeft: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' },
-  removeImageText:      { color: '#fff', fontSize: 12, fontWeight: '700' },
-  inputArea:            { flexDirection: 'row', gap: 8, padding: Spacing.base, alignItems: 'flex-end' },
-  cameraBtn:            { padding: 8, justifyContent: 'center', alignItems: 'center' },
-  micBtn:               { padding: 8, justifyContent: 'center', alignItems: 'center' },
-  micBtnActive:         { backgroundColor: '#EF444422', borderRadius: Radius.full },
-  cameraEmoji:          { fontSize: 24 },
-  lockBadge:            { position: 'absolute', top: -2, right: -2, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 2 },
-  input:                { flex: 1, borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, borderWidth: 1.5, maxHeight: 120 },
-  sendBtn:              { borderRadius: Radius.md, overflow: 'hidden' },
-  sendBtnDisabled:      { opacity: 0.35 },
-  sendGrad:             { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  sendText:             { color: '#fff', fontSize: 22, fontWeight: '700' },
-  limitBanner:          { padding: Spacing.base, borderTopWidth: 1, gap: 10 },
-  limitText:            { fontSize: 13, textAlign: 'center' },
-  upgradeBtn:           { borderRadius: Radius.md, overflow: 'hidden' },
-  upgradeGrad:          { padding: 14, alignItems: 'center' },
-  upgradeText:          { color: '#fff', fontWeight: '700', fontSize: 15 },
-  headerIconBtn:        { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-});
+  
+  // Suggestions 2x2 Grid
+  suggestionsGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: Spacing.base, justifyContent: 'space-between' },
+  suggestionCard:       { width: '48%', borderRadius: Radius.lg, padding: 14, borderWidth: 1.5, minHeight: 115, justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  suggestionIconContainer: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  suggestionCardText:   { fontSize: 13, fontWeight: '600', lineHeight: 18 },
 
+  inputAreaContainer:   { borderTopWidth: 1.5 },
+  imagePreviewContainer:{ padding: Spacing.base, paddingBottom: 0, flexDirection: 'row' },
+  imagePreviewWrapper:  { borderWidth: 1.5, borderRadius: Radius.md, padding: 2, position: 'relative' },
+  imagePreview:         { width: 60, height: 60, borderRadius: Radius.sm },
+  removeImageBtn:       { position: 'absolute', top: -6, right: -6, backgroundColor: '#EF4444', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#fff' },
+  removeImageText:      { color: '#fff', fontSize: 10, fontWeight: '900' },
+  
+  inputArea:            { flexDirection: 'row', gap: 8, padding: Spacing.base, alignItems: 'flex-end' },
+  inputIconBtn:         { width: 42, height: 42, borderRadius: Radius.lg, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  lockBadge:            { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 6, padding: 1 },
+  
+  input:                { flex: 1, borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, lineHeight: 20, borderWidth: 1.5, maxHeight: 120 },
+  sendBtn:              { borderRadius: Radius.lg, overflow: 'hidden' },
+  sendBtnDisabled:      { opacity: 0.4 },
+  sendGrad:             { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  
+  limitBanner:          { padding: Spacing.base, borderTopWidth: 1.5, gap: 12, alignItems: 'center' },
+  limitText:            { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  upgradeBtn:           { width: '100%', borderRadius: Radius.lg, overflow: 'hidden' },
+  upgradeGrad:          { padding: 14, alignItems: 'center' },
+  upgradeText:          { color: '#fff', fontWeight: '800', fontSize: 15 },
+  headerIconBtn:        { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+});

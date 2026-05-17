@@ -17,7 +17,8 @@
     "continue": "Continua",
     "previous": "Prec.",
     "confirm": "Conferma",
-    "delete": "Elimina"
+    "delete": "Elimina",
+    "edit": "Modifica"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -146,7 +147,24 @@
     "notPremiumDesc": "Nessun abbonamento Pro associato al tuo account.",
     "upgradeNow": "Aggiorna Ora",
     "verifySubscription": "Verifica Abbonamento",
-    "manageSubscription": "Gestisci Abbonamento"
+    "manageSubscription": "Gestisci Abbonamento",
+    "weightPath": "Percorso Progresso",
+    "weightGoalSubtitle": "Il tuo percorso verso l'obiettivo",
+    "start": "Inizio",
+    "now": "Adesso",
+    "goal": "Obiettivo",
+    "completed": "Completato",
+    "sinceStart": "Dall'inizio",
+    "remaining": "Rimanente",
+    "editNameSubtitle": "Aggiorna il nome del profilo",
+    "editWeightSubtitle": "Registra il peso corporeo attuale",
+    "editHeightSubtitle": "Imposta la tua altezza attuale",
+    "editAgeSubtitle": "Imposta la tua età attuale",
+    "deleteAccountConfirm": "Sei sicuro di voler eliminare il tuo account? Questa azione è permanente e tutti i tuoi dati verranno eliminati.",
+    "deleteAccountError": "Impossibile eliminare l'account. Disconnettiti e riconnettiti, oppure contatta il supporto.",
+    "otherMeasurements": "Altre misurazioni",
+    "medicationsSupplements": "Farmaci e Integratori",
+    "selectBadge": "Scegli il tuo Badge"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -228,7 +246,18 @@
     "recent": "Recenti",
     "popular": "Popolari",
     "search": "Cerca attività...",
-    "custom": "Attività Personalizzata"
+    "custom": "Attività Personalizzata",
+    "running": "Corsa",
+    "cycling": "Ciclismo",
+    "walking": "Camminata",
+    "hiking": "Escursionismo",
+    "crossfit": "CrossFit",
+    "calisthenics": "Calistenia",
+    "pilates": "Pilates",
+    "padel": "Padel",
+    "volleyball": "Pallavolo",
+    "golf": "Golf",
+    "martial_arts": "Arti Marziali"
   },
   "welcome": {
     "motto": "Fit-Go: La tua migliore versione",
@@ -379,7 +408,10 @@
     "loadFailed": "Impossibile caricare i dati. Riprova.",
     "addSnack": "Aggiungi Snack",
     "snack2": "Spuntino 2",
-    "snack3": "Spuntino 3"
+    "snack3": "Spuntino 3",
+    "vsGoals": "vs. obiettivi giornalieri",
+    "calcium": "Calcio",
+    "macroBalance": "Bilanciamento Macro"
   },
   "planner": {
     "title": "Pianificatore Pasti",
@@ -428,7 +460,9 @@
     "reps": "Rip.",
     "rest": "Riposo",
     "sets": "Serie",
-    "exercises": "Esercizi"
+    "exercises": "Esercizi",
+    "addAnotherMeal": "Aggiungi un altro pasto",
+    "askCustomMeal": "Suggerisci un altro pasto sano per oggi che si adatti ai miei macro rimanenti."
   },
   "recipes": {
     "title": "Ricette IA",
@@ -525,7 +559,9 @@
       "hot_sauce": "Salsa Piccante",
       "garlic": "Aglio",
       "mustard": "Senape",
-      "lemon_juice": "Succo di Limone"
+      "lemon_juice": "Succo di Limone",
+      "mayonnaise": "Maionese",
+      "ketchup": "Ketchup"
     },
     "foodsTitle": "Cibi Preferiti",
     "foodsSub": "Seleziona i cibi che ti piacciono di più.",
@@ -611,7 +647,47 @@
     "velocitySlow": "Conservatore",
     "velocityModerate": "Raccomandato",
     "velocityFast": "Aggressivo",
-    "createPlan": "Crea il mio piano"
+    "createPlan": "Crea il mio piano",
+    "lifestyleTitle": "Com'è la tua vita quotidiana?",
+    "lifestyleSub": "Al di fuori dell'esercizio, quanto ti muovi durante il giorno?",
+    "lifestyleSeated": "Principalmente seduto",
+    "lifestyleSeatedEx": "Ufficio, lavoro da casa, studio",
+    "lifestyleStandingSometimes": "In piedi a volte",
+    "lifestyleStandingSometimesEx": "Mix tra scrivania e spostamenti",
+    "lifestyleStandingMostly": "Principalmente in piedi",
+    "lifestyleStandingMostlyEx": "Insegnante, commesso, meccanico leggero",
+    "lifestyleMoving": "In movimento tutto il giorno",
+    "lifestyleMovingEx": "Cameriere, infermiere, postino, operaio",
+    "lifestylePhysical": "Lavoro fisico pesante",
+    "lifestylePhysicalEx": "Edilizia, traslochi, sollevamento continuo",
+    "projectionTitle": "Ecco come sarà il tuo progresso!",
+    "warningUnderweight": "Questo obiettivo è troppo basso per la tua altezza. L'intervallo sano è {{min}}–{{max}} {{unit}}.",
+    "recOverweightStep": "Buon primo passo. Il tuo obiettivo a lungo termine dovrebbe essere {{min}}–{{max}} {{unit}}.",
+    "loseHealthy": "Ottimo obiettivo! Raggiungerai un peso molto sano per la tua altezza.",
+    "warningOverweightGain": "Attenzione a non accumulare troppo grasso. L'intervallo sano è {{min}}–{{max}} {{unit}}.",
+    "warningUnderweightGain": "Questo obiettivo è ancora troppo basso. Il tuo intervallo ideale è {{min}}–{{max}} {{unit}}.",
+    "gainHealthy": "Perfetto per guadagnare muscoli mantenendo un peso sano!",
+    "warningUnderweightMaintain": "Il tuo peso attuale è basso. Considera l'obiettivo aumento muscolare.",
+    "warningOverweightMaintain": "Il tuo peso attuale è alto. Considera l'obiettivo perdita di peso.",
+    "maintainHealthy": "Eccellente! Sei a un peso ideale per mantenerti in forma.",
+    "currentGoal": "Peso attuale",
+    "nextGoal": "Peso obiettivo",
+    "activitySedentaryEx": "Camminata rilassata · faccende domestiche",
+    "activityLightEx": "Camminata veloce · yoga · ciclismo leggero",
+    "activityModerateEx": "Palestra · cardio · nuoto · corsi di gruppo",
+    "activityActiveEx": "Allenamento con i pesi · HIIT · sport amatoriale",
+    "activityVeryActiveEx": "Atleta agonista · 2 allenamenti/giorno"
+  },
+  "reminders": {
+    "stayOnTrack": "Rimani in carreggiata",
+    "subtitle": "Imposta avvisi per non dimenticare pasti, idratazione e allenamenti.",
+    "permissionInfo": "Consenti le notifiche nelle impostazioni di sistema.",
+    "breakfast": "Colazione",
+    "lunch": "Pranzo",
+    "dinner": "Cena",
+    "water": "Acqua",
+    "workout": "Allenamento",
+    "testNotif": "Notifica di prova"
   },
   "scan": {
     "title": "Scansiona Cibo",

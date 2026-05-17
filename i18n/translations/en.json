@@ -47,7 +47,18 @@
     "addActivity": "Add Activity",
     "recent": "Recent",
     "popular": "Popular",
-    "search": "Search activity..."
+    "search": "Search activity...",
+    "running": "Running",
+    "cycling": "Cycling",
+    "walking": "Walking",
+    "hiking": "Hiking",
+    "crossfit": "CrossFit",
+    "calisthenics": "Calisthenics",
+    "pilates": "Pilates",
+    "padel": "Padel",
+    "volleyball": "Volleyball",
+    "golf": "Golf",
+    "martial_arts": "Martial Arts"
   },
   "common": {
     "save": "Save",
@@ -113,6 +124,7 @@
   "tabs": {
     "dashboard": "Progress",
     "tracker": "Main",
+    "coach": "Coach",
     "nutritionist": "Nutritionist",
     "trainer": "Trainer",
     "doctor": "Doctor",
@@ -414,7 +426,11 @@
     "goal": "Goal",
     "completed": "Completed",
     "sinceStart": "Since start",
-    "remaining": "Remaining"
+    "remaining": "Remaining",
+    "editNameSubtitle": "Update your profile display name",
+    "editWeightSubtitle": "Record your current body weight",
+    "editHeightSubtitle": "Set your current height",
+    "editAgeSubtitle": "Set your current age"
   },
   "recipes": {
     "title": "AI Recipes",
@@ -747,5 +763,16 @@
     "startTrial": "Start Free Trial",
     "restore": "Restore Purchase",
     "legal": "Payment will be charged to your account. Subscription auto-renews unless cancelled 24 hours before renewal."
+  },
+  "reminders": {
+    "stayOnTrack": "Stay on Track",
+    "subtitle": "Set alerts so you never miss a meal, hydration, or workout.",
+    "permissionInfo": "Allow notifications in system settings.",
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "water": "Water",
+    "workout": "Workout",
+    "testNotif": "Test Notification"
   }
-}
+}

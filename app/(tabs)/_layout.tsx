@@ -5,9 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { FileText, BarChart2, MessageCircle, Calendar } from 'lucide-react-native';
 import { useAuthStore, usePurchaseStore } from '../../store';
 import React, { useRef, useMemo } from 'react';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
-
 function TabIcon({ Icon, label, focused }: { Icon: any; label: string; focused: boolean }) {
   const colors = useTheme();
   return (
@@ -32,108 +29,71 @@ export default function TabsLayout() {
   const { profile } = useAuthStore();
   const { isPro } = usePurchaseStore();
   const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
-  const segments = useSegments();
-  const tabs = ['tracker', 'dashboard', 'coach', 'planner'];
-  const currentIndex = tabs.findIndex(t => segments.some(s => s === t));
-
-  const goToTab = (index: number) => {
-    if (index < 0 || index >= tabs.length) return;
-    const tabPath = `/(tabs)/${tabs[index]}`;
-    if (tabs[index] === 'planner' && !isProActually) {
-      router.push('/modals/paywall');
-    } else {
-      router.replace(tabPath as any);
-    }
-  };
-
-  const panGesture = useMemo(() => Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .failOffsetY([-20, 20])
-    .onEnd((e) => {
-      // Thresholds for swipe: velocity or distance
-      const isSignificantSwipe = Math.abs(e.velocityX) > 500 || Math.abs(e.translationX) > Dimensions.get('window').width * 0.2;
-      const isHorizontal = Math.abs(e.velocityX) > Math.abs(e.velocityY) * 2;
-
-      if (isSignificantSwipe && isHorizontal) {
-        // Exclude date picker area on tracker (index 0)
-        if (currentIndex === 0 && e.y < 150) return;
-
-        if (e.translationX < 0) {
-          // Swipe Left -> Next
-          runOnJS(goToTab)(currentIndex + 1);
-        } else {
-          // Swipe Right -> Previous
-          runOnJS(goToTab)(currentIndex - 1);
-        }
-      }
-    }), [currentIndex, isProActually]);
   
   return (
-    <GestureDetector gesture={panGesture}>
-      <View style={{ flex: 1 }}>
-        <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.tabActive,
-        tabBarInactiveTintColor: colors.tabInactive,
-        tabBarHideOnKeyboard: true,
-      }}
-    >
-      <Tabs.Screen
-        name="tracker/index"
-        options={{
-          title: t('tabs.tracker', 'Main'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={FileText} label={t('tabs.tracker', 'Main')} focused={focused} />
-          ),
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
+          tabBarShowLabel: false,
+          tabBarActiveTintColor: colors.tabActive,
+          tabBarInactiveTintColor: colors.tabInactive,
+          tabBarHideOnKeyboard: true,
         }}
-      />
-      <Tabs.Screen
-        name="dashboard/index"
-        options={{
-          title: t('tabs.dashboard', 'Progress'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={BarChart2} label={t('tabs.dashboard', 'Progress')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="coach/index"
-        options={{
-          title: t('tabs.coach', 'Coach'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={MessageCircle} label={t('tabs.coach', 'Coach')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="planner/index"
-        options={{
-          title: t('tabs.planner', 'Planner'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Calendar} label={t('tabs.planner', 'Planner')} focused={focused} />
-          ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            if (!isProActually) {
-              e.preventDefault();
-              router.push('/modals/paywall');
-            }
-          },
-        }}
-      />
-      <Tabs.Screen
-        name="profile/index"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="tracker/index"
+          options={{
+            title: t('tabs.tracker', 'Main'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={FileText} label={t('tabs.tracker', 'Main')} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="dashboard/index"
+          options={{
+            title: t('tabs.dashboard', 'Progress'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={BarChart2} label={t('tabs.dashboard', 'Progress')} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="coach/index"
+          options={{
+            title: t('tabs.coach', 'Coach'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={MessageCircle} label={t('tabs.coach', 'Coach')} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="planner/index"
+          options={{
+            title: t('tabs.planner', 'Planner'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={Calendar} label={t('tabs.planner', 'Planner')} focused={focused} />
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              if (!isProActually) {
+                e.preventDefault();
+                router.push('/modals/paywall');
+              }
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="profile/index"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
     </View>
-    </GestureDetector>
   );
 }
 

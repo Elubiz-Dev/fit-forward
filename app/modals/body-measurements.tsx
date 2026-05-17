@@ -54,7 +54,9 @@ const OTHER_FIELDS: Field[] = [
 const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolling = useRef(false);
+  const isInitialScrollDone = useRef(false);
   const lastSentValue = useRef(value);
+  const lastUpdate = useRef(0);
   
   const data = useMemo(() => {
     const items = [];
@@ -74,8 +76,13 @@ const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
     if (val !== undefined) {
       const formattedValue = val.toFixed(1);
       if (formattedValue !== lastSentValue.current) {
-        lastSentValue.current = formattedValue;
-        onValueChange(formattedValue);
+        const now = Date.now();
+        // Throttle updates to at most once every 60ms to prevent React Native rendering congestion and crashes
+        if (now - lastUpdate.current > 60) {
+          lastSentValue.current = formattedValue;
+          lastUpdate.current = now;
+          onValueChange(formattedValue);
+        }
       }
     }
   };
@@ -84,23 +91,42 @@ const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
     // If the user is scrolling, don't interfere with the position
     if (isUserScrolling.current) return;
     
-    // If the value is already what we think it is, don't scroll
-    if (value === lastSentValue.current) return;
-
     const numericValue = parseFloat(value);
+    const numericLastSent = parseFloat(lastSentValue.current);
+    
+    // Compare numeric values with a small epsilon instead of strict string equality 
+    // to break the feedback scroll loop and prevent native thread crashes.
+    // Bypass this check on the initial scroll to ensure the ruler starts at the correct position.
+    if (isInitialScrollDone.current && !isNaN(numericValue) && !isNaN(numericLastSent)) {
+      if (Math.abs(numericValue - numericLastSent) < 0.05) return;
+    }
+
     if (isNaN(numericValue)) return;
 
     const index = Math.round((numericValue - min) * 10);
     if (index >= 0 && index < data.length) {
       lastSentValue.current = value;
-      // Use animated: false when syncing from external prop (like typing) 
-      // to avoid fighting the user or causing jittery animations
-      flatListRef.current?.scrollToOffset({ 
-        offset: index * ITEM_WIDTH, 
-        animated: false 
-      });
+      
+      const scroll = () => {
+        flatListRef.current?.scrollToOffset({ 
+          offset: index * ITEM_WIDTH, 
+          animated: false 
+        });
+        isInitialScrollDone.current = true;
+      };
+      
+      scroll();
+      // Use a timeout to ensure FlatList has finished laying out and rendering (crucial for mount)
+      const timer = setTimeout(scroll, 100);
+      return () => clearTimeout(timer);
     }
   }, [value, min]);
+
+  const sendFinalValue = () => {
+    isUserScrolling.current = false;
+    // Send final settling value to make sure text inputs are perfectly updated
+    onValueChange(lastSentValue.current);
+  };
 
   const RULER_WIDTH = width - 72; // width - (spacing*2) - (cardPadding*2)
   const CENTER_OFFSET = RULER_WIDTH / 2;
@@ -132,11 +158,15 @@ const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
         onScroll={onScroll}
         onScrollBeginDrag={() => { isUserScrolling.current = true; }}
         onScrollEndDrag={() => { 
-          // We set it to false here so the next effect can potentially sync if needed,
-          // but we wait for momentum to actually stop for full control.
+          // If no momentum scroll happens, settle value after a small delay
+          setTimeout(() => {
+            if (isUserScrolling.current) {
+              sendFinalValue();
+            }
+          }, 150);
         }}
         onMomentumScrollBegin={() => { isUserScrolling.current = true; }}
-        onMomentumScrollEnd={() => { isUserScrolling.current = false; }}
+        onMomentumScrollEnd={sendFinalValue}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingHorizontal: CENTER_OFFSET - ITEM_WIDTH / 2 }}
         keyExtractor={(item) => item.toString()}

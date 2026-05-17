@@ -54,6 +54,7 @@ export interface PostComment {
   user_id: string;
   content: string;
   created_at: string;
+  is_edited?: boolean;
   user_profile?: {
     name: string;
     avatar_url: string;
@@ -95,6 +96,8 @@ interface SocialState {
   likePost: (postId: string, userId: string) => Promise<void>;
   unlikePost: (postId: string, userId: string) => Promise<void>;
   addComment: (postId: string, userId: string, content: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
+  editComment: (commentId: string, content: string) => Promise<void>;
   fetchComments: (postId: string) => Promise<PostComment[]>;
   uploadPostImage: (uri: string) => Promise<string | null>;
   
@@ -457,6 +460,29 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       await get().fetchPosts();
     } catch (err) {
       console.warn('[SocialStore] Error adding comment:', err);
+    }
+  },
+
+  deleteComment: async (commentId: string) => {
+    try {
+      const { error } = await supabase.from('post_comments').delete().eq('id', commentId);
+      if (error) throw error;
+      await get().fetchPosts();
+    } catch (err) {
+      console.warn('[SocialStore] Error deleting comment:', err);
+    }
+  },
+
+  editComment: async (commentId: string, content: string) => {
+    try {
+      const { error } = await supabase
+        .from('post_comments')
+        .update({ content, is_edited: true })
+        .eq('id', commentId);
+      if (error) throw error;
+      await get().fetchPosts();
+    } catch (err) {
+      console.warn('[SocialStore] Error editing comment:', err);
     }
   },
 

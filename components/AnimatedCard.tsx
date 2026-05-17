@@ -13,7 +13,6 @@ import Animated, {
   withDelay,
   withSpring,
   withTiming,
-  ReduceMotion,
 } from 'react-native-reanimated';
 
 interface AnimatedCardProps {
@@ -39,10 +38,10 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
   const stagger = delay + index * 55; // 55ms between each card
 
   useEffect(() => {
-    opacity.value    = withDelay(stagger, withTiming(1, { duration: 400, reduceMotion: ReduceMotion.Never }));
-    scale.value      = withDelay(stagger, withTiming(1, { duration: 400, reduceMotion: ReduceMotion.Never }));
-    translateY.value = withDelay(stagger, withTiming(0, { duration: 450, reduceMotion: ReduceMotion.Never }));
-    translateX.value = withDelay(stagger, withTiming(0, { duration: 450, reduceMotion: ReduceMotion.Never }));
+    opacity.value    = withDelay(stagger, withTiming(1, { duration: 400 }));
+    scale.value      = withDelay(stagger, withTiming(1, { duration: 400 }));
+    translateY.value = withDelay(stagger, withTiming(0, { duration: 450 }));
+    translateX.value = withDelay(stagger, withTiming(0, { duration: 450 }));
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({

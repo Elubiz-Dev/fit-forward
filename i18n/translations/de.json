@@ -17,7 +17,8 @@
     "continue": "Weiter",
     "previous": "Vor.",
     "confirm": "Bestätigen",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "edit": "Bearbeiten"
   },
   "tabs": {
     "dashboard": "Dashboard",
@@ -139,14 +140,31 @@
     "selectTempUnit": "Temperatureinheit wählen",
     "deleteAccount": "Konto Löschen",
     "cancelSubscription": "Abo Kündigen",
-    "cancelSubscriptionConfirm": "Pro-Abo wirklich kündigen?",
+    "cancelSubscriptionConfirm": "Pro-Abo wirklich kündigen? Du verlierst den Zugriff auf alle Premium-Funktionen.",
     "subscriptionCancelled": "Abo erfolgreich gekündigt",
     "verifySuccess": "Abo erfolgreich verifiziert",
     "notPremiumTitle": "Kein Aktives Abo",
     "notPremiumDesc": "Kein Pro-Abo mit Ihrem Konto verknüpft.",
     "upgradeNow": "Jetzt Upgraden",
     "verifySubscription": "Abo Verifizieren",
-    "manageSubscription": "Abo Verwalten"
+    "manageSubscription": "Abo Verwalten",
+    "weightPath": "Fortschrittspfad",
+    "weightGoalSubtitle": "Dein Weg zum Ziel",
+    "start": "Start",
+    "now": "Jetzt",
+    "goal": "Ziel",
+    "completed": "Abgeschlossen",
+    "sinceStart": "Seit Beginn",
+    "remaining": "Noch offen",
+    "editNameSubtitle": "Deinen Profilnamen aktualisieren",
+    "editWeightSubtitle": "Dein aktuelles Körpergewicht eintragen",
+    "editHeightSubtitle": "Deine aktuelle Größe festlegen",
+    "editAgeSubtitle": "Dein aktuelles Alter festlegen",
+    "deleteAccountConfirm": "Bist du sicher, dass du dein Konto löschen möchtest? Diese Aktion ist dauerhaft und alle deine Daten werden gelöscht.",
+    "deleteAccountError": "Konto konnte nicht gelöscht werden. Bitte melde dich ab und wieder an, oder kontaktiere den Support.",
+    "otherMeasurements": "Andere Messungen",
+    "medicationsSupplements": "Medikamente & Nahrungsergänzung",
+    "selectBadge": "Dein Abzeichen wählen"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -228,7 +246,18 @@
     "recent": "Zuletzt",
     "popular": "Beliebt",
     "search": "Aktivität suchen...",
-    "custom": "Eigene Aktivität"
+    "custom": "Eigene Aktivität",
+    "running": "Laufen",
+    "cycling": "Radfahren",
+    "walking": "Spazieren",
+    "hiking": "Wandern",
+    "crossfit": "CrossFit",
+    "calisthenics": "Calisthenics",
+    "pilates": "Pilates",
+    "padel": "Padel",
+    "volleyball": "Volleyball",
+    "golf": "Golf",
+    "martial_arts": "Kampfsport"
   },
   "welcome": {
     "motto": "Fit-Go: Deine beste Version",
@@ -379,7 +408,10 @@
     "loadFailed": "Daten konnten nicht geladen werden. Bitte versuche es erneut.",
     "addSnack": "Snack Hinzufügen",
     "snack2": "Snack 2",
-    "snack3": "Snack 3"
+    "snack3": "Snack 3",
+    "vsGoals": "vs. Tagesziele",
+    "calcium": "Kalzium",
+    "macroBalance": "Makro-Balance"
   },
   "planner": {
     "title": "Mahlzeitenplaner",
@@ -428,7 +460,9 @@
     "reps": "Wdh.",
     "rest": "Pause",
     "sets": "Sätze",
-    "exercises": "Übungen"
+    "exercises": "Übungen",
+    "addAnotherMeal": "Weitere Mahlzeit hinzufügen",
+    "askCustomMeal": "Schlage eine weitere gesunde Mahlzeit für heute vor, die zu meinen verbleibenden Makros passt."
   },
   "recipes": {
     "title": "KI Rezepte",
@@ -525,7 +559,9 @@
       "garlic": "Knoblauch",
       "mustard": "Senf",
       "lemon_juice": "Zitronensaft",
-      "hot_sauce": "Scharfe Sauce"
+      "hot_sauce": "Scharfe Sauce",
+      "mayonnaise": "Mayonnaise",
+      "ketchup": "Ketchup"
     },
     "foodsTitle": "Lieblingsessen",
     "foodsSub": "Wähle, was du gerne isst.",
@@ -611,7 +647,47 @@
     "velocitySlow": "Konservativ",
     "velocityModerate": "Empfohlen",
     "velocityFast": "Aggressiv",
-    "createPlan": "Meinen Plan erstellen"
+    "createPlan": "Meinen Plan erstellen",
+    "lifestyleTitle": "Wie aktiv ist dein Alltag?",
+    "lifestyleSub": "Außerhalb des Sports — wie viel bewegst du dich tagsüber?",
+    "lifestyleSeated": "Hauptsächlich sitzend",
+    "lifestyleSeatedEx": "Schreibtischjob, Heimarbeit, Studium",
+    "lifestyleStandingSometimes": "Manchmal stehend",
+    "lifestyleStandingSometimesEx": "Mischung aus Sitzen und Gehen/Erledigungen",
+    "lifestyleStandingMostly": "Hauptsächlich stehend",
+    "lifestyleStandingMostlyEx": "Lehrer, Verkäufer, leichter Mechaniker",
+    "lifestyleMoving": "Den ganzen Tag in Bewegung",
+    "lifestyleMovingEx": "Kellner, Pfleger, Postbote, Arbeiter",
+    "lifestylePhysical": "Schwere körperliche Arbeit",
+    "lifestylePhysicalEx": "Bau, Umzug, anhaltend schweres Heben",
+    "projectionTitle": "So wird dein Fortschritt aussehen!",
+    "warningUnderweight": "Dieses Ziel ist zu niedrig für deine Größe. Dein gesunder Bereich ist {{min}}–{{max}} {{unit}}.",
+    "recOverweightStep": "Guter erster Schritt. Dein langfristiges Ziel sollte {{min}}–{{max}} {{unit}} sein.",
+    "loseHealthy": "Tolles Ziel! Du erreichst ein sehr gesundes Gewicht für deine Größe.",
+    "warningOverweightGain": "Achte darauf, nicht zu viel Fett zuzunehmen. Dein gesunder Bereich ist {{min}}–{{max}} {{unit}}.",
+    "warningUnderweightGain": "Dieses Ziel ist immer noch zu niedrig. Dein idealer Bereich ist {{min}}–{{max}} {{unit}}.",
+    "gainHealthy": "Perfekt für den Muskelaufbau bei gesundem Gewicht!",
+    "warningUnderweightMaintain": "Dein aktuelles Gewicht ist niedrig. Erwäge das Ziel Muskelaufbau.",
+    "warningOverweightMaintain": "Dein aktuelles Gewicht ist hoch. Erwäge das Ziel Gewichtsverlust.",
+    "maintainHealthy": "Ausgezeichnet! Du bist bei einem idealen Gewicht, um fit zu bleiben.",
+    "currentGoal": "Aktuelles Gewicht",
+    "nextGoal": "Zielgewicht",
+    "activitySedentaryEx": "Spazieren · Hausarbeit",
+    "activityLightEx": "Zügiges Gehen · Yoga · leichtes Radfahren",
+    "activityModerateEx": "Gym · Cardio · Schwimmen · Gruppenklassen",
+    "activityActiveEx": "Krafttraining · HIIT · Amateursport",
+    "activityVeryActiveEx": "Wettkampfsportler · 2 Trainings/Tag"
+  },
+  "reminders": {
+    "stayOnTrack": "Bleib auf Kurs",
+    "subtitle": "Stelle Erinnerungen ein, damit du Mahlzeiten, Wasser und Training nicht vergisst.",
+    "permissionInfo": "Erlaube Benachrichtigungen in den Systemeinstellungen.",
+    "breakfast": "Frühstück",
+    "lunch": "Mittagessen",
+    "dinner": "Abendessen",
+    "water": "Wasser",
+    "workout": "Training",
+    "testNotif": "Testbenachrichtigung"
   },
   "scan": {
     "title": "Essen scannen",

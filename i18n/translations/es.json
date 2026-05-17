@@ -38,7 +38,18 @@
     "addActivity": "Añadir Actividad",
     "recent": "Recientes",
     "popular": "Populares",
-    "search": "Buscar actividad..."
+    "search": "Buscar actividad...",
+    "running": "Correr",
+    "cycling": "Ciclismo",
+    "walking": "Caminar",
+    "hiking": "Senderismo",
+    "crossfit": "CrossFit",
+    "calisthenics": "Calistenia",
+    "pilates": "Pilates",
+    "padel": "Pádel",
+    "volleyball": "Voleibol",
+    "golf": "Golf",
+    "martial_arts": "Artes Marciales"
   },
   "common": {
     "save": "Guardar",
@@ -58,7 +69,8 @@
     "locale": "es-ES",
     "done": "Listo",
     "continue": "Continuar",
-    "previous": "Ant."
+    "previous": "Ant.",
+    "edit": "Editar"
   },
   "welcome": {
     "motto": "Fit-Go: Tu mejor versión",
@@ -229,7 +241,7 @@
     "text": "Texto",
     "loadFailed": "No se pudieron cargar los datos. Inténtalo de nuevo.",
     "addSnack": "Añadir Snack",
-    "vsGoals": "vs. tus metas diarias",
+    "vsGoals": "vs. objetivos diarios",
     "calcium": "Calcio",
     "macroBalance": "Balance de Macros"
   },
@@ -251,8 +263,8 @@
     "planned": "planeado",
     "planReady": "¡Tu plan de comidas IA ha sido generado y guardado!",
     "aiReview": "Revisión Semanal IA",
-    "addAnotherMeal": "Añadir otra comida",
-    "askCustomMeal": "Sugiéreme otra comida saludable para hoy que se ajuste a mis macros restantes.",
+    "addAnotherMeal": "Agregar otra comida",
+    "askCustomMeal": "Sugiere otra comida saludable para hoy que encaje con mis macros restantes.",
     "analyze": "Analizar",
     "reviewPlaceholder": "Obtén un resumen de tu semana y consejos personalizados.",
     "autoShoppingList": "Lista de Compras Automática",
@@ -427,7 +439,12 @@
     "goal": "Meta",
     "completed": "Completado",
     "sinceStart": "Desde inicio",
-    "remaining": "Faltan"
+    "remaining": "Faltan",
+    "editNameSubtitle": "Actualiza tu nombre de perfil",
+    "editWeightSubtitle": "Registra tu peso actual",
+    "editHeightSubtitle": "Establece tu estatura actual",
+    "editAgeSubtitle": "Configura tu edad actual",
+    "otherMeasurements": "Otras Medidas"
   },
   "recipes": {
     "title": "Recetas IA",
@@ -635,7 +652,7 @@
       "turmeric": "Cúrcuma",
       "ginger": "Jengibre",
       "mayonnaise": "Mayonesa",
-      "ketchup": "Salsa de Tomate"
+      "ketchup": "Ketchup"
     },
     "deselectAll": "Deseleccionar Todo",
     "proBtn": "Mejorar a Pro",
@@ -751,15 +768,15 @@
     "invalidAmount": "Por favor ingresa una cantidad válida de gramos."
   },
   "reminders": {
-    "stayOnTrack": "Mantente en el Camino",
-    "subtitle": "Configura alertas para no olvidar tus comidas, hidratación y entrenamientos.",
-    "permissionInfo": "Asegúrate de permitir las notificaciones en los ajustes de tu sistema.",
+    "stayOnTrack": "Mantente en el camino",
+    "subtitle": "Configura alertas para no olvidar comidas, hidratación ni entrenamientos.",
+    "permissionInfo": "Permite las notificaciones en los ajustes del sistema.",
     "breakfast": "Desayuno",
     "lunch": "Almuerzo",
     "dinner": "Cena",
     "water": "Agua",
     "workout": "Entrenamiento",
-    "testNotif": "Probar Notificación"
+    "testNotif": "Notificación de prueba"
   },
   "paywall": {
     "unlock": "Desbloquea FitGO Pro",

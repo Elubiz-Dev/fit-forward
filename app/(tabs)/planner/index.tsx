@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore, usePlannerStore, PlanItem, WorkoutRoutine } from '../../../store';
+import { useAuthStore, useNutritionStore, selectDailyTotals, useSettingsStore, usePurchaseStore, usePlannerStore, PlanItem, WorkoutRoutine } from '../../../store';
 import { generateMealPlan, generateWorkoutPlan, generateWeeklyAnalysis, generateShoppingList } from '../../../services/groq';
 import { supabase } from '../../../services/supabase';
 import { useTranslation } from 'react-i18next';
@@ -73,7 +73,7 @@ export default function PlannerScreen() {
     });
   };
 
-  const { streakDays, totals }    = useNutritionStore();
+  const { streakDays }            = useNutritionStore();
   const { isPro }                 = usePurchaseStore();
   const isProActually = isPro || profile?.role === 'admin' || profile?.role === 'super_admin';
 
@@ -313,7 +313,7 @@ export default function PlannerScreen() {
     if (!isProActually) { router.push('/modals/paywall'); return; }
     setAnalyzing(true);
     try {
-      const stats = totals();
+      const stats = useNutritionStore.getState().todayLogs ? selectDailyTotals(useNutritionStore.getState()) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
       const res = await generateWeeklyAnalysis({
         avgCalories: stats.calories, targetCalories: profile?.targetCalories ?? 2000,
         avgProtein: stats.protein, avgCarbs: stats.carbs, avgFat: stats.fat,

@@ -2,6 +2,7 @@
  * OpenFoodFacts + Edamam food database service.
  */
 import axios from 'axios';
+import { getFoodByBarcodeAI } from './groq';
 
 const OFF_BASE = 'https://world.openfoodfacts.org';
 const EDAMAM_APP_ID  = process.env.EXPO_PUBLIC_EDAMAM_APP_ID  ?? '';
@@ -29,6 +30,9 @@ export interface FoodItem {
 // ─── OpenFoodFacts ─────────────────────────────────────────────────────────────
 export async function searchFoodOFF(query: string, page = 1): Promise<FoodItem[]> {
   const { data } = await axios.get(`${OFF_BASE}/cgi/search.pl`, {
+    headers: {
+      'User-Agent': 'FitGO - Android/iOS - 1.0.0 - support@fitgo.app',
+    },
     params: {
       search_terms: query,
       search_simple: 1,
@@ -70,35 +74,86 @@ export async function searchFoodOFF(query: string, page = 1): Promise<FoodItem[]
 }
 
 // ─── OpenFoodFacts barcode lookup ──────────────────────────────────────────────
-export async function getFoodByBarcode(barcode: string): Promise<FoodItem | null> {
-  const { data } = await axios.get(`${OFF_BASE}/api/v0/product/${barcode}.json`, {
-    timeout: 8000,
-  });
+export async function getFoodByBarcode(barcode: string, language: string = 'es'): Promise<FoodItem | null> {
+  try {
+    const { data } = await axios.get(`${OFF_BASE}/api/v0/product/${barcode}.json`, {
+      headers: {
+        'User-Agent': 'FitGO - Android/iOS - 1.0.0 - support@fitgo.app',
+      },
+      timeout: 8000,
+    });
 
-  if (data.status !== 1 || !data.product) return null;
-  const p = data.product;
+    if (data && data.status === 1 && data.product) {
+      const p = data.product;
+      const nut = p.nutriments || {};
+      const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
 
-  const nut = p.nutriments || {};
-  const cal = nut['energy-kcal_100g'] ?? (nut['energy_100g'] ? Math.round(nut['energy_100g'] / 4.184) : 0);
+      // Try multiple language variations for product name
+      const name = p.product_name_es || 
+                   p.product_name || 
+                   p.product_name_en || 
+                   p.generic_name_es || 
+                   p.generic_name || 
+                   p.product_name_fr || 
+                   p.product_name_pt || 
+                   p.product_name_de || 
+                   p.product_name_it || 
+                   p.product_name_ru || 
+                   '';
 
-  return {
-    id:       barcode,
-    name:     p.product_name ?? 'Unknown product',
-    brand:    p.brands,
-    calories: Math.round(cal),
-    protein:  Math.round(nut['proteins_100g']    ?? 0),
-    carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
-    fat:      Math.round(nut['fat_100g']          ?? 0),
-    saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
-    transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
-    sugar:    Math.round(nut['sugars_100g']        ?? 0),
-    fiber:    Math.round(nut['fiber_100g']         ?? 0),
-    sodium:   Math.round((nut['sodium_100g']       ?? 0) * 1000),
-    iron:     Math.round((nut['iron_100g']       ?? 0) * 1000),
-    calcium:  Math.round((nut['calcium_100g']    ?? 0) * 1000),
-    imageUrl: p.image_front_small_url,
-    source:   'openfoodfacts' as const,
-  };
+      if (name && name !== 'Unknown product') {
+        return {
+          id:       barcode,
+          name:     name,
+          brand:    p.brands || p.brand || p.brands_tags?.[0] || '',
+          calories: Math.round(cal),
+          protein:  Math.round(nut['proteins_100g']    ?? 0),
+          carbs:    Math.round(nut['carbohydrates_100g'] ?? 0),
+          fat:      Math.round(nut['fat_100g']          ?? 0),
+          saturatedFat: Math.round(nut['saturated-fat_100g'] ?? 0),
+          transFat:     Math.round(nut['trans-fat_100g']     ?? 0),
+          sugar:    Math.round(nut['sugars_100g']        ?? 0),
+          fiber:    Math.round(nut['fiber_100g']         ?? 0),
+          sodium:   Math.round((nut['sodium_100g']       ?? 0) * 1000),
+          iron:     Math.round((nut['iron_100g']       ?? 0) * 1000),
+          calcium:  Math.round((nut['calcium_100g']    ?? 0) * 1000),
+          imageUrl: p.image_front_small_url,
+          source:   'openfoodfacts' as const,
+        };
+      }
+    }
+  } catch (err) {
+    console.error('[OpenFoodFacts] Barcode fetch error:', err);
+  }
+
+  // Fallback to Groq AI barcode lookup
+  console.log(`[Barcode fallback] OpenFoodFacts lookup failed or returned empty name for barcode: ${barcode}. Attempting Groq AI lookup...`);
+  try {
+    const aiFood = await getFoodByBarcodeAI(barcode, language);
+    if (aiFood) {
+      return {
+        id:       barcode,
+        name:     aiFood.name,
+        brand:    aiFood.brand,
+        calories: aiFood.calories,
+        protein:  aiFood.protein,
+        carbs:    aiFood.carbs,
+        fat:      aiFood.fat,
+        sugar:    aiFood.sugar,
+        fiber:    aiFood.fiber,
+        sodium:   aiFood.sodium,
+        saturatedFat: aiFood.saturatedFat,
+        transFat:     aiFood.transFat,
+        iron:     aiFood.iron,
+        calcium:  aiFood.calcium,
+        source:   'custom' as const,
+      };
+    }
+  } catch (err) {
+    console.error('[Barcode fallback] Groq AI lookup error:', err);
+  }
+
+  return null;
 }
 
 // ─── Edamam search (fallback / enrichment) ─────────────────────────────────────

@@ -17,7 +17,8 @@
     "continue": "Continuer",
     "previous": "Précédent",
     "confirm": "Confirmer",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "edit": "Modifier"
   },
   "tabs": {
     "dashboard": "Tableau de bord",
@@ -145,8 +146,25 @@
     "notPremiumTitle": "Aucun Abonnement Actif",
     "notPremiumDesc": "Aucun abonnement Pro associé à votre compte.",
     "upgradeNow": "Mettre à Niveau",
-    "verifySubscription": "Vérifier l’Abonnement",
-    "manageSubscription": "Gérer l’Abonnement"
+    "verifySubscription": "Vérifier l'Abonnement",
+    "manageSubscription": "Gérer l'Abonnement",
+    "weightPath": "Parcours Progrès",
+    "weightGoalSubtitle": "Votre chemin vers l'objectif",
+    "start": "Début",
+    "now": "Maintenant",
+    "goal": "Objectif",
+    "completed": "Terminé",
+    "sinceStart": "Depuis le début",
+    "remaining": "Restant",
+    "editNameSubtitle": "Mettre à jour votre nom d'affichage",
+    "editWeightSubtitle": "Enregistrer votre poids corporel actuel",
+    "editHeightSubtitle": "Définir votre taille actuelle",
+    "editAgeSubtitle": "Définir votre âge actuel",
+    "deleteAccountConfirm": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est permanente et toutes vos données seront effacées.",
+    "deleteAccountError": "Impossible de supprimer le compte. Déconnectez-vous et reconnectez-vous, ou contactez le support.",
+    "otherMeasurements": "Autres mesures",
+    "medicationsSupplements": "Médicaments & Suppléments",
+    "selectBadge": "Choisissez votre Badge"
   },
   "coach": {
     "title": "Fitz Coach",
@@ -228,7 +246,18 @@
     "recent": "Récent",
     "popular": "Populaire",
     "search": "Rechercher une activité...",
-    "custom": "Activité Personnalisée"
+    "custom": "Activité Personnalisée",
+    "running": "Course à pied",
+    "cycling": "Cyclisme",
+    "walking": "Marche",
+    "hiking": "Randonnée",
+    "crossfit": "CrossFit",
+    "calisthenics": "Callisthénie",
+    "pilates": "Pilates",
+    "padel": "Padel",
+    "volleyball": "Volleyball",
+    "golf": "Golf",
+    "martial_arts": "Arts martiaux"
   },
   "welcome": {
     "motto": "Fit-Go : Votre meilleure version",
@@ -379,7 +408,10 @@
     "loadFailed": "Impossible de charger les données. Veuillez réessayer.",
     "addSnack": "Ajouter Snack",
     "snack2": "En-cas 2",
-    "snack3": "En-cas 3"
+    "snack3": "En-cas 3",
+    "vsGoals": "vs. objectifs quotidiens",
+    "calcium": "Calcium",
+    "macroBalance": "Balance Macros"
   },
   "planner": {
     "title": "Planificateur de Repas",
@@ -428,7 +460,9 @@
     "reps": "Rép.",
     "rest": "Repos",
     "sets": "Séries",
-    "exercises": "Exercices"
+    "exercises": "Exercices",
+    "addAnotherMeal": "Ajouter un autre repas",
+    "askCustomMeal": "Suggère un autre repas sain pour aujourd_hui qui correspond à mes macros restants."
   },
   "recipes": {
     "title": "Recettes IA",
@@ -546,7 +580,9 @@
       "hot_sauce": "Sauce Piquante",
       "garlic": "Ail",
       "mustard": "Moutarde",
-      "lemon_juice": "Jus de Citron"
+      "lemon_juice": "Jus de Citron",
+      "mayonnaise": "Mayonnaise",
+      "ketchup": "Ketchup"
     },
     "foodsTitle": "Aliments Préférés",
     "foodsSub": "Sélectionnez les aliments que vous aimez le plus.",
@@ -611,7 +647,47 @@
       "iron": "Fer",
       "anabolics": "Anabolisants",
       "none": "Aucun"
-    }
+    },
+    "lifestyleTitle": "Comment est votre vie quotidienne ?",
+    "lifestyleSub": "En dehors de l'exercice, combien bougez-vous dans la journée ?",
+    "lifestyleSeated": "Principalement assis",
+    "lifestyleSeatedEx": "Bureau, télétravail, études",
+    "lifestyleStandingSometimes": "Debout parfois",
+    "lifestyleStandingSometimesEx": "Mélange de bureau et de déplacements",
+    "lifestyleStandingMostly": "Principalement debout",
+    "lifestyleStandingMostlyEx": "Enseignant, commercial, mécanicien léger",
+    "lifestyleMoving": "En mouvement toute la journée",
+    "lifestyleMovingEx": "Serveur, infirmier, facteur, ouvrier",
+    "lifestylePhysical": "Travail physique intense",
+    "lifestylePhysicalEx": "Construction, déménagement, port de charges lourdes",
+    "projectionTitle": "Voici à quoi ressemblera votre progrès !",
+    "warningUnderweight": "Cet objectif est trop bas pour votre taille. Votre plage santé est {{min}}–{{max}} {{unit}}.",
+    "recOverweightStep": "Bon premier pas. Votre objectif à long terme devrait être {{min}}–{{max}} {{unit}}.",
+    "loseHealthy": "Excellent objectif ! Vous atteindrez un poids très sain pour votre taille.",
+    "warningOverweightGain": "Attention à ne pas prendre trop de graisse. Votre plage santé est {{min}}–{{max}} {{unit}}.",
+    "warningUnderweightGain": "Cet objectif est encore trop bas. Votre plage idéale est {{min}}–{{max}} {{unit}}.",
+    "gainHealthy": "Parfait pour prendre du muscle tout en restant à un poids sain !",
+    "warningUnderweightMaintain": "Votre poids actuel est bas. Pensez à passer à l'objectif prise de muscle.",
+    "warningOverweightMaintain": "Votre poids actuel est élevé. Pensez à l'objectif perte de poids.",
+    "maintainHealthy": "Excellent ! Vous êtes à un poids idéal pour rester en forme.",
+    "currentGoal": "Poids actuel",
+    "nextGoal": "Poids cible",
+    "activitySedentaryEx": "Marche détendue · tâches ménagères",
+    "activityLightEx": "Marche rapide · yoga · vélo léger",
+    "activityModerateEx": "Salle · cardio · natation · cours collectifs",
+    "activityActiveEx": "Musculation · HIIT · sport amateur",
+    "activityVeryActiveEx": "Athlète compétiteur · 2 séances/jour"
+  },
+  "reminders": {
+    "stayOnTrack": "Restez sur la bonne voie",
+    "subtitle": "Configurez des alertes pour ne pas oublier vos repas, votre hydratation et vos entraînements.",
+    "permissionInfo": "Autorisez les notifications dans les paramètres système.",
+    "breakfast": "Petit-déjeuner",
+    "lunch": "Déjeuner",
+    "dinner": "Dîner",
+    "water": "Eau",
+    "workout": "Entraînement",
+    "testNotif": "Notification de test"
   },
   "scan": {
     "title": "Scanner Aliment",

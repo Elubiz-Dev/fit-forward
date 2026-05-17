@@ -30,7 +30,7 @@ import {
   MessageSquare, Palette, Languages, Settings, HelpCircle, ShieldCheck, Database,
   Trash2, Key, RefreshCw, Copy, Calendar, Fingerprint, Share2, MoreHorizontal, ChevronDown, ChevronUp,
   Camera, ExternalLink, Award, Thermometer, Droplets, Hammer, Building2, Mars, Venus, Plus, Minus, Bike,
-  Utensils, Sparkles, Leaf, Clock, Trophy, Check, Briefcase, Coffee, PersonStanding
+  Utensils, Sparkles, Leaf, Clock, Trophy, Check, Briefcase, Coffee, PersonStanding, X
 } from 'lucide-react-native';
 import * as XLSX from 'xlsx';
 import { cacheDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system/legacy';
@@ -103,15 +103,40 @@ const toast = StyleSheet.create({
 
 // ─── Inline edit modal (cross-platform, replaces Alert.prompt) ────────────────
 function EditModal({
-  visible, title, placeholder, keyboardType, initialValue, onSave, onClose,
+  visible, field, title, placeholder, keyboardType, initialValue, onSave, onClose, massUnit, lengthUnit
 }: {
-  visible: boolean; title: string; placeholder: string;
+  visible: boolean; field: string; title: string; placeholder: string;
   keyboardType?: 'numeric' | 'default';
   initialValue?: string; onSave: (val: string) => void; onClose: () => void;
+  massUnit: string; lengthUnit: string;
 }) {
   const { t } = useTranslation();
   const colors = useTheme();
   const [value, setValue] = useState(initialValue ?? '');
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setValue(initialValue ?? '');
+    }
+  }, [visible]);
+
+  // Determine matching icon and suffix unit
+  let FieldIcon = User;
+  let suffix = '';
+
+  if (field === 'weight') {
+    FieldIcon = Scale;
+    suffix = massUnit;
+  } else if (field === 'height') {
+    FieldIcon = Ruler;
+    suffix = lengthUnit;
+  } else if (field === 'age') {
+    FieldIcon = Calendar;
+  } else if (field === 'name') {
+    FieldIcon = User;
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -119,22 +144,70 @@ function EditModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[em.box, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[em.title, { color: colors.textPrimary }]}>{title}</Text>
-          <TextInput
-            style={[em.input, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]}
-            value={value}
-            onChangeText={setValue}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textMuted}
-            keyboardType={keyboardType ?? 'default'}
-            autoFocus
-          />
+          {/* Header Icon container */}
+          <View style={em.headerContainer}>
+            <LinearGradient colors={colors.gradientPrimary} style={em.topIconGrad}>
+              <FieldIcon size={22} color="#fff" />
+            </LinearGradient>
+            <View style={em.headerTextContainer}>
+              <Text style={[em.title, { color: colors.textPrimary }]}>{title}</Text>
+              <Text style={[em.subtitle, { color: colors.textSecondary }]}>
+                {field === 'name' ? t('profile.editNameSubtitle', 'Actualiza tu nombre de perfil') :
+                 field === 'weight' ? t('profile.editWeightSubtitle', 'Registra tu peso actual') :
+                 field === 'height' ? t('profile.editHeightSubtitle', 'Establece tu estatura actual') :
+                 field === 'age' ? t('profile.editAgeSubtitle', 'Configura tu edad actual') : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* Premium input wrapper */}
+          <View style={[
+            em.inputContainer, 
+            { 
+              backgroundColor: colors.surfaceAlt, 
+              borderColor: isFocused ? colors.primary : colors.border,
+            }
+          ]}>
+            <FieldIcon size={20} color={isFocused ? colors.primary : colors.textMuted} style={em.inputIcon} />
+            <TextInput
+              style={[em.input, { color: colors.textPrimary }]}
+              value={value}
+              onChangeText={setValue}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textMuted}
+              keyboardType={keyboardType ?? 'default'}
+              autoFocus
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+            />
+            {!!value && value.length > 0 && (
+              <TouchableOpacity onPress={() => setValue('')} style={em.clearBtn}>
+                <X size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            {suffix !== '' && (
+              <Text style={[em.suffix, { color: isFocused ? colors.primary : colors.textSecondary }]}>
+                {suffix.toUpperCase()}
+              </Text>
+            )}
+          </View>
+
+          {/* Buttons action row */}
           <View style={em.row}>
-            <TouchableOpacity style={[em.cancelBtn, { borderColor: colors.border }]} onPress={onClose}>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              style={[em.cancelBtn, { borderColor: colors.border, backgroundColor: colors.surfaceAlt + '30' }]} 
+              onPress={onClose}
+            >
               <Text style={[em.cancelText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={em.saveBtn} onPress={() => { onSave(value); onClose(); }}>
-              <LinearGradient colors={['#7C5CFC', '#4338CA']} style={em.saveGrad}>
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              style={em.saveBtn} 
+              onPress={() => { onSave(value); onClose(); }}
+            >
+              <LinearGradient colors={colors.gradientPrimary} style={em.saveGrad}>
+                <Check size={18} color="#fff" strokeWidth={2.5} style={{ marginRight: 6 }} />
                 <Text style={em.saveText}>{t('common.save')}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -146,28 +219,119 @@ function EditModal({
 }
 
 const em = StyleSheet.create({
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 },
-  box:       { borderRadius: Radius.xl, padding: 24, borderWidth: 1, overflow: 'hidden' },
-  title:     { fontSize: 17, fontWeight: '700', marginBottom: 16 },
-  input:     { borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, borderWidth: 1, marginBottom: 20 },
-  row:       { flexDirection: 'row', gap: 10 },
-  cancelBtn: { flex: 1, borderRadius: Radius.md, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
-  cancelText:{ fontWeight: '600' },
-  saveBtn:   { flex: 1, borderRadius: Radius.md, overflow: 'hidden' },
-  saveGrad:  { paddingVertical: 12, alignItems: 'center' },
-  saveText:  { color: '#fff', fontWeight: '700' },
+  overlay:   { 
+    flex: 1, 
+    backgroundColor: 'rgba(15, 23, 42, 0.75)', // Elegant darker slate overlay
+    justifyContent: 'center', 
+    padding: 20 
+  },
+  box:       { 
+    borderRadius: 24, // Matches Radius.xl or more premium
+    padding: 24, 
+    borderWidth: 1, 
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  topIconGrad: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  title:     { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+    opacity: 0.8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    height: 54,
+    marginBottom: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input:     { 
+    flex: 1, 
+    fontSize: 16, 
+    fontWeight: '600',
+    paddingVertical: 10,
+    height: '100%',
+  },
+  clearBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  suffix: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  row:       { 
+    flexDirection: 'row', 
+    gap: 12,
+  },
+  cancelBtn: { 
+    flex: 1, 
+    borderRadius: 16, 
+    borderWidth: 1, 
+    height: 48, 
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelText:{ 
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  saveBtn:   { 
+    flex: 1, 
+    borderRadius: 16, 
+    overflow: 'hidden', 
+    height: 48,
+  },
+  saveGrad:  { 
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveText:  { 
+    color: '#fff', 
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });
 
 
-const ALL_BADGES: Record<string, { id: string, label: string, colors: string[], icon: string }> = {
-  super_admin: { id: 'super_admin', label: 'Super Admin', colors: ['#7C5CFC', '#4338CA'], icon: '⚡' },
-  admin: { id: 'admin', label: 'Administrator', colors: ['#10B981', '#059669'], icon: '🛡️' },
-  pro: { id: 'pro', label: 'Pro Member', colors: ['#F59E0B', '#D97706'], icon: '⭐' },
-  beast_mode: { id: 'beast_mode', label: 'Beast Mode', colors: ['#EF4444', '#991B1B'], icon: '🔥' },
-  verified: { id: 'verified', label: 'Verified User', colors: ['#3B82F6', '#1E40AF'], icon: '✅' },
-  early_adopter: { id: 'early_adopter', label: 'Early Adopter', colors: ['#8B5CF6', '#5B21B6'], icon: '🚀' },
-  fitness_enthusiast: { id: 'fitness_enthusiast', label: 'Fitness Enthusiast', colors: ['#EC4899', '#BE185D'], icon: '🏋️' },
-};
+import { ALL_BADGES } from '../../../hooks/useAchievements';
 
 function BadgeSelectionModal({
   visible, onClose, onSelect, availableBadges, selectedBadge
@@ -436,9 +600,22 @@ export default function ProfileScreen() {
   };
 
   const openEdit = (field: string, title: string, placeholder: string, keyboardType: 'numeric' | 'default' = 'default') => {
+    let initialVal = '';
+    if (profile) {
+      const rawVal = (profile as any)[field];
+      if (rawVal !== undefined && rawVal !== null) {
+        if (field === 'weight') {
+          initialVal = convertMass(rawVal, 'kg', massUnit as any).toFixed(1);
+        } else if (field === 'height') {
+          initialVal = convertLength(rawVal, 'cm', lengthUnit as any).toFixed(1);
+        } else {
+          initialVal = String(rawVal);
+        }
+      }
+    }
     setEditModal({
       visible: true, field, title, placeholder, keyboardType,
-      initialValue: String((profile as any)?.[field] ?? ''),
+      initialValue: initialVal,
     });
   };
 
@@ -490,9 +667,8 @@ export default function ProfileScreen() {
         macros:           newProfile.macros,
         available_foods:  newProfile.availableFoods,
         extra_snacks:     newProfile.extraSnacks,
-        // Remove selected_badge and badges if they don't exist in DB yet
-        // selected_badge:   newProfile.selectedBadge,
-        // badges:           newProfile.badges,
+        selected_badge:   newProfile.selectedBadge,
+        badges:           newProfile.badges,
       }).eq('id', userId);
 
       if (error) throw error;
@@ -581,12 +757,21 @@ export default function ProfileScreen() {
 
     const numericFields = ['weight', 'height', 'age'];
     let parsed: any = numericFields.includes(field) ? parseFloat(val) : val;
+    
     if (numericFields.includes(field)) {
       if (isNaN(parsed)) return;
-      if (field === 'age') parsed = Math.min(Math.max(parsed, 5), 120);
-      if (field === 'weight') parsed = Math.min(Math.max(parsed, 20), 300);
-      if (field === 'height') parsed = Math.min(Math.max(parsed, 50), 250);
+      
+      if (field === 'weight') {
+        const inKg = convertMass(parsed, massUnit as any, 'kg');
+        parsed = Math.min(Math.max(inKg, 20), 300);
+      } else if (field === 'height') {
+        const inCm = convertLength(parsed, lengthUnit as any, 'cm');
+        parsed = Math.min(Math.max(inCm, 50), 250);
+      } else if (field === 'age') {
+        parsed = Math.min(Math.max(parsed, 5), 120);
+      }
     }
+    
     updateProfileField(field, parsed);
   };
 
@@ -785,18 +970,36 @@ export default function ProfileScreen() {
     }
     return measurements
       .filter(m => m && m.weight != null)
-      .slice(0, 7) // Last 7 entries
+      .slice(0, 30) // Take up to last 30 entries for a complete monthly overview
       .reverse()   // Chronological order
       .map(m => {
         const rawW = m?.weight ?? 0;
         const displayW = Number(convertMass(rawW, 'kg', massUnit).toFixed(1));
+        let dateLabel = '';
+        try {
+          const parsedDate = new Date(m.date ? (m.date.includes('T') ? m.date : `${m.date}T12:00:00`) : new Date());
+          if (!isNaN(parsedDate.getTime())) {
+            dateLabel = parsedDate.toLocaleDateString(language, { month: 'short', day: 'numeric' });
+          } else {
+            dateLabel = String(m.date || '');
+          }
+        } catch (e) {
+          dateLabel = String(m.date || '');
+        }
         return {
           value: displayW,
-          label: new Date(m.date + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' }),
+          label: dateLabel,
           dataPointText: `${displayW}${massUnit}`,
         };
       });
   }, [measurements, profile?.weight, language, massUnit]);
+
+  const chartSpacing = useMemo(() => {
+    const minSpacing = 75; // Increased to 75px for comfortable horizontal scrolling
+    const availableWidth = SCREEN_WIDTH - 64;
+    if (weightData.length <= 1) return minSpacing;
+    return Math.max(minSpacing, availableWidth / (weightData.length - 1));
+  }, [weightData.length]);
 
   const handleNotImplemented = () => {
     showAlert('info', t('common.comingSoon'), t('common.notImplemented'));
@@ -1055,12 +1258,15 @@ export default function ProfileScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
       <EditModal
         visible={editModal.visible}
+        field={editModal.field}
         title={editModal.title}
         placeholder={editModal.placeholder}
         keyboardType={editModal.keyboardType}
         initialValue={editModal.initialValue}
         onSave={handleSaveEdit}
         onClose={() => setEditModal(p => ({ ...p, visible: false }))}
+        massUnit={massUnit}
+        lengthUnit={lengthUnit}
       />
 
       {toastMsg && <CustomToast message={toastMsg.text} type={toastMsg.type} onHide={() => setToastMsg(null)} />}
@@ -1114,7 +1320,11 @@ export default function ProfileScreen() {
         selectedBadge={currentBadgeId}
       />
 
-      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        nestedScrollEnabled={true}
+        style={{ flex: 1, backgroundColor: colors.background }} 
+        showsVerticalScrollIndicator={false}
+      >
         <LinearGradient colors={colors.gradientCard} style={s.header}>
           <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8} style={s.avatarContainer}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatar}>
@@ -1184,7 +1394,11 @@ export default function ProfileScreen() {
                 data={weightData}
                 height={140}
                 width={SCREEN_WIDTH - 64}
-                initialSpacing={20}
+                spacing={chartSpacing}
+                initialSpacing={25}
+                endSpacing={25}
+                nestedScrollEnabled={true}
+                disableScroll={false}
                 color={colors.primary}
                 thickness={3}
                 hideRules
@@ -1199,11 +1413,46 @@ export default function ProfileScreen() {
                 curved
                 dataPointsColor={colors.primary}
                 dataPointsRadius={5}
-                focusedDataPointColor={colors.accent}
-                focusEnabled
-                showStripOnFocus
-                focusedDataPointRadius={6}
                 xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
+                scrollToEnd={weightData.length > 5}
+                pointerConfig={{
+                  pointerStripUptoDataPoint: true,
+                  pointerStripColor: colors.primary,
+                  pointerStripWidth: 1.5,
+                  strokeDashArray: [4, 4],
+                  pointerColor: colors.accent || colors.primary,
+                  pointerLabelComponent: (items: any) => {
+                    if (!items || !Array.isArray(items) || items.length === 0 || !items[0] || items[0].value === undefined || isNaN(items[0].value)) return null;
+                    return (
+                      <View 
+                        pointerEvents="none"
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                          backgroundColor: colors.surfaceAlt,
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                          minWidth: 60,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 4,
+                          elevation: 3,
+                        }}
+                      >
+                        <Text style={{ color: colors.textPrimary, fontSize: 11, fontWeight: '800' }}>
+                          {items[0].value} {(massUnit || '').toUpperCase()}
+                        </Text>
+                      </View>
+                    );
+                  },
+                  pointerVanishDelay: 1000,
+                  activatePointersOnLongPress: true,
+                  activatePointersDelay: 250,
+                }}
               />
             </View>
           )}

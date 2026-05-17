@@ -45,40 +45,40 @@ const AUDIO_MODEL  = 'whisper-large-v3';
 
 // Helper to use Supabase Edge Function as a proxy
 async function fetchGroq(payload: any) {
-  const { data, error } = await supabase.functions.invoke('groq-proxy', {
-    body: payload,
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('AI Service Error: Request timed out. Please try again.')), 15000);
   });
 
-  if (error) {
-    console.error('[Groq Proxy Error]:', error);
-    
-    let errorMsg = error.message || 'Unknown error';
-    
-    // FunctionsHttpError contains the actual response in the context property
-    if (error && typeof error === 'object' && 'context' in error) {
-      const context = (error as any).context;
-      try {
-        // Try to read the response body if possible
-        // Note: supabase-js usually already handles this, but let's be safe
-        if (context instanceof Response) {
-          const body = await context.json();
-          if (body && body.error) {
-            errorMsg = body.error.message || JSON.stringify(body.error);
+  const fetchPromise = supabase.functions.invoke('groq-proxy', {
+    body: payload,
+  }).then(({ data, error }) => {
+    if (error) {
+      console.error('[Groq Proxy Error]:', error);
+      
+      let errorMsg = error.message || 'Unknown error';
+      
+      if (error && typeof error === 'object' && 'context' in error) {
+        const context = (error as any).context;
+        try {
+          if (context instanceof Response) {
+            const body = context.json(); // May throw if already consumed, but supabase-js usually consumes it
+            // errorMsg might be updated here if we could read it
           }
+        } catch (e) {
+          // ignore parsing errors
         }
-      } catch (e) {
-        // ignore parsing errors
+
+        if (context?.status === 400 && errorMsg === 'Unknown error') {
+          errorMsg = 'Bad Request (400) - Check model availability or parameters.';
+        }
       }
 
-      if (context.status === 400 && errorMsg === 'Unknown error') {
-        errorMsg = 'Bad Request (400) - Check model availability or parameters.';
-      }
+      throw new Error(`AI Service Error: ${errorMsg}`);
     }
+    return data;
+  });
 
-    throw new Error(`AI Service Error: ${errorMsg}`);
-  }
-
-  return data;
+  return Promise.race([fetchPromise, timeoutPromise]);
 }
 
 // ─── Coach system prompt ──────────────────────────────────────────────────────
@@ -698,4 +698,88 @@ IMPORTANT: Return ONLY the sentence. No extra text, no markdown. It MUST be tran
   });
 
   return (data.choices[0]?.message?.content ?? 'Walk 10,000 steps for 3 consecutive days.').trim();
+}
+
+// ─── Get Food by Barcode using AI ─────────────────────────────────────────────
+export async function getFoodByBarcodeAI(barcode: string, language: string = 'en'): Promise<{
+  name: string;
+  brand?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  sugar?: number;
+  fiber?: number;
+  sodium?: number;
+  saturatedFat?: number;
+  transFat?: number;
+  iron?: number;
+  calcium?: number;
+} | null> {
+  const targetLang = getLang(language);
+  const prompt = `You are a nutrition database expert. Identify the food product, brand, and nutrition facts per 100g for this EAN/UPC barcode: "${barcode}".
+Search your extensive knowledge base of product barcodes.
+If you know or can identify the product with high confidence, return a JSON object with this exact structure:
+{
+  "found": true,
+  "name": "Product Name in ${targetLang}",
+  "brand": "Brand Name",
+  "calories": 250,
+  "protein": 12,
+  "carbs": 30,
+  "fat": 8,
+  "sugar": 5,
+  "fiber": 2,
+  "sodium": 200,
+  "saturatedFat": 2,
+  "transFat": 0,
+  "iron": 1,
+  "calcium": 100
+}
+If you do not know this barcode or cannot identify the product with high confidence, return:
+{
+  "found": false
+}
+Return ONLY valid JSON. Do not include any explanations or markdown formatting outside the JSON.`;
+
+  try {
+    const data = await fetchGroq({
+      model: CHAT_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    });
+
+    let content = (data.choices[0]?.message?.content ?? '').trim();
+    // Robust JSON extraction
+    const startIndex = content.indexOf('{');
+    const endIndex = content.lastIndexOf('}');
+    if (startIndex !== -1 && endIndex !== -1) {
+      content = content.slice(startIndex, endIndex + 1);
+    }
+
+    const parsed = JSON.parse(content);
+    if (parsed.found && parsed.name) {
+      return {
+        name: parsed.name,
+        brand: parsed.brand,
+        calories: parsed.calories ?? 0,
+        protein: parsed.protein ?? 0,
+        carbs: parsed.carbs ?? 0,
+        fat: parsed.fat ?? 0,
+        sugar: parsed.sugar,
+        fiber: parsed.fiber,
+        sodium: parsed.sodium,
+        saturatedFat: parsed.saturatedFat,
+        transFat: parsed.transFat,
+        iron: parsed.iron,
+        calcium: parsed.calcium,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('[Groq] getFoodByBarcodeAI error:', error);
+    return null;
+  }
 }

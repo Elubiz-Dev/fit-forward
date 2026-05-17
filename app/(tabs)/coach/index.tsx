@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams } from 'expo-router';
+import { Apple, Dumbbell, Activity } from 'lucide-react-native';
 import NutritionistScreen from '../../../components/NutritionistScreen';
 import TrainerScreen from '../../../components/TrainerScreen';
 import DoctorScreen from '../../../components/DoctorScreen';
@@ -25,33 +26,69 @@ export default function CoachIndex() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
         <View style={s.toggleWrap}>
-          <View style={[s.toggleContainer, { backgroundColor: colors.surfaceAlt }]}>
+          <View style={[s.toggleContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity 
-              style={[s.toggleBtn, activeCoach === 'nutritionist' && { backgroundColor: colors.primary }]}
+              style={[
+                s.toggleBtn, 
+                activeCoach === 'nutritionist' && { 
+                  backgroundColor: colors.primary + '15',
+                  borderColor: colors.primary + '40',
+                }
+              ]}
               onPress={() => setActiveCoach('nutritionist')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Text style={[s.toggleText, activeCoach === 'nutritionist' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+              <Apple size={16} color={activeCoach === 'nutritionist' ? colors.primary : colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={[
+                s.toggleText, 
+                activeCoach === 'nutritionist' 
+                  ? { color: colors.primary, fontWeight: '800' } 
+                  : { color: colors.textSecondary }
+              ]}>
                 {t('tabs.nutritionist', 'Nutritionist')}
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[s.toggleBtn, activeCoach === 'trainer' && { backgroundColor: colors.primary }]}
+              style={[
+                s.toggleBtn, 
+                activeCoach === 'trainer' && { 
+                  backgroundColor: colors.primary + '15',
+                  borderColor: colors.primary + '40',
+                }
+              ]}
               onPress={() => setActiveCoach('trainer')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Text style={[s.toggleText, activeCoach === 'trainer' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+              <Dumbbell size={16} color={activeCoach === 'trainer' ? colors.primary : colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={[
+                s.toggleText, 
+                activeCoach === 'trainer' 
+                  ? { color: colors.primary, fontWeight: '800' } 
+                  : { color: colors.textSecondary }
+              ]}>
                 {t('tabs.trainer', 'Trainer')}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[s.toggleBtn, activeCoach === 'doctor' && { backgroundColor: colors.primary }]}
+              style={[
+                s.toggleBtn, 
+                activeCoach === 'doctor' && { 
+                  backgroundColor: colors.primary + '15',
+                  borderColor: colors.primary + '40',
+                }
+              ]}
               onPress={() => setActiveCoach('doctor')}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
-              <Text style={[s.toggleText, activeCoach === 'doctor' ? { color: '#fff' } : { color: colors.textSecondary }]}>
+              <Activity size={16} color={activeCoach === 'doctor' ? colors.primary : colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={[
+                s.toggleText, 
+                activeCoach === 'doctor' 
+                  ? { color: colors.primary, fontWeight: '800' } 
+                  : { color: colors.textSecondary }
+              ]}>
                 {t('tabs.doctor', 'Doctor')}
               </Text>
             </TouchableOpacity>
@@ -67,7 +104,26 @@ export default function CoachIndex() {
 
 const s = StyleSheet.create({
   toggleWrap: { paddingHorizontal: 16, paddingVertical: 12 },
-  toggleContainer: { flexDirection: 'row', borderRadius: 24, padding: 4 },
-  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 20 },
-  toggleText: { fontSize: 14, fontWeight: '700' }
+  toggleContainer: { 
+    flexDirection: 'row', 
+    borderRadius: 24, 
+    padding: 4, 
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  toggleBtn: { 
+    flex: 1, 
+    paddingVertical: 10, 
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderRadius: 20, 
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  toggleText: { fontSize: 13, fontWeight: '700' }
 });

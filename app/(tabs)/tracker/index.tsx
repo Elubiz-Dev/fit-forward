@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Path, Polygon, Line, Text as SvgText } from 'react-native-svg';
 import { BarChart } from 'react-native-gifted-charts';
 import { Spacing, Radius } from '../../../constants';
-import { useAuthStore, useNutritionStore, useSettingsStore, usePurchaseStore } from '../../../store';
+import { useAuthStore, useNutritionStore, selectDailyTotals, useSettingsStore, usePurchaseStore } from '../../../store';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useSocialStore } from '../../../store';
@@ -53,7 +53,11 @@ const EXERCISE_CALORIES: Record<string, number> = {
 
 function MacroBar({ label, current, target, color }: { label: string; current: number; target: number; color: string; }) {
   const colors = useTheme();
-  const pct = Math.min(current / Math.max(target, 1), 1);
+  const safeCurrent = Number(current) || 0;
+  const safeTarget = Number(target) || 100;
+  const pct = Number.isFinite(safeCurrent / Math.max(safeTarget, 1))
+    ? Math.min(Math.max(safeCurrent / Math.max(safeTarget, 1), 0), 1)
+    : 0;
   return (
     <View style={macro.wrap}>
       <Text style={[macro.label, { color: colors.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
@@ -91,7 +95,7 @@ export default function TrackerScreen() {
     todayLogs, fetchLogs, fetchHistory, selectedDate, setDate, streakDays, 
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
     removeActivityLog, updateActivityLog,
-    addSteps, dailyNeat, dailyExercise, activityLogs, totals,
+    addSteps, dailyNeat, dailyExercise, activityLogs,
     setLogs, setActivityLogs, addExtraSnack, removeExtraSnack
   } = useNutritionStore();
   const { energyUnit, volumeUnit } = useSettingsStore();
@@ -189,7 +193,7 @@ export default function TrackerScreen() {
   const { 
     calories: rawCalories, 
     protein, carbs, fat, sugar, fiber, sodium, iron, calcium, saturatedFat, transFat 
-  } = totals();
+  } = useNutritionStore(selectDailyTotals);
 
   const calories = Math.round(convertEnergy(rawCalories, 'kcal', energyUnit));
   const target = Math.round(convertEnergy(profile?.targetCalories || 2000, 'kcal', energyUnit));
@@ -229,7 +233,11 @@ export default function TrackerScreen() {
     return arr;
   }, [language, selectedDate]);
 
-  const pct = Math.min(calories / Math.max(target, 1), 1);
+  const safeCalories = Number(calories) || 0;
+  const safeTarget = Number(target) || 2000;
+  const pct = Number.isFinite(safeCalories / Math.max(safeTarget, 1))
+    ? Math.min(Math.max(safeCalories / Math.max(safeTarget, 1), 0), 1)
+    : 0;
   const strokeDashoffset = ARC_CIRCUMFERENCE - pct * ARC_CIRCUMFERENCE;
 
   const ACTIVITY_TO_EXERCISE: Record<string, string> = {
@@ -568,7 +576,7 @@ export default function TrackerScreen() {
                   yAxisThickness={0}
                   yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
                   noOfSections={4}
-                  maxValue={target * 1.2}
+                  maxValue={Number.isFinite(target) && target > 0 ? target * 1.2 : 2400}
                   isAnimated
                   animationDuration={800}
                 />

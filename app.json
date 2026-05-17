@@ -29,6 +29,7 @@
         "backgroundColor": "#0D0F14"
       },
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",

@@ -64,14 +64,20 @@ export const useAuthStore = create<AuthState>()(
                 dietaryRestrictions:    data.dietary_restrictions    ?? [],
                 medicalConditions:      data.medical_conditions      ?? [],
                 medicationsSupplements: data.medications_supplements ?? [],
+                // ── Diet type (onboarding selection) ─────────────────────
+                dietType:       data.diet_type       ?? 'recommended',
+                // ── Gamification ─────────────────────────────────────────
+                badges:         data.badges          ?? [],
+                selectedBadge:  data.selected_badge  ?? null,
+                unlockedAchievements: data.unlocked_achievements ?? [],
               }
             });
           } else {
             set({ profile: null });
           }
         } catch (err) {
-          console.warn('[AuthStore] Profile fetch error:', err);
-          set({ profile: null });
+          console.warn('[AuthStore] Profile fetch error, keeping cached profile:', err);
+          // Do NOT set profile to null here. Retain the cached profile for offline support.
         }
       }
     }),

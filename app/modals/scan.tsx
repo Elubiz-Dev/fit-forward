@@ -299,7 +299,7 @@ export default function ScanModal() {
     setLoading(true);
 
     try {
-      const food = await getFoodByBarcode(data);
+      const food = await getFoodByBarcode(data, language);
       setLoading(false);
 
       if (!food) {
