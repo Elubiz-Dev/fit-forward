@@ -348,7 +348,8 @@
     "measurementsSub": "Vita, petto, ecc.",
     "achievementsWidget": "Traguardi",
     "viewAchievements": "Vedi Medaglie",
-    "achievementsSub": "Sfide completate"
+    "achievementsSub": "Sfide completate",
+    "muscleDirectorySub": "Tocca un gruppo muscolare nella figura per vedere gli esercizi o trovali nell elenco."
   },
   "tracker": {
     "title": "Oggi",
@@ -763,5 +764,18 @@
     "startTrial": "Inizia Prova Gratuita",
     "restore": "Ripristina Acquisto",
     "legal": "Il pagamento verrà addebitato sul tuo account. L'abbonamento si rinnova automaticamente a meno che non venga annullato 24 ore prima del rinnovo."
-  }
+  },
+  "muscleDirectory": {
+    "chest": "Petto",
+    "back": "Schiena",
+    "legs": "Gambe",
+    "shoulders": "Spalle",
+    "arms": "Braccia",
+    "core": "Core / Addome",
+    "stretching": "Stretching",
+    "yoga": "Yoga",
+    "exercisesCount": "esercizi"
+  },
+  "exerciseNames": {},
+  "equipment": {}
 }

@@ -348,7 +348,8 @@
     "measurementsSub": "Taille, Brust, etc.",
     "achievementsWidget": "Erfolge",
     "viewAchievements": "Medaillen ansehen",
-    "achievementsSub": "Abgeschlossene Herausforderungen"
+    "achievementsSub": "Abgeschlossene Herausforderungen",
+    "muscleDirectorySub": "Tippen Sie auf eine Muskelgruppe in der Abbildung, um die Übungen zu sehen, oder suchen Sie sie in der Liste."
   },
   "tracker": {
     "title": "Heute",
@@ -763,5 +764,18 @@
     "startTrial": "Gratis-Test starten",
     "restore": "Kauf wiederherstellen",
     "legal": "Abo verlängert sich automatisch, wenn nicht 24h vorher gekündigt."
-  }
+  },
+  "muscleDirectory": {
+    "chest": "Brust",
+    "back": "Rücken",
+    "legs": "Beine",
+    "shoulders": "Schultern",
+    "arms": "Arme",
+    "core": "Rumpf / Bauch",
+    "stretching": "Dehnen",
+    "yoga": "Yoga",
+    "exercisesCount": "Übungen"
+  },
+  "exerciseNames": {},
+  "equipment": {}
 }

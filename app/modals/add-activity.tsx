@@ -1092,7 +1092,8 @@ const s = StyleSheet.create({
     fontSize: 40,
     fontWeight: '900',
     textAlign: 'center',
-    padding: 0
+    padding: 0,
+    width: '100%'
   },
   unitPillContainer: {
     flexDirection: 'row',

@@ -180,7 +180,8 @@
     "measurementsSub": "Waist, chest, etc.",
     "achievementsWidget": "Achievements",
     "viewAchievements": "View Medals",
-    "achievementsSub": "Completed challenges"
+    "achievementsSub": "Completed challenges",
+    "muscleDirectorySub": "Tap a muscle group on the figure to see the exercises or find them in the list."
   },
   "tracker": {
     "title": "Tracker",
@@ -727,8 +728,8 @@
   },
   "reminders": {
     "stayOnTrack": "Stay on Track",
-    "subtitle": "Set alerts so you don't forget your meals, hydration, and workouts.",
-    "permissionInfo": "Make sure to allow notifications in your system settings.",
+    "subtitle": "Set alerts so you never miss a meal, hydration, or workout.",
+    "permissionInfo": "Allow notifications in system settings.",
     "breakfast": "Breakfast",
     "lunch": "Lunch",
     "dinner": "Dinner",
@@ -764,15 +765,45 @@
     "restore": "Restore Purchase",
     "legal": "Payment will be charged to your account. Subscription auto-renews unless cancelled 24 hours before renewal."
   },
-  "reminders": {
-    "stayOnTrack": "Stay on Track",
-    "subtitle": "Set alerts so you never miss a meal, hydration, or workout.",
-    "permissionInfo": "Allow notifications in system settings.",
-    "breakfast": "Breakfast",
-    "lunch": "Lunch",
-    "dinner": "Dinner",
-    "water": "Water",
-    "workout": "Workout",
-    "testNotif": "Test Notification"
+  "muscleDirectory": {
+    "chest": "Chest",
+    "back": "Back",
+    "legs": "Legs",
+    "shoulders": "Shoulders",
+    "arms": "Arms",
+    "core": "Core / Abdomen",
+    "stretching": "Stretching",
+    "yoga": "Yoga",
+    "exercisesCount": "exercises"
+  },
+  "equipment": {
+    "band": "band",
+    "barbell": "barbell",
+    "body weight": "body weight",
+    "cable": "cable",
+    "kettlebell": "kettlebell",
+    "dumbbell": "dumbbell",
+    "leverage machine": "leverage machine",
+    "bosu ball": "bosu ball",
+    "hammer": "hammer",
+    "stationary bike": "stationary bike",
+    "smith machine": "smith machine",
+    "assisted": "assisted",
+    "ez barbell": "ez barbell",
+    "stability ball": "stability ball",
+    "weighted": "weighted",
+    "roller": "roller",
+    "sled machine": "sled machine",
+    "resistance band": "resistance band",
+    "wheel roller": "wheel roller",
+    "rope": "rope",
+    "tire": "tire",
+    "medicine ball": "medicine ball",
+    "stepmill machine": "stepmill machine",
+    "olympic barbell": "olympic barbell",
+    "upper body ergometer": "upper body ergometer",
+    "trap bar": "trap bar",
+    "skierg machine": "skierg machine",
+    "elliptical machine": "elliptical machine"
   }
-}
+}

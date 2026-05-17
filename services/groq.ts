@@ -776,10 +776,51 @@ Return ONLY valid JSON. Do not include any explanations or markdown formatting o
         iron: parsed.iron,
         calcium: parsed.calcium,
       };
-    }
+}
     return null;
   } catch (error) {
     console.error('[Groq] getFoodByBarcodeAI error:', error);
     return null;
+  }
+}
+
+// ─── Translate Exercise Details ───────────────────────────────────────────────
+export async function translateExerciseDetails(name: string, instructions: string[], language: string = 'en'): Promise<{ name: string; instructions: string[] }> {
+  if (language.startsWith('en')) return { name, instructions };
+  
+  const targetLang = getLang(language);
+  const prompt = `Translate this exercise name and its instructions to ${targetLang}.
+Return ONLY a valid JSON object. Structure:
+{
+  "name": "Translated name",
+  "instructions": ["Translated step 1", "Translated step 2"]
+}
+Original Name: "${name}"
+Original Instructions: ${JSON.stringify(instructions)}`;
+
+  try {
+    const data = await fetchGroq({
+      model: CHAT_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1024,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+    });
+
+    let content = (data.choices[0]?.message?.content ?? '').trim();
+    const startIndex = content.indexOf('{');
+    const endIndex = content.lastIndexOf('}');
+    if (startIndex !== -1 && endIndex !== -1) {
+      content = content.slice(startIndex, endIndex + 1);
+    }
+
+    const parsed = JSON.parse(content);
+    return {
+      name: parsed.name || name,
+      instructions: parsed.instructions || instructions
+    };
+  } catch (err) {
+    console.error('[Groq] translateExerciseDetails error:', err);
+    return { name, instructions };
   }
 }

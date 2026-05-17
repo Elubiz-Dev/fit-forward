@@ -348,7 +348,8 @@
     "measurementsSub": "Cintura, peito, etc.",
     "achievementsWidget": "Conquistas",
     "viewAchievements": "Ver Medalhas",
-    "achievementsSub": "Desafios concluídos"
+    "achievementsSub": "Desafios concluídos",
+    "muscleDirectorySub": "Toque em um grupo muscular na figura para ver os exercícios ou encontre-os na lista."
   },
   "tracker": {
     "title": "Hoje",
@@ -763,5 +764,18 @@
     "startTrial": "Iniciar Teste Grátis",
     "restore": "Restaurar Compra",
     "legal": "O pagamento será cobrado em sua conta. A assinatura é renovada automaticamente, a menos que seja cancelada 24 horas antes da renovação."
-  }
+  },
+  "muscleDirectory": {
+    "chest": "Peito",
+    "back": "Costas",
+    "legs": "Pernas",
+    "shoulders": "Ombros",
+    "arms": "Braços",
+    "core": "Core / Abdômen",
+    "stretching": "Alongamento",
+    "yoga": "Yoga",
+    "exercisesCount": "exercícios"
+  },
+  "exerciseNames": {},
+  "equipment": {}
 }

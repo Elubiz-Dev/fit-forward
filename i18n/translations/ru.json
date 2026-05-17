@@ -348,7 +348,8 @@
     "measurementsSub": "Талия, грудь и т.д.",
     "achievementsWidget": "Достижения",
     "viewAchievements": "Посмотреть медали",
-    "achievementsSub": "Выполненные задачи"
+    "achievementsSub": "Выполненные задачи",
+    "muscleDirectorySub": "Коснитесь группы мышц на рисунке, чтобы увидеть упражнения, или найдите их в списке."
   },
   "tracker": {
     "title": "Сегодня",
@@ -763,5 +764,18 @@
     "startTrial": "Начать пробный период",
     "restore": "Восстановить покупку",
     "legal": "Подписка продлевается автоматически, если не отменена за 24ч."
-  }
+  },
+  "muscleDirectory": {
+    "chest": "Грудь",
+    "back": "Спина",
+    "legs": "Ноги",
+    "shoulders": "Плечи",
+    "arms": "Руки",
+    "core": "Кор / Живот",
+    "stretching": "Растяжка",
+    "yoga": "Йога",
+    "exercisesCount": "упражнений"
+  },
+  "exerciseNames": {},
+  "equipment": {}
 }
