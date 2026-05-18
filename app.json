@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Scan food barcodes and take progress photos",
         "NSMicrophoneUsageDescription": "Use voice to log food and talk with your AI coach",
-        "NSPhotoLibraryUsageDescription": "Access your photo library for progress photos"
+        "NSPhotoLibraryUsageDescription": "Access your photo library for progress photos",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -81,8 +82,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c7070968-231a-43c2-a62e-37108264a8db"
+        "projectId": "b322d830-a5f8-4c68-83b5-8686ce3d38f3"
       }
-    }
+    },
+    "owner": "deathtrooper"
   }
 }
