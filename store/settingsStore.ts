@@ -35,7 +35,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       theme: 'dark',
       language: 'en',
-      massUnit: 'g',
+      massUnit: 'kg',
       volumeUnit: 'ml',
       lengthUnit: 'cm',
       energyUnit: 'kcal',

@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../hooks/useTheme';
 
@@ -64,7 +64,7 @@ export function GlassCard({
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: isDark ? 0.25 : 0.12,
           shadowRadius: 20,
-          elevation: 12,
+          elevation: Platform.OS === 'ios' ? 12 : 0,
         },
         style,
       ]}

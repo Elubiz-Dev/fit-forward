@@ -735,6 +735,10 @@
     "dinner": "Dinner",
     "water": "Water",
     "workout": "Workout",
+    "snack": "Snack",
+    "vitamins": "Vitamins & Supplements",
+    "walk": "Daily Steps Walk",
+    "sleep": "Wind Down & Sleep",
     "testNotif": "Test Notification"
   },
   "paywall": {

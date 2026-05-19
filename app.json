@@ -40,13 +40,22 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS"
       ],
       "minSdkVersion": 24
     },
     "web": {
       "bundler": "metro",
-      "output": "standalone",
+      "output": "static",
       "favicon": "./assets/favicon.jpg"
     },
     "plugins": [
@@ -85,6 +94,12 @@
         "projectId": "b322d830-a5f8-4c68-83b5-8686ce3d38f3"
       }
     },
-    "owner": "deathtrooper"
+    "owner": "deathtrooper",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b322d830-a5f8-4c68-83b5-8686ce3d38f3"
+    }
   }
 }

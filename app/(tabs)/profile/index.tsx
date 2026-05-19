@@ -41,6 +41,7 @@ import { LineChart } from 'react-native-gifted-charts';
 import { GlassCard } from '../../../components/GlassCard';
 import { WeightProgressPath } from '../../../components/WeightProgressPath';
 import { UnitSelectionModal } from '../../../components/UnitSelectionModal';
+import { PhotoSourceModal } from '../../../components/PhotoSourceModal';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { GoalWizardModal, ACTIVITY_TO_EXERCISE } from '../../../components/GoalWizardModal';
@@ -345,13 +346,23 @@ function BadgeSelectionModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={bm.overlay}>
         <View style={[bm.content, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[bm.handle, { backgroundColor: colors.border }]} />
+          
           <View style={bm.header}>
-            <Text style={[bm.title, { color: colors.textPrimary }]}>{t('profile.selectBadge', 'Selecciona tu Badge')}</Text>
-            <TouchableOpacity onPress={onClose} style={bm.closeBtn}>
-              <Plus size={24} color={colors.textSecondary} style={{ transform: [{ rotate: '45deg' }] }} />
+            <View style={bm.headerTextContainer}>
+              <Text style={[bm.title, { color: colors.textPrimary }]}>
+                {t('profile.selectBadge', 'Selecciona tu Badge')}
+              </Text>
+              <Text style={[bm.subtitle, { color: colors.textMuted }]}>
+                {t('profile.selectBadgeSubtitle', 'Elige el distintivo que quieres destacar en tu perfil público.')}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={[bm.closeBtn, { backgroundColor: colors.surfaceAlt }]}>
+              <X size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={bm.list}>
+
+          <ScrollView contentContainerStyle={bm.list} showsVerticalScrollIndicator={false}>
             {availableBadges.map(badgeId => {
               const badge = ALL_BADGES[badgeId];
               if (!badge) return null;
@@ -362,19 +373,47 @@ function BadgeSelectionModal({
                   style={[
                     bm.badgeItem, 
                     { 
-                      backgroundColor: isSelected ? badge.colors[0] + '20' : colors.surfaceAlt,
-                      borderColor: isSelected ? badge.colors[0] : colors.border 
+                      backgroundColor: isSelected ? badge.colors[0] + '12' : colors.surfaceAlt,
+                      borderColor: isSelected ? badge.colors[0] : colors.border,
+                      shadowColor: isSelected ? badge.colors[0] : 'transparent',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: isSelected ? 0.15 : 0,
+                      shadowRadius: 8,
+                      elevation: 0,
                     }
                   ]}
                   onPress={() => { onSelect(badgeId); onClose(); }}
                 >
-                  <LinearGradient colors={badge.colors as [string, string, ...string[]]} style={bm.badgeIcon}>
+                  <LinearGradient 
+                    colors={badge.colors as [string, string, ...string[]]} 
+                    style={[bm.badgeIcon, { shadowColor: badge.colors[0] }]}
+                  >
                     <Text style={bm.badgeIconText}>{badge.icon}</Text>
                   </LinearGradient>
-                  <Text style={[bm.badgeLabel, { color: colors.textPrimary, fontWeight: isSelected ? '800' : '600' }]}>
-                    {badge.label}
-                  </Text>
-                  {isSelected && <Check size={18} color={badge.colors[0]} />}
+                  
+                  <View style={bm.badgeContent}>
+                    <Text style={[
+                      bm.badgeLabel, 
+                      { 
+                        color: isSelected ? badge.colors[0] : colors.textPrimary, 
+                        fontWeight: isSelected ? '800' : '700' 
+                      }
+                    ]}>
+                      {badge.label}
+                    </Text>
+                    <Text style={[bm.badgeDescription, { color: colors.textSecondary }]}>
+                      {badge.description}
+                    </Text>
+                  </View>
+
+                  {isSelected && (
+                    <LinearGradient 
+                      colors={badge.colors as [string, string, ...string[]]} 
+                      style={bm.selectCheck}
+                    >
+                      <Check size={10} color="#fff" strokeWidth={4} />
+                    </LinearGradient>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -386,16 +425,99 @@ function BadgeSelectionModal({
 }
 
 const bm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  content: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', borderWidth: 1, borderBottomWidth: 0 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: '800' },
-  closeBtn: { padding: 4 },
-  list: { gap: 12, paddingBottom: 40 },
-  badgeItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, borderWidth: 1, gap: 16 },
-  badgeIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  badgeIconText: { fontSize: 18 },
-  badgeLabel: { flex: 1, fontSize: 16 },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.65)', 
+    justifyContent: 'flex-end' 
+  },
+  content: { 
+    borderTopLeftRadius: 32, 
+    borderTopRightRadius: 32, 
+    padding: 24, 
+    paddingTop: 12,
+    maxHeight: '80%', 
+    borderWidth: 1, 
+    borderBottomWidth: 0 
+  },
+  handle: {
+    width: 48,
+    height: 5,
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginBottom: 20,
+    opacity: 0.6
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: 20 
+  },
+  headerTextContainer: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  title: { 
+    fontSize: 22, 
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  closeBtn: { 
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  list: { 
+    gap: 12, 
+    paddingBottom: 40 
+  },
+  badgeItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 16, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    gap: 16,
+  },
+  badgeIcon: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 24, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  badgeIconText: { 
+    fontSize: 22 
+  },
+  badgeContent: {
+    flex: 1,
+    gap: 2,
+  },
+  badgeLabel: { 
+    fontSize: 16,
+  },
+  badgeDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+    opacity: 0.8,
+  },
+  selectCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 
@@ -524,6 +646,7 @@ export default function ProfileScreen() {
   }>({ visible: false, title: '', options: [], selectedValue: '', onSelect: () => {} });
   
   const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
   const availableBadges = useMemo(() => {
     const list = ['verified', 'early_adopter'];
@@ -697,8 +820,52 @@ export default function ProfileScreen() {
     await updateProfileFields({ [field]: value });
   };
 
-  const handlePickImage = async () => {
+  const uploadAvatarImage = async (base64: string, uri: string) => {
     try {
+      const fileExt = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      
+      let userId = profile?.id;
+      if (!userId || userId === '') {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id ?? '';
+      }
+      
+      if (!userId) throw new Error(t('profile.notAuth', 'Usuario no autenticado'));
+
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, decode(base64), {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      await updateProfileField('avatarUrl', publicUrl);
+    } catch (err) {
+      console.error('Upload avatar error:', err);
+      Alert.alert(t('common.error'), t('profile.uploadFailed'));
+    }
+  };
+
+  const handleSelectGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('common.error'),
+          t('profile.galleryPermission', 'Se necesitan permisos de galería para seleccionar fotos.')
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
@@ -708,40 +875,39 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0].base64) {
-        const asset = result.assets[0];
-        const base64 = asset.base64!;
-        const uri = asset.uri;
-        const fileExt = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
-        
-        let userId = profile?.id;
-        if (!userId || userId === '') {
-          const { data: { user } } = await supabase.auth.getUser();
-          userId = user?.id ?? '';
-        }
-        
-        if (!userId) throw new Error(t('profile.notAuth'));
-
-        const fileName = `${userId}/${Date.now()}.${fileExt}`;
-        const filePath = fileName;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, decode(base64), {
-            contentType: `image/${fileExt}`,
-            upsert: true,
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
-
-        await updateProfileField('avatarUrl', publicUrl);
+        await uploadAvatarImage(result.assets[0].base64, result.assets[0].uri);
       }
     } catch (err) {
-      console.error('Pick image error:', err);
-      Alert.alert(t('common.error'), t('profile.uploadFailed'));
+      console.error('Pick image from gallery error:', err);
+      Alert.alert(t('common.error'), t('profile.galleryFailed', 'Error al abrir la galería'));
+    }
+  };
+
+  const handleSelectCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('common.error'),
+          t('profile.cameraPermission', 'Se necesitan permisos de cámara para tomar fotos.')
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0].base64) {
+        await uploadAvatarImage(result.assets[0].base64, result.assets[0].uri);
+      }
+    } catch (err) {
+      console.error('Take photo error:', err);
+      Alert.alert(t('common.error'), t('profile.cameraFailed', 'Error al abrir la cámara'));
     }
   };
 
@@ -1320,13 +1486,20 @@ export default function ProfileScreen() {
         selectedBadge={currentBadgeId}
       />
 
+      <PhotoSourceModal
+        visible={photoModalVisible}
+        onSelectCamera={handleSelectCamera}
+        onSelectGallery={handleSelectGallery}
+        onClose={() => setPhotoModalVisible(false)}
+      />
+
       <ScrollView 
         nestedScrollEnabled={true}
         style={{ flex: 1, backgroundColor: colors.background }} 
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient colors={colors.gradientCard} style={s.header}>
-          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8} style={s.avatarContainer}>
+          <TouchableOpacity onPress={() => setPhotoModalVisible(true)} activeOpacity={0.8} style={s.avatarContainer}>
             <LinearGradient colors={['#7C5CFC', '#4338CA']} style={s.avatar}>
               {profile?.avatarUrl ? (
                 <Image source={{ uri: profile.avatarUrl }} style={s.avatarImage} />

@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { 
   Bell, ChevronLeft, Clock, Utensils, Droplets, Dumbbell, 
-  Settings, Check, X, AlertCircle
+  Settings, Check, X, AlertCircle, Pill, Footprints, Moon, Coffee
 } from 'lucide-react-native';
 import { GlassCard } from '../../components/GlassCard';
 import { scheduleReminder, cancelReminder, requestNotificationPermissions, sendTestNotification } from '../../services/notifications';
@@ -24,7 +24,26 @@ export default function RemindersModal() {
   const { t } = useTranslation();
   const colors = useTheme();
   const { reminders, setReminders } = useSettingsStore();
-  const [localReminders, setLocalReminders] = useState<Reminder[]>(reminders);
+  const [localReminders, setLocalReminders] = useState<Reminder[]>(() => {
+    const merged = [...reminders];
+    const defaultReminders: Reminder[] = [
+      { id: '1', title: 'Breakfast', body: 'Time for a healthy breakfast!', time: '08:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'meal' },
+      { id: '2', title: 'Lunch', body: 'Don\'t forget your nutritious lunch!', time: '13:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'meal' },
+      { id: '3', title: 'Dinner', body: 'Time for your evening meal.', time: '20:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'meal' },
+      { id: '4', title: 'Water', body: 'Stay hydrated! Drink some water.', time: '10:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'water' },
+      { id: '5', title: 'Workout', body: 'Time to hit your daily movement goal!', time: '18:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'workout' },
+      { id: '6', title: 'Snack', body: 'Time for a healthy snack!', time: '16:30', enabled: false, days: [0,1,2,3,4,5,6], type: 'meal' },
+      { id: '7', title: 'Vitamins', body: 'Remember to take your vitamins and supplements!', time: '09:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'general' },
+      { id: '8', title: 'Walk', body: 'Check your steps! Time for a short walk.', time: '12:00', enabled: false, days: [0,1,2,3,4,5,6], type: 'workout' },
+      { id: '9', title: 'Sleep', body: 'Wind down and prepare for a restful sleep.', time: '22:30', enabled: false, days: [0,1,2,3,4,5,6], type: 'general' },
+    ];
+    defaultReminders.forEach(def => {
+      if (!merged.some(r => r.id === def.id)) {
+        merged.push(def);
+      }
+    });
+    return merged.sort((a, b) => Number(a.id) - Number(b.id));
+  });
   const [showTimePicker, setShowTimePicker] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,12 +103,41 @@ export default function RemindersModal() {
     router.back();
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: string, title?: string) => {
+    const lowerTitle = title?.toLowerCase() || '';
+    if (lowerTitle.includes('snack') || lowerTitle.includes('merienda')) {
+      return <Coffee size={20} color="#F59E0B" />;
+    }
+    if (lowerTitle.includes('vitamin') || lowerTitle.includes('suplemento')) {
+      return <Pill size={20} color="#A78BFA" />;
+    }
+    if (lowerTitle.includes('walk') || lowerTitle.includes('pasos') || lowerTitle.includes('caminata')) {
+      return <Footprints size={20} color="#10B981" />;
+    }
+    if (lowerTitle.includes('sleep') || lowerTitle.includes('dormir') || lowerTitle.includes('descanso')) {
+      return <Moon size={20} color="#6366F1" />;
+    }
+
     switch (type) {
       case 'meal': return <Utensils size={20} color="#FF4D4D" />;
       case 'water': return <Droplets size={20} color="#3B82F6" />;
       case 'workout': return <Dumbbell size={20} color="#10B981" />;
       default: return <Bell size={20} color="#F59E0B" />;
+    }
+  };
+
+  const getAccentColor = (type: string, title?: string) => {
+    const lowerTitle = title?.toLowerCase() || '';
+    if (lowerTitle.includes('snack') || lowerTitle.includes('merienda')) return '#F59E0B';
+    if (lowerTitle.includes('vitamin') || lowerTitle.includes('suplemento')) return '#A78BFA';
+    if (lowerTitle.includes('walk') || lowerTitle.includes('pasos') || lowerTitle.includes('caminata')) return '#10B981';
+    if (lowerTitle.includes('sleep') || lowerTitle.includes('dormir') || lowerTitle.includes('descanso')) return '#6366F1';
+    
+    switch (type) {
+      case 'meal': return '#FF4D4D';
+      case 'water': return '#3B82F6';
+      case 'workout': return '#10B981';
+      default: return '#F59E0B';
     }
   };
 
@@ -114,31 +162,42 @@ export default function RemindersModal() {
           </Text>
         </View>
 
-        {localReminders.map((reminder) => (
-          <GlassCard key={reminder.id} style={s.reminderCard} noPadding>
-            <View style={s.reminderRow}>
-              <View style={[s.iconBox, { backgroundColor: colors.surfaceAlt }]}>
-                {getIcon(reminder.type)}
+        {localReminders.map((reminder) => {
+          const accent = getAccentColor(reminder.type, reminder.title);
+          return (
+            <GlassCard 
+              key={reminder.id} 
+              style={[s.reminderCard, { opacity: reminder.enabled ? 1 : 0.65 }]} 
+              noPadding
+              accentColor={accent}
+              showStripe
+            >
+              <View style={s.reminderRow}>
+                <View style={[s.iconBox, { backgroundColor: accent + '15' }]}>
+                  {getIcon(reminder.type, reminder.title)}
+                </View>
+                <View style={s.reminderContent}>
+                  <Text style={[s.reminderTitle, { color: colors.textPrimary }]}>
+                    {t(`reminders.${reminder.title.toLowerCase()}`, reminder.title)}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowTimePicker(reminder.id)}
+                    style={[s.timeSelector, { backgroundColor: colors.surfaceAlt }]}
+                  >
+                    <Clock size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                    <Text style={[s.reminderTime, { color: colors.primary }]}>{reminder.time}</Text>
+                  </TouchableOpacity>
+                </View>
+                <Switch
+                  value={reminder.enabled}
+                  onValueChange={() => handleToggle(reminder.id)}
+                  trackColor={{ false: '#3F3F46', true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#fff' : (reminder.enabled ? '#fff' : '#A1A1AA')}
+                />
               </View>
-              <View style={s.reminderContent}>
-                <Text style={[s.reminderTitle, { color: colors.textPrimary }]}>{t(`reminders.${reminder.title.toLowerCase()}`, reminder.title)}</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowTimePicker(reminder.id)}
-                  style={s.timeSelector}
-                >
-                  <Clock size={14} color={colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={[s.reminderTime, { color: colors.primary }]}>{reminder.time}</Text>
-                </TouchableOpacity>
-              </View>
-              <Switch
-                value={reminder.enabled}
-                onValueChange={() => handleToggle(reminder.id)}
-                trackColor={{ false: '#3F3F46', true: colors.primary }}
-                thumbColor={Platform.OS === 'ios' ? '#fff' : (reminder.enabled ? '#fff' : '#A1A1AA')}
-              />
-            </View>
-          </GlassCard>
-        ))}
+            </GlassCard>
+          );
+        })}
 
         <View style={s.infoBox}>
           <AlertCircle size={16} color={colors.textMuted} />
@@ -157,7 +216,7 @@ export default function RemindersModal() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[s.saveBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }]} 
+          style={[s.saveBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border, elevation: 0 }]} 
           onPress={() => sendTestNotification()}
         >
           <View style={s.saveGrad}>
@@ -241,6 +300,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    backgroundColor: 'transparent',
   },
   iconBox: {
     width: 44,
@@ -261,10 +321,15 @@ const s = StyleSheet.create({
   timeSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 4,
   },
   reminderTime: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   infoBox: {
     flexDirection: 'row',
@@ -299,6 +364,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   saveText: {
     color: '#fff',

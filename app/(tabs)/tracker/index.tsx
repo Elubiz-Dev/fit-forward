@@ -15,6 +15,7 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useSocialStore } from '../../../store';
 import { getLocalDateString, addDays } from '../../../utils/date';
+import { requestNotificationPermissions } from '../../../services/notifications';
 import { convertEnergy, convertVolume, formatValue } from '../../../utils/units';
 import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { AnimatedCard } from '../../../components/AnimatedCard';
@@ -101,7 +102,14 @@ export default function TrackerScreen() {
   const { energyUnit, volumeUnit } = useSettingsStore();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
-  const { totalUnreadCount } = useSocialStore();
+  const { totalUnreadCount, friends } = useSocialStore();
+
+  const pendingRequestsCount = useMemo(() => {
+    if (!profile?.id) return 0;
+    return friends.filter(f => f.status === 'pending' && f.user_id_2 === profile.id).length;
+  }, [friends, profile?.id]);
+
+  const socialNotificationCount = totalUnreadCount + pendingRequestsCount;
 
   // Custom Alert State
   const [alert, setAlert] = useState<{
@@ -158,11 +166,18 @@ export default function TrackerScreen() {
   };
 
   useEffect(() => {
+    requestNotificationPermissions();
     if (profile?.id) {
       fetchHistory(profile.id);
-      useSocialStore.getState().fetchUnreadCounts(profile.id);
-      const unsubscribe = useSocialStore.getState().subscribeToUnreadMessages(profile.id);
-      return () => unsubscribe();
+      const social = useSocialStore.getState();
+      social.fetchUnreadCounts(profile.id);
+      social.fetchFriends(profile.id);
+      const unsubscribeMessages = social.subscribeToUnreadMessages(profile.id);
+      const unsubscribeEvents = social.subscribeToSocialEvents(profile.id);
+      return () => {
+        unsubscribeMessages();
+        unsubscribeEvents();
+      };
     }
   }, [profile?.id]);
 
@@ -413,7 +428,7 @@ export default function TrackerScreen() {
           style={s.socialBtn} 
           onPress={() => router.push('/modals/social' as any)}
         >
-          {totalUnreadCount > 0 ? (
+          {socialNotificationCount > 0 ? (
             <LinearGradient
               colors={[colors.primary, colors.secondary || '#A855F7']}
               start={{ x: 0, y: 0 }}
@@ -423,7 +438,7 @@ export default function TrackerScreen() {
               <Users size={20} color="#fff" />
               <View style={s.badge}>
                 <Text style={s.badgeText}>
-                  {totalUnreadCount > 9 ? '+9' : `+${totalUnreadCount}`}
+                  {socialNotificationCount > 9 ? '+9' : `+${socialNotificationCount}`}
                 </Text>
               </View>
             </LinearGradient>

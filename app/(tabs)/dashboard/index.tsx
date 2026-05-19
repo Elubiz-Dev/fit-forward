@@ -1,9 +1,9 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Dimensions, Alert, Image
+  TouchableOpacity, Dimensions, Alert, Image, Platform
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -201,6 +201,8 @@ export default function DashboardScreen() {
   const target = profile?.targetCalories ?? 2000;
   const name = profile?.name?.split(' ')[0] ?? t('dashboard.fallbackName');
 
+  const navigation = useNavigation();
+
   useEffect(() => {
     async function loadSelectedData() {
       if (!profile?.id) return;
@@ -210,7 +212,12 @@ export default function DashboardScreen() {
       ]);
     }
     loadSelectedData();
-  }, [profile?.id, selectedDate]);
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSelectedData();
+    });
+    return unsubscribe;
+  }, [profile?.id, selectedDate, navigation]);
 
   const dateMeasurement = getForDate(selectedDate);
   const oldestWeight = (measurements.length > 0 ? measurements[measurements.length - 1].weight : null)
@@ -704,7 +711,7 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4
+    elevation: Platform.OS === 'ios' ? 4 : 0
   },
   updateBtnSmall: {
     flexDirection: 'row',

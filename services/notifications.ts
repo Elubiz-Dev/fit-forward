@@ -144,3 +144,21 @@ export async function sendTestNotification() {
     console.error('[Notifications] Test notification error:', e);
   }
 }
+
+export async function triggerInstantNotification(title: string, body: string) {
+  const notif = getNotifications();
+  if (notif._isMock) return;
+  try {
+    await notif.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+      },
+      trigger: null,
+    });
+  } catch (e) {
+    console.error('[Notifications] Instant notification error:', e);
+  }
+}
+

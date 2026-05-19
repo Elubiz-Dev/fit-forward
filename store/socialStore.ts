@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
+import { triggerInstantNotification } from '../services/notifications';
+
 
 export interface Friend {
   id: string;
@@ -166,7 +168,8 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   subscribeToUnreadMessages: (userId: string) => {
-    const channel = supabase.channel(`unread_counts_${userId}`)
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    const channel = supabase.channel(`unread_counts_${userId}_${uniqueSuffix}`)
       .on(
         'postgres_changes',
         {
@@ -175,8 +178,26 @@ export const useSocialStore = create<SocialState>((set, get) => ({
           table: 'direct_messages',
           filter: `receiver_id=eq.${userId}`
         },
-        () => {
+        (payload: any) => {
           get().fetchUnreadCounts(userId);
+          
+          if (payload.new && payload.new.sender_id) {
+            const senderId = payload.new.sender_id;
+            const content = payload.new.content;
+            
+            supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', senderId)
+              .single()
+              .then(({ data }) => {
+                const senderName = data?.name || 'Alguien';
+                triggerInstantNotification(
+                  `💬 Nuevo mensaje de ${senderName}`,
+                  content
+                );
+              });
+          }
         }
       )
       .on(
@@ -197,7 +218,8 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   subscribeToSocialEvents: (userId: string) => {
-    const channel = supabase.channel(`social_events_${userId}`)
+    const uniqueSuffix = Math.random().toString(36).substring(7);
+    const channel = supabase.channel(`social_events_${userId}_${uniqueSuffix}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
         get().fetchPosts();
       })
@@ -207,8 +229,46 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => {
         get().fetchPosts();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, (payload: any) => {
         get().fetchFriends(userId);
+        
+        if (payload.eventType === 'INSERT') {
+          // Received a friend request
+          if (payload.new && payload.new.user_id_2 === userId && payload.new.status === 'pending') {
+            const senderId = payload.new.user_id_1;
+            supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', senderId)
+              .single()
+              .then(({ data }) => {
+                const senderName = data?.name || 'Alguien';
+                triggerInstantNotification(
+                  `👥 Solicitud de amistad`,
+                  `${senderName} te ha enviado una solicitud de amistad.`
+                );
+              });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          // Friend request was accepted
+          if (payload.new && payload.old && payload.new.status === 'accepted' && payload.old.status === 'pending') {
+            if (payload.new.user_id_1 === userId) {
+              const friendId = payload.new.user_id_2;
+              supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', friendId)
+                .single()
+                .then(({ data }) => {
+                  const friendName = data?.name || 'Tu amigo';
+                  triggerInstantNotification(
+                    `🤝 ¡Solicitud de amistad aceptada!`,
+                    `${friendName} ha aceptado tu solicitud de amistad. ¡Ya pueden chatear!`
+                  );
+                });
+            }
+          }
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges' }, () => {
         get().fetchChallenges(userId);
