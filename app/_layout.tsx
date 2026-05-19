@@ -3,13 +3,23 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { supabase } from '../services/supabase';
 import { useAuthStore, useSettingsStore, usePurchaseStore } from '../store';
 import { Colors } from '../constants';
 import '../i18n';
 import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
+import * as NavigationBar from 'expo-navigation-bar';
+
+// Safely detect if edge-to-edge is enabled to avoid warnings
+let isEdgeToEdgeActive = false;
+try {
+  const { isEdgeToEdge } = require('react-native-is-edge-to-edge');
+  isEdgeToEdgeActive = isEdgeToEdge();
+} catch (e) {
+  // Fallback
+}
 
 
 SplashScreen.preventAutoHideAsync();
@@ -65,6 +75,27 @@ export default function RootLayout() {
   useEffect(() => {
     i18n.changeLanguage(language);
   }, [language]);
+
+  const segments = useSegments();
+
+  // ── Android navigation styling: themed solid bar to match the app perfectly ──
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Button style (light/dark icons) is supported in both edge-to-edge and classic modes
+      NavigationBar.setButtonStyleAsync(theme === 'dark' ? 'light' : 'dark');
+
+      // Only configure position/color if edge-to-edge is not active, preventing warnings on modern devices
+      if (!isEdgeToEdgeActive) {
+        const inTabs = segments[0] === '(tabs)';
+        const targetColor = inTabs ? colors.surface : colors.background;
+        
+        NavigationBar.setPositionAsync('relative');
+        NavigationBar.setBackgroundColorAsync(targetColor);
+        NavigationBar.setBorderColorAsync(targetColor);
+      }
+    }
+  }, [theme, segments, colors]);
+
   useEffect(() => {
 
     const handleAuthStateChange = async (newSession: any) => {

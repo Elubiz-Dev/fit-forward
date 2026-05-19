@@ -11,6 +11,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store';
 import { supabase } from '../../services/supabase';
 import { ChevronLeft, Apple, Heart, Activity, Check, AlertCircle } from 'lucide-react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import { Radius, Spacing } from '../../constants';
 
 export default function HealthProfileModal() {
@@ -25,6 +27,23 @@ export default function HealthProfileModal() {
   });
   const [activeTab, setActiveTab] = useState<'restrictions' | 'conditions' | 'medications'>('restrictions');
   const [saving, setSaving] = useState(false);
+
+  const HEALTH_TABS: Array<'restrictions' | 'conditions' | 'medications'> = ['restrictions', 'conditions', 'medications'];
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-30, 30])
+    .runOnJS(true)
+    .onEnd((e) => {
+      if (Math.abs(e.velocityX) > 400 || Math.abs(e.translationX) > 80) {
+        const currentIndex = HEALTH_TABS.indexOf(activeTab);
+        const direction = e.translationX > 0 ? -1 : 1;
+        const newIndex = currentIndex + direction;
+        if (newIndex >= 0 && newIndex < HEALTH_TABS.length) {
+          setActiveTab(HEALTH_TABS[newIndex]);
+          Haptics.selectionAsync();
+        }
+      }
+    });
 
   const updateData = (fieldKey: keyof typeof data, val: string[]) => {
     setData(prev => ({ ...prev, [fieldKey]: val }));
@@ -318,30 +337,32 @@ export default function HealthProfileModal() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {activeTab === 'restrictions' && renderSection(
-          Apple, 
-          "onboarding.dietaryRestrictionsTitle", 
-          "onboarding.dietaryRestrictionsSub", 
-          t('onboarding.dietaryItems', { returnObjects: true }) as Record<string, string>, 
-          "dietaryRestrictions"
-        )}
-        {activeTab === 'conditions' && renderSection(
-          Heart, 
-          "onboarding.medicalConditionsTitle", 
-          "onboarding.medicalConditionsSub", 
-          t('onboarding.medicalItems', { returnObjects: true }) as Record<string, string>, 
-          "medicalConditions"
-        )}
-        {activeTab === 'medications' && renderSection(
-          Activity, 
-          "onboarding.medicationsTitle", 
-          "onboarding.medicationsSub", 
-          t('onboarding.medicationItems', { returnObjects: true }) as Record<string, string>, 
-          "medicationsSupplements"
-        )}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      <GestureDetector gesture={swipeGesture}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          {activeTab === 'restrictions' && renderSection(
+            Apple, 
+            "onboarding.dietaryRestrictionsTitle", 
+            "onboarding.dietaryRestrictionsSub", 
+            t('onboarding.dietaryItems', { returnObjects: true }) as Record<string, string>, 
+            "dietaryRestrictions"
+          )}
+          {activeTab === 'conditions' && renderSection(
+            Heart, 
+            "onboarding.medicalConditionsTitle", 
+            "onboarding.medicalConditionsSub", 
+            t('onboarding.medicalItems', { returnObjects: true }) as Record<string, string>, 
+            "medicalConditions"
+          )}
+          {activeTab === 'medications' && renderSection(
+            Activity, 
+            "onboarding.medicationsTitle", 
+            "onboarding.medicationsSub", 
+            t('onboarding.medicationItems', { returnObjects: true }) as Record<string, string>, 
+            "medicationsSupplements"
+          )}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </GestureDetector>
 
       <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>

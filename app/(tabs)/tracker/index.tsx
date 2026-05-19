@@ -21,6 +21,7 @@ import { CustomAlert, AlertType } from '../../../components/CustomAlert';
 import { AnimatedCard } from '../../../components/AnimatedCard';
 import { GlassCard } from '../../../components/GlassCard';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { Users } from 'lucide-react-native';
 
@@ -365,6 +366,7 @@ export default function TrackerScreen() {
 
   const changeDate = (direction: 1 | -1) => {
     setDate(addDays(selectedDate, direction));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const gesture = Gesture.Pan()

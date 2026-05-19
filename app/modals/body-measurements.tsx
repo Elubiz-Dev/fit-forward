@@ -16,6 +16,7 @@ import { convertMass, convertLength, formatValue } from '../../utils/units';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
 import { supabase } from '../../services/supabase';
 import { calculateTDEE, calculateMacros } from '../../services/foodDatabase';
+import * as Haptics from 'expo-haptics';
 
 import { 
   Scale, 
@@ -82,6 +83,7 @@ const RulerPicker = ({ value, min, max, unit, onValueChange, colors }: any) => {
           lastSentValue.current = formattedValue;
           lastUpdate.current = now;
           onValueChange(formattedValue);
+          Haptics.selectionAsync();
         }
       }
     }

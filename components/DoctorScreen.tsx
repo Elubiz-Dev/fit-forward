@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Image, Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { safe } from '../utils/sanitize';
 import CoachHistoryModal from './CoachHistoryModal';
 import { ImagePickerModal } from './ImagePickerModal';
+import { useKeyboardNavBar } from '../hooks/useKeyboardNavBar';
 
 const FREE_MSG_LIMIT = 5;
 
@@ -248,6 +249,8 @@ function TypingIndicator() {
 
 // ─── doctor Screen ─────────────────────────────────────────────────────────────
 export default function DoctorScreen() {
+  useKeyboardNavBar();
+  const insets = useSafeAreaInsets();
   const [input, setInput]               = useState('');
   const coachType = 'doctor';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -735,7 +738,7 @@ export default function DoctorScreen() {
 
         {/* ── Input area ── */}
         {atLimit ? (
-          <View style={[s.limitBanner, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[s.limitBanner, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, Spacing.base) }]}>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
               <ShieldAlert size={18} color={colors.primary} />
               <Text style={[s.limitText, { color: colors.textSecondary }]}>
@@ -773,7 +776,7 @@ export default function DoctorScreen() {
               </View>
             )}
             
-            <View style={s.inputArea}>
+            <View style={[s.inputArea, { paddingBottom: Math.max(insets.bottom, Spacing.base) }]}>
               <TouchableOpacity
                 onPress={handlePickImage}
                 style={[s.inputIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}

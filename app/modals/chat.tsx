@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Send } from 'lucide-react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useKeyboardNavBar } from '../../hooks/useKeyboardNavBar';
 import { Radius, Spacing } from '../../constants';
 import { useAuthStore, useSocialStore } from '../../store';
 import { DirectMessage } from '../../store/socialStore';
@@ -14,6 +15,8 @@ export default function ChatModal() {
   const colors = useTheme();
   const { profile } = useAuthStore();
   const socialStore = useSocialStore();
+  const insets = useSafeAreaInsets();
+  useKeyboardNavBar();
   
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -131,6 +134,7 @@ export default function ChatModal() {
       <KeyboardAvoidingView 
         style={styles.keyboardView} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={[styles.header, { borderBottomColor: colors.border + '50' }]}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -214,7 +218,7 @@ export default function ChatModal() {
           )}
         </ScrollView>
 
-        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border + '50' }]}>
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border + '50', paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12) }]}>
           <TextInput
             style={[styles.input, { backgroundColor: colors.background, color: colors.textPrimary }]}
             placeholder="Escribe un mensaje..."

@@ -16,6 +16,7 @@ import {
 } from 'expo-audio';
 import { transcribeAudio, estimateActivityCalories } from '../../services/groq';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import {
   X, Search, Mic, Square, Flame, Clock, Sparkles, Plus, Minus, Check, ArrowLeft
 } from 'lucide-react-native';
@@ -230,6 +231,7 @@ export default function AddActivityModal() {
       next = Math.max(0.1, +(next).toFixed(1));
     }
     setDuration(next.toString());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const getBadgeBg = (category: string) => {
@@ -363,6 +365,7 @@ export default function AddActivityModal() {
                     setUnit('minutes');
                     let val = parseFloat(duration) || 0;
                     setDuration(Math.round(val * 60).toString());
+                    Haptics.selectionAsync();
                   }
                 }}
                 activeOpacity={0.9}
@@ -385,6 +388,7 @@ export default function AddActivityModal() {
                     setUnit('hours');
                     let val = parseFloat(duration) || 0;
                     setDuration((val / 60).toFixed(1));
+                    Haptics.selectionAsync();
                   }
                 }}
                 activeOpacity={0.9}
@@ -409,7 +413,10 @@ export default function AddActivityModal() {
                 return (
                   <TouchableOpacity
                     key={val}
-                    onPress={() => setDuration(val.toString())}
+                    onPress={() => {
+                      setDuration(val.toString());
+                      Haptics.selectionAsync();
+                    }}
                     activeOpacity={0.8}
                     style={[
                       s.quickChip,

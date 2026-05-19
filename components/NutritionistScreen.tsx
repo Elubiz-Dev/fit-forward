@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Image, Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAudioRecorder, useAudioRecorderState, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { safe } from '../utils/sanitize';
 import CoachHistoryModal from './CoachHistoryModal';
 import { ImagePickerModal } from './ImagePickerModal';
+import { useKeyboardNavBar } from '../hooks/useKeyboardNavBar';
 
 const FREE_MSG_LIMIT = 5;
 
@@ -248,6 +249,8 @@ function TypingIndicator() {
 
 // ─── Nutritionist Screen ─────────────────────────────────────────────────────────────
 export default function NutritionistScreen() {
+  useKeyboardNavBar();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const [input, setInput]               = useState((params.prompt as string) || '');
   const coachType = 'nutritionist';
@@ -728,7 +731,7 @@ export default function NutritionistScreen() {
 
         {/* ── Input area ── */}
         {atLimit ? (
-          <View style={[s.limitBanner, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[s.limitBanner, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingBottom: Math.max(insets.bottom, Spacing.base) }]}>
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
               <ShieldAlert size={18} color={colors.primary} />
               <Text style={[s.limitText, { color: colors.textSecondary }]}>
@@ -766,7 +769,7 @@ export default function NutritionistScreen() {
               </View>
             )}
             
-            <View style={s.inputArea}>
+            <View style={[s.inputArea, { paddingBottom: Math.max(insets.bottom, Spacing.base) }]}>
               <TouchableOpacity
                 onPress={handlePickImage}
                 style={[s.inputIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}

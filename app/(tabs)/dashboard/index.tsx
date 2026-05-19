@@ -13,9 +13,9 @@ import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../../services/supabase';
 import { calculateTDEE, calculateMacros } from '../../../services/foodDatabase';
-import { getLocalDateString, addDays } from '../../../utils/date';
-// import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-// import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { getLocalDateString } from '../../../utils/date';
+import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { AnimatedCard } from '../../../components/AnimatedCard';
 import { Trophy, Flame, Dumbbell, Heart, ChevronRight, Scale, Target } from 'lucide-react-native';
 import { useAchievements, Achievement } from '../../../hooks/useAchievements';
@@ -272,6 +272,10 @@ export default function DashboardScreen() {
   }
 
   const [isEditing, setIsEditing] = useState(false);
+  const handleEditMode = () => {
+    setIsEditing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
   const [alert, setAlert] = useState<{
     visible: boolean;
     type: AlertType;
@@ -352,13 +356,14 @@ export default function DashboardScreen() {
     newOrder[index] = newOrder[index + direction];
     newOrder[index + direction] = temp;
     setWidgetsOrder(newOrder);
+    Haptics.selectionAsync();
   };
 
   const renderWidget = (id: string, index: number) => {
     const commonProps = {
       index,
       isEditing,
-      onLongPress: () => setIsEditing(true),
+      onLongPress: handleEditMode,
       onMoveLeft: () => moveWidget(index, -1),
       onMoveRight: () => moveWidget(index, 1),
       canMoveLeft: index > 0,
@@ -456,15 +461,6 @@ export default function DashboardScreen() {
     }
   };
 
-/*
-  const gesture = Gesture.Pan()
-    .onEnd((e) => {
-      if (Math.abs(e.velocityX) > 500) {
-        const direction = e.velocityX > 0 ? -1 : 1;
-        setDate(addDays(selectedDate, direction));
-      }
-    });
-*/
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -478,7 +474,6 @@ export default function DashboardScreen() {
         onConfirm={alert.onConfirm}
         onCancel={alert.onCancel}
       />
-      {/* GestureDetector disabled */}
       <View style={{ flex: 1 }}>
 
         <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
@@ -590,7 +585,6 @@ export default function DashboardScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
       </View>
-      {/* </GestureDetector> */}
       <GoalWizardModal
         visible={goalModalVisible}
         onClose={() => setGoalModalVisible(false)}

@@ -6,6 +6,8 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Trophy, Users, Sword, Plus, ArrowLeft, Bot, Check, X, MessageSquare, Heart, Share2, Send, Trash2, Camera, Pencil } from 'lucide-react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../hooks/useTheme';
 import { Radius, Spacing } from '../../constants';
@@ -136,6 +138,28 @@ export default function SocialModal() {
   const { profile } = useAuthStore();
   const { language } = useSettingsStore();
   const socialStore = useSocialStore();
+  
+  const TABS: TabType[] = ['feed', 'friends', 'ranking', 'challenges'];
+  
+  const handleSwipeTab = (direction: 1 | -1) => {
+    const currentIndex = TABS.indexOf(activeTab);
+    const newIndex = currentIndex + direction;
+    if (newIndex >= 0 && newIndex < TABS.length) {
+      setActiveTab(TABS[newIndex]);
+      Haptics.selectionAsync();
+    }
+  };
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-30, 30])
+    .runOnJS(true)
+    .onEnd((e) => {
+      if (Math.abs(e.velocityX) > 400 || Math.abs(e.translationX) > 80) {
+        // Drag right (translationX > 0) -> go to previous tab (-1)
+        // Drag left (translationX < 0) -> go to next tab (+1)
+        handleSwipeTab(e.translationX > 0 ? -1 : 1);
+      }
+    });
   
   if (!profile) {
     return (
@@ -1109,12 +1133,14 @@ export default function SocialModal() {
         </ScrollView>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {activeTab === 'feed' && renderFeed()}
-        {activeTab === 'friends' && renderFriends()}
-        {activeTab === 'ranking' && renderRanking()}
-        {activeTab === 'challenges' && renderChallenges()}
-      </ScrollView>
+      <GestureDetector gesture={swipeGesture}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          {activeTab === 'feed' && renderFeed()}
+          {activeTab === 'friends' && renderFriends()}
+          {activeTab === 'ranking' && renderRanking()}
+          {activeTab === 'challenges' && renderChallenges()}
+        </ScrollView>
+      </GestureDetector>
 
       <ImagePickerModal
         visible={isImageModalVisible}

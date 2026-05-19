@@ -6,7 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.jpg",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "backgroundColor": "#0F172A",
+    "androidNavigationBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#0F172A"
+    },
     "scheme": "fitgo",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -50,12 +54,11 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS"
-      ],
-      "minSdkVersion": 24
+      ]
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/favicon.jpg"
     },
     "plugins": [
