@@ -17,6 +17,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -30,6 +31,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://abvidinpswnfxijjfnic.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFidmlkaW5wc3duZnhpampmbmljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDI0MDEsImV4cCI6MjA5MjgxODQwMX0.-fEFidltyCJFicuxNTqtVd-Ak3a1_-Yn2_XUdQhwrrM"
