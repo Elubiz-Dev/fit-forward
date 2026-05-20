@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert
+  ScrollView, Alert, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -109,7 +109,10 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView 
+      style={[s.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View style={s.glow} />
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={s.back} onPress={() => router.back()}>
@@ -172,6 +175,17 @@ export default function RegisterScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
+        <View style={s.termsContainer}>
+          <Text style={[s.termsText, { color: colors.textSecondary }]}>
+            Al continuar, aceptas nuestros{' '}
+          </Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/terms')}>
+            <Text style={[s.termsLink, { color: colors.primary }]}>
+              Términos y Condiciones
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={s.divider}>
           <View style={[s.divLine, { backgroundColor: colors.border }]} />
           <Text style={[s.divText, { color: colors.textMuted }]}>{t('common.or')}</Text>
@@ -205,7 +219,7 @@ export default function RegisterScreen() {
         onConfirm={() => setAlertVisible(false)}
         confirmText="OK"
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -234,4 +248,7 @@ const s = StyleSheet.create({
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 32, paddingBottom: 20 },
   footerText:   { fontSize: 14 },
   footerLink:   { fontWeight: '700', fontSize: 14 },
+  termsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 16, paddingHorizontal: 10 },
+  termsText:    { fontSize: 13, textAlign: 'center' },
+  termsLink:    { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
 });

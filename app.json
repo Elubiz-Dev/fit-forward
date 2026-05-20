@@ -44,15 +44,6 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.POST_NOTIFICATIONS",
-        "CAMERA",
-        "RECORD_AUDIO",
-        "VIBRATE",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS"
       ]
     },
@@ -94,15 +85,12 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b322d830-a5f8-4c68-83b5-8686ce3d38f3"
+        "projectId": "c7070968-231a-43c2-a62e-37108264a8db"
       }
     },
-    "owner": "deathtrooper",
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/b322d830-a5f8-4c68-83b5-8686ce3d38f3"
-    }
+    "owner": "elubiz"
   }
 }

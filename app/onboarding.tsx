@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator, TextInput
+  ScrollView, Alert, ActivityIndicator, TextInput,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1743,9 +1744,14 @@ export default function OnboardingScreen() {
       </View>
       
       {/* Step content */}
-      <ScrollView style={s.scroll} contentContainerStyle={s.content}>
-        {stepComponents[stepId]}
-      </ScrollView>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+          {stepComponents[stepId]}
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Navigation Footer */}
       <View style={s.footer}>
