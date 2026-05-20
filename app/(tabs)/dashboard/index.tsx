@@ -439,7 +439,7 @@ export default function DashboardScreen() {
                 <Text style={[w.subValue, { color: colors.textSecondary }]}>{t('dashboard.getAIFeedback', 'Recibe feedback IA')}</Text>
               </View>
             }
-            onPress={() => router.push('/modals/progress-evaluation')}
+            onPress={() => router.push('/modals/progress-evaluation' as any)}
           />
         );
       case 'achievements':
@@ -485,7 +485,7 @@ export default function DashboardScreen() {
               {new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
           </View>
-          <AchievementPreview achievements={achievements} onPress={() => router.push('/modals/achievements')} />
+          <AchievementPreview achievements={achievements} onPress={() => router.push('/modals/achievements' as any)} />
         </View>
 
         {/* Nutritional Score Card */}
