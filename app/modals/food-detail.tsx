@@ -123,7 +123,7 @@ export default function FoodDetailModal() {
 
     if (logId) {
       // Update existing log
-      updateLog(logId, {
+      await updateLog(logId, {
         grams: g,
         meal,
         calories: cal,
@@ -138,29 +138,11 @@ export default function FoodDetailModal() {
         saturatedFat: satFat,
         transFat,
       });
-
-      if (profile?.id) {
-        await supabase.from('food_logs').update({
-          grams: g,
-          meal,
-          calories: cal,
-          protein:  pro,
-          carbs:    carb,
-          fat,
-          sugar,
-          fiber,
-          sodium,
-          iron,
-          calcium,
-          saturated_fat: satFat,
-          trans_fat: transFat,
-        }).eq('id', logId);
-      }
     } else {
       // Add new log
       const localId = `${Date.now()}-${food.id}`;
       // Optimistic update
-      addLog({
+      await addLog({
         id:       localId,
         foodItem: food,
         grams:    g,
@@ -178,33 +160,6 @@ export default function FoodDetailModal() {
         saturatedFat: satFat,
         transFat,
       });
-
-      if (profile?.id) {
-        const { data, error } = await supabase.from('food_logs').insert({
-          user_id:   profile.id,
-          food_name: food.name,
-          calories:  cal,
-          protein:   pro,
-          carbs:     carb,
-          fat,
-          grams:     g,
-          meal,
-          logged_at: date || getLocalDateString(),
-          sugar,
-          fiber,
-          sodium,
-          iron,
-          calcium,
-          saturated_fat: satFat,
-          trans_fat: transFat,
-        }).select().single();
-
-        if (data && !error) {
-          // Await fetchLogs so the UI reflects the new log before navigating back
-          const { fetchLogs, selectedDate } = useNutritionStore.getState();
-          await fetchLogs(profile.id, selectedDate);
-        }
-      }
     }
     router.back();
   };
@@ -316,15 +271,10 @@ export default function FoodDetailModal() {
                 t('tracker.removeEntry'),
                 t('tracker.removeConfirm', { name: food.name }),
                 async () => {
-                  if (!profile?.id) {
-                    showAlert('error', t('common.error'), t('profile.userIdNotFound'));
-                    return;
-                  }
-                  const { error } = await supabase.from('food_logs').delete().eq('id', logId);
-                  if (!error) {
-                    removeLog(logId);
+                  try {
+                    await removeLog(logId);
                     router.back();
-                  } else {
+                  } catch (error) {
                     showAlert('error', t('common.error'), 'Could not delete log. Try again.');
                   }
                 },

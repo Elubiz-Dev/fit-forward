@@ -973,6 +973,7 @@ export default function ProfileScreen() {
       tdee,
       targetCalories,
       macros: { protein, carbs, fat },
+      startingWeight: profile?.startingWeight || profile?.weight || newData.weight,
     };
 
     setProfile(updatedProfile);
@@ -1029,18 +1030,11 @@ export default function ProfileScreen() {
   };
 
   const handleEditSex = () => {
-    showAlert(
-      'confirm',
-      t('profile.sex'),
-      t('profile.bmrQuest'),
-      () => {}, // Placeholder as we need multiple options
-      () => {},
-      t('common.cancel')
-    );
-    // Sex selection is actually better as a custom modal or the existing Alert
-    // but since we want "aesthetic", let's use standard Alert for multi-choice for now
-    // or just leave it as is if it's too complex for CustomAlert (which supports 2 buttons)
-    // Actually, I'll keep the multi-choice ones as standard for now or just replace the simple ones
+    Alert.alert(t('profile.sex'), t('profile.bmrQuest'), [
+      { text: t('profile.male', 'Hombre'), onPress: () => updateProfileField('sex', 'male') },
+      { text: t('profile.female', 'Mujer'), onPress: () => updateProfileField('sex', 'female') },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
   };
 
   const handleEditActivity = () => {

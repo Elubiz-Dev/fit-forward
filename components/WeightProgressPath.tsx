@@ -89,6 +89,11 @@ export function WeightProgressPath({
   const remainingPath = `M ${x1} ${y1} C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${x2} ${y2}`;
 
   const displayPct = Math.round(clampedPct * 100);
+  
+  const diffStart = Math.round((displayCurr - displayStart) * 10) / 10;
+  const isGoalReached = isLoss ? displayCurr <= displayTarget : displayCurr >= displayTarget;
+  const remainingValue = Math.abs(Math.round((displayTarget - displayCurr) * 10) / 10);
+
 
   return (
     <View>
@@ -176,17 +181,19 @@ export function WeightProgressPath({
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
-          <Text style={[styles.statVal, { color: isLoss ? colors.success : colors.primary }]}>
-            {isLoss ? '-' : '+'}{Math.abs(Math.round((displayCurr - displayStart) * 10) / 10)} {massUnit}
+          <Text style={[styles.statVal, { color: diffStart < 0 ? colors.success : (diffStart > 0 ? colors.error : colors.primary) }]}>
+            {diffStart > 0 ? '+' : ''}{diffStart} {massUnit}
           </Text>
           <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('profile.sinceStart', 'Desde inicio')}</Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
-          <Text style={[styles.statVal, { color: colors.warning }]}>
-            {isLoss ? '-' : '+'}{Math.abs(Math.round((displayTarget - displayCurr) * 10) / 10)} {massUnit}
+          <Text style={[styles.statVal, { color: isGoalReached ? colors.success : colors.warning, fontSize: isGoalReached ? 14 : 18 }]}>
+            {isGoalReached ? t('profile.goalReached', '¡Logrado!') : `${remainingValue} ${massUnit}`}
           </Text>
-          <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('profile.remaining', 'Faltan')}</Text>
+          <Text style={[styles.statLbl, { color: colors.textMuted }]}>
+            {isGoalReached ? t('profile.goal', 'Meta') : t('profile.remaining', 'Faltan')}
+          </Text>
         </View>
       </View>
     </View>

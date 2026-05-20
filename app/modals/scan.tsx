@@ -479,40 +479,8 @@ export default function ScanModal() {
     }));
 
     try {
-      if (profile?.id) {
-        const dbItems = editedFoods.map(food => ({
-          user_id: profile.id,
-          food_name: food.name,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          grams: food.grams,
-          meal: targetMeal,
-          logged_at: logDate,
-          sugar: food.sugar,
-          fiber: food.fiber,
-          sodium: food.sodium,
-          iron: food.iron,
-          calcium: food.calcium,
-          saturated_fat: food.saturatedFat,
-          trans_fat: food.transFat,
-        }));
-
-        const { error } = await supabase.from('food_logs').insert(dbItems);
-        
-        if (!error) {
-          await fetchLogs(profile.id, selectedDate || logDate);
-          setShowSuccess(true);
-        } else {
-          showAlert('error', t('common.error'), 'Failed to save foods');
-          return;
-        }
-      } else {
-        // Local fallback if no profile
-        localLogs.forEach(log => addLog(log));
-        setShowSuccess(true);
-      }
+      await Promise.all(localLogs.map(log => addLog(log)));
+      setShowSuccess(true);
     } finally {
       setLoading(false);
     }

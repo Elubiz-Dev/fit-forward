@@ -34,9 +34,9 @@ interface NutritionState {
   updateActivity: (date: string) => void;
   incrementAiUsage: (mode: 'photo' | 'text') => void;
   checkAndResetAiLimit: () => void;
-  addLog:       (log: FoodLog) => void;
-  removeLog:    (id: string) => void;
-  updateLog:    (id: string, updates: Partial<FoodLog>) => void;
+  addLog:       (log: FoodLog) => Promise<void>;
+  removeLog:    (id: string) => Promise<void>;
+  updateLog:    (id: string, updates: Partial<FoodLog>) => Promise<void>;
   setLogs:      (logs: FoodLog[]) => void;
   setWater:     (ml: number) => void;
   addWater:     (ml: number) => void;
@@ -191,14 +191,78 @@ export const useNutritionStore = create<NutritionState>()(
         set({ activeDays: newActiveDays, plannedDays: newPlannedDays, streakDays: streak });
       },
 
-      addLog: (log) => {
+      addLog: async (log) => {
         set((s) => ({ todayLogs: [...s.todayLogs, log] }));
         get().updateActivity(log.loggedAt.split('T')[0]);
+
+        const { profile } = useAuthStore.getState();
+        if (profile?.id) {
+          try {
+            const { error } = await supabase.from('food_logs').insert({
+              id: log.id,
+              user_id: profile.id,
+              food_id: log.foodItem.id,
+              food_name: log.foodItem.name,
+              calories: log.calories,
+              protein: log.protein,
+              carbs: log.carbs,
+              fat: log.fat,
+              sugar: log.sugar || 0,
+              fiber: log.fiber || 0,
+              sodium: log.sodium || 0,
+              iron: log.iron || 0,
+              calcium: log.calcium || 0,
+              saturated_fat: log.saturatedFat || 0,
+              trans_fat: log.transFat || 0,
+              grams: log.grams,
+              meal: log.meal,
+              logged_at: log.loggedAt
+            });
+            if (error) {
+              console.error('[NutritionStore] addLog Supabase error:', error);
+              throw error;
+            }
+          } catch (err) {
+            console.error('[NutritionStore] addLog sync error:', err);
+            throw err;
+          }
+        }
       },
-      removeLog: (id)  => set((s) => ({ todayLogs: s.todayLogs.filter((l) => l.id !== id) })),
-      updateLog: (id, updates) => set((s) => ({
-        todayLogs: s.todayLogs.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-      })),
+      removeLog: async (id) => {
+        set((s) => ({ todayLogs: s.todayLogs.filter((l) => l.id !== id) }));
+        try {
+          const { error } = await supabase.from('food_logs').delete().eq('id', id);
+          if (error) {
+            console.error('[NutritionStore] removeLog Supabase error:', error);
+            throw error;
+          }
+        } catch (err) {
+          console.error('[NutritionStore] removeLog sync error:', err);
+          throw err;
+        }
+      },
+      updateLog: async (id, updates) => {
+        set((s) => ({
+          todayLogs: s.todayLogs.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+        }));
+        try {
+          const dbUpdates: any = {};
+          if (updates.meal) dbUpdates.meal = updates.meal;
+          if (updates.grams !== undefined) dbUpdates.grams = updates.grams;
+          if (updates.calories !== undefined) dbUpdates.calories = updates.calories;
+          if (updates.protein !== undefined) dbUpdates.protein = updates.protein;
+          if (updates.carbs !== undefined) dbUpdates.carbs = updates.carbs;
+          if (updates.fat !== undefined) dbUpdates.fat = updates.fat;
+          
+          if (Object.keys(dbUpdates).length > 0) {
+            const { error } = await supabase.from('food_logs').update(dbUpdates).eq('id', id);
+            if (error) throw error;
+          }
+        } catch (err) {
+          console.error('[NutritionStore] updateLog sync error:', err);
+          throw err;
+        }
+      },
       setLogs:   (logs) => set({ todayLogs: logs }),
       setWater:  async (ml) => {
         const safeml = Math.max(0, ml);
