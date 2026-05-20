@@ -1,0 +1,940 @@
+{
+  "profile.changeToKg": {
+    "files": [
+      "onboarding.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.changeToLbs": {
+    "files": [
+      "onboarding.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.changeToCm": {
+    "files": [
+      "onboarding.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.changeToFt": {
+    "files": [
+      "onboarding.tsx"
+    ],
+    "defaults": []
+  },
+  "common.warning": {
+    "files": [
+      "onboarding.tsx",
+      "index.tsx",
+      "health-profile.tsx"
+    ],
+    "defaults": [
+      "Advertencia",
+      "Aviso"
+    ]
+  },
+  "common.today": {
+    "files": [
+      "onboarding.tsx"
+    ],
+    "defaults": [
+      "Hoy"
+    ]
+  },
+  "auth.emailRequired": {
+    "files": [
+      "forgot-password.tsx"
+    ],
+    "defaults": []
+  },
+  "tracker.yesterday": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Ayer"
+    ]
+  },
+  "dashboard.evaluationWidget": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Evaluación IA"
+    ]
+  },
+  "dashboard.evaluatePhysique": {
+    "files": [
+      "progress-evaluation.tsx",
+      "index.tsx"
+    ],
+    "defaults": [
+      "Evaluación Físca IA",
+      "Evaluar Físico"
+    ]
+  },
+  "dashboard.getAIFeedback": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Recibe feedback IA"
+    ]
+  },
+  "dashboard.muscleDirWidget": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Ejercicios"
+    ]
+  },
+  "dashboard.muscleDirTitle": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Directorio"
+    ]
+  },
+  "dashboard.muscleDirSub": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Por músculos"
+    ]
+  },
+  "profile.activeGoal": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Objetivo Activo"
+    ]
+  },
+  "dashboard.weight": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Peso"
+    ]
+  },
+  "common.greeting": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Hola"
+    ]
+  },
+  "planner.planFor": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Plan para:"
+    ]
+  },
+  "planner.homeWorkoutTitle": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Entrenamiento en Casa"
+    ]
+  },
+  "planner.homeWorkoutSub": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Solo calistenia y peso corporal"
+    ]
+  },
+  "planner.askExercise": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "¿Cómo hacerlo?"
+    ]
+  },
+  "planner.exportShoppingList": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Shopping List PDF"
+    ]
+  },
+  "planner.exportMenu": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Menu PDF"
+    ]
+  },
+  "planner.askRecipe": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "¿Cómo prepararlo?"
+    ]
+  },
+  "profile.selectBadgeSubtitle": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Elige el distintivo que quieres destacar en tu perfil público."
+    ]
+  },
+  "profile.galleryPermission": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Se necesitan permisos de galería para seleccionar fotos."
+    ]
+  },
+  "profile.galleryFailed": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Error al abrir la galería"
+    ]
+  },
+  "profile.cameraPermission": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Se necesitan permisos de cámara para tomar fotos."
+    ]
+  },
+  "profile.cameraFailed": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Error al abrir la cámara"
+    ]
+  },
+  "profile.exporting": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Exportando datos..."
+    ]
+  },
+  "profile.field": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Campo"
+    ]
+  },
+  "profile.value": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Valor"
+    ]
+  },
+  "onboarding.goal": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Meta"
+    ]
+  },
+  "tracker.target": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Objetivo Calorías"
+    ]
+  },
+  "common.date": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Fecha"
+    ]
+  },
+  "common.notes": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Notas"
+    ]
+  },
+  "tracker.meal": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Comida"
+    ]
+  },
+  "tracker.food": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Alimento"
+    ]
+  },
+  "tracker.grams": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Gramos"
+    ]
+  },
+  "tracker.calories": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Calorías"
+    ]
+  },
+  "tracker.protein": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Proteínas"
+    ]
+  },
+  "tracker.carbs": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Carbohidratos"
+    ]
+  },
+  "tracker.fat": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Grasas"
+    ]
+  },
+  "tracker.sleep": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Sueño (h)"
+    ]
+  },
+  "profile.sheetProfile": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.sheetWeight": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.sheetNutrition": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.sheetMetrics": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": []
+  },
+  "profile.exportData": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Exportar Data (Excel)"
+    ]
+  },
+  "profile.exportFailed": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Error al exportar datos"
+    ]
+  },
+  "profile.idCopied": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": []
+  },
+  "common.ok": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Entendido"
+    ]
+  },
+  "profile.updateEmailPassword": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Actualizar correo o contraseña"
+    ]
+  },
+  "profile.updateEmailPasswordInfo": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Para actualizar tu correo o contraseña, te enviaremos un enlace de recuperación."
+    ]
+  },
+  "common.viewAll": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Historial"
+    ]
+  },
+  "profile.addMeasurement": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Añadir Medición"
+    ]
+  },
+  "profile.userId": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "ID Usuario"
+    ]
+  },
+  "profile.termsAndConditions": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Términos y Condiciones"
+    ]
+  },
+  "about.version": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Versión"
+    ]
+  },
+  "tracker.consistency": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Consistencia"
+    ]
+  },
+  "tracker.last28": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Últimos 28 días"
+    ]
+  },
+  "common.less": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Menos"
+    ]
+  },
+  "common.more": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Más"
+    ]
+  },
+  "tracker.proFeature": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Función Exclusiva Pro"
+    ]
+  },
+  "tracker.proHeatmapDesc": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Desbloquea el análisis detallado de tu constancia y hábitos con FitGO Pro."
+    ]
+  },
+  "common.upgrade": {
+    "files": [
+      "index.tsx"
+    ],
+    "defaults": [
+      "Mejorar a Pro"
+    ]
+  },
+  "activities.estimateFailed": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "No pudimos calcular las calorías. Intenta ser más específico."
+    ]
+  },
+  "activities.estimateError": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Error al conectar con la IA."
+    ]
+  },
+  "activities.whatDidYouDo": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "¿Qué actividad hiciste?"
+    ]
+  },
+  "activities.aiInstructions": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Toca el micrófono para dictar con tu voz (ej: \"Trotemos 40 minutos en el parque\") o descríbelo en el campo de texto."
+    ]
+  },
+  "scan.transcribing": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Transcribiendo audio..."
+    ]
+  },
+  "scan.tapToRecord": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Toca el micrófono para dictar con voz"
+    ]
+  },
+  "activities.customPlaceholder": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Ej: Boxeo intensivo, Caminata rápida..."
+    ]
+  },
+  "activities.estimate": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Calcular calorías con IA"
+    ]
+  },
+  "activities.selectDescription": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Selecciona o describe un ejercicio para registrar tu progreso"
+    ]
+  },
+  "activities.customDesc": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Describe tu ejercicio por voz o texto y calcula calorías automáticamente"
+    ]
+  },
+  "activities.searchResults": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "Resultados de búsqueda"
+    ]
+  },
+  "activities.noExercises": {
+    "files": [
+      "add-activity.tsx"
+    ],
+    "defaults": [
+      "No encontramos actividades que coincidan."
+    ]
+  },
+  "profile.editHealthProfile": {
+    "files": [
+      "health-profile.tsx"
+    ],
+    "defaults": [
+      "Edit Health Profile"
+    ]
+  },
+  "dashboard.muscleDirectory": {
+    "files": [
+      "MuscleDirectoryWidget.tsx",
+      "muscle-directory.tsx"
+    ],
+    "defaults": [
+      "Directorio Muscular"
+    ]
+  },
+  "workout.instructions": {
+    "files": [
+      "muscle-directory.tsx"
+    ],
+    "defaults": [
+      "Instrucciones"
+    ]
+  },
+  "common.cameraPermissionDenied": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Se necesita permiso para la cámara."
+    ]
+  },
+  "common.galleryPermissionDenied": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Se necesita permiso para la galería."
+    ]
+  },
+  "evaluation.feedbackTitle": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Veredicto del Coach"
+    ]
+  },
+  "evaluation.estFat": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Grasa Est."
+    ]
+  },
+  "evaluation.strengths": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Puntos Fuertes"
+    ]
+  },
+  "evaluation.improvements": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Áreas de Mejora"
+    ]
+  },
+  "evaluation.newAnalysis": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Nuevo Análisis"
+    ]
+  },
+  "evaluation.history": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Historial de Evaluaciones"
+    ]
+  },
+  "evaluation.noHistory": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Aún no hay evaluaciones."
+    ]
+  },
+  "evaluation.instruction": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Sube o toma una foto de tu físico actual para recibir un análisis detallado de la IA sobre tus puntos fuertes y áreas a mejorar."
+    ]
+  },
+  "common.camera": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Cámara"
+    ]
+  },
+  "common.gallery": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Galería"
+    ]
+  },
+  "evaluation.viewHistory": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Ver Historial"
+    ]
+  },
+  "common.retake": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Cambiar"
+    ]
+  },
+  "evaluation.analyzeBtn": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Analizar Físico"
+    ]
+  },
+  "evaluation.analyzing": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Analizando tu desarrollo muscular..."
+    ]
+  },
+  "evaluation.backToMain": {
+    "files": [
+      "progress-evaluation.tsx"
+    ],
+    "defaults": [
+      "Volver al Inicio"
+    ]
+  },
+  "scan.limitReachedSubPhoto": {
+    "files": [
+      "scan.tsx"
+    ],
+    "defaults": []
+  },
+  "scan.limitReachedSubText": {
+    "files": [
+      "scan.tsx"
+    ],
+    "defaults": []
+  },
+  "sleep.bedtime": {
+    "files": [
+      "sleep.tsx"
+    ],
+    "defaults": [
+      "Hora de dormir"
+    ]
+  },
+  "sleep.waketime": {
+    "files": [
+      "sleep.tsx"
+    ],
+    "defaults": [
+      "Hora de despertar"
+    ]
+  },
+  "sleep.tip": {
+    "files": [
+      "sleep.tsx"
+    ],
+    "defaults": [
+      "Los adultos necesitan entre 7 y 9 horas de sueño para una recuperación óptima."
+    ]
+  },
+  "coach.history": {
+    "files": [
+      "CoachHistoryModal.tsx"
+    ],
+    "defaults": [
+      "History"
+    ]
+  },
+  "coach.newChat": {
+    "files": [
+      "CoachHistoryModal.tsx"
+    ],
+    "defaults": [
+      "New Chat"
+    ]
+  },
+  "coach.noHistory": {
+    "files": [
+      "CoachHistoryModal.tsx"
+    ],
+    "defaults": [
+      "No history yet"
+    ]
+  },
+  "coach.confirmDeleteSession": {
+    "files": [
+      "CoachHistoryModal.tsx"
+    ],
+    "defaults": [
+      "Are you sure you want to delete this chat?"
+    ]
+  },
+  "coach.taglineBadge": {
+    "files": [
+      "DoctorScreen.tsx",
+      "NutritionistScreen.tsx",
+      "TrainerScreen.tsx"
+    ],
+    "defaults": [
+      "IA Personalizada • Groq"
+    ]
+  },
+  "coach.suggestionsTitle": {
+    "files": [
+      "DoctorScreen.tsx",
+      "NutritionistScreen.tsx",
+      "TrainerScreen.tsx"
+    ],
+    "defaults": [
+      "Sugerencias para empezar"
+    ]
+  },
+  "coach.pickImageTitle": {
+    "files": [
+      "ImagePickerModal.tsx"
+    ],
+    "defaults": [
+      "Seleccionar Imagen"
+    ]
+  },
+  "coach.pickImageSub": {
+    "files": [
+      "ImagePickerModal.tsx"
+    ],
+    "defaults": [
+      "¿Desde dónde quieres subir la foto?"
+    ]
+  },
+  "coach.camera": {
+    "files": [
+      "ImagePickerModal.tsx"
+    ],
+    "defaults": [
+      "Cámara"
+    ]
+  },
+  "coach.gallery": {
+    "files": [
+      "ImagePickerModal.tsx"
+    ],
+    "defaults": [
+      "Galería"
+    ]
+  },
+  "profile.photoSourceTitle": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "Foto de perfil"
+    ]
+  },
+  "profile.photoSourceSubtitle": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "¿Cómo te gustaría seleccionar tu nueva foto de perfil?"
+    ]
+  },
+  "profile.takePhoto": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "Tomar foto"
+    ]
+  },
+  "profile.takePhotoDesc": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "Usa la cámara de tu dispositivo"
+    ]
+  },
+  "profile.chooseGallery": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "Elegir de la galería"
+    ]
+  },
+  "profile.chooseGalleryDesc": {
+    "files": [
+      "PhotoSourceModal.tsx"
+    ],
+    "defaults": [
+      "Selecciona una imagen existente"
+    ]
+  }
+}

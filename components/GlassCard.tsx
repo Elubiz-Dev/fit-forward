@@ -12,6 +12,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../hooks/useTheme';
+import { Radius, Shadow } from '../constants';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -106,14 +107,15 @@ export function GlassCard({
   );
 }
 
-const RADIUS = 20;
+
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: RADIUS,
+    borderRadius: Radius.lg,
+    ...Shadow.md,
   },
   glass: {
-    borderRadius: RADIUS,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
