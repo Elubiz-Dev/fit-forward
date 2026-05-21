@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   shineEdge: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: RADIUS,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     // Only show inner top/left edges as brighter
     borderTopColor:  'rgba(255,255,255,0.15)',

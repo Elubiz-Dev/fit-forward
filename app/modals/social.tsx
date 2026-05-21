@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, LayoutAnimation, Platform, UIManager, Share, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -21,7 +21,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-type TabType = 'feed' | 'friends' | 'ranking' | 'challenges';
+type TabType = 'you' | 'feed' | 'friends' | 'ranking' | 'challenges';
 
 const s = StyleSheet.create({
   container: { flex: 1 },
@@ -134,12 +134,12 @@ const s = StyleSheet.create({
 export default function SocialModal() {
   const { t } = useTranslation();
   const colors = useTheme();
-  const [activeTab, setActiveTab] = useState<TabType>('feed');
+  const [activeTab, setActiveTab] = useState<TabType>('you');
   const { profile } = useAuthStore();
   const { language } = useSettingsStore();
   const socialStore = useSocialStore();
   
-  const TABS: TabType[] = ['feed', 'friends', 'ranking', 'challenges'];
+  const TABS: TabType[] = ['you', 'feed', 'friends', 'ranking', 'challenges'];
   
   const handleSwipeTab = (direction: 1 | -1) => {
     const currentIndex = TABS.indexOf(activeTab);
@@ -190,6 +190,11 @@ export default function SocialModal() {
 
   // Challenges state
   const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
+
+  const [inspectingUser, setInspectingUser] = useState<any>(null);
+  const { achievements, unlockedCount } = require('../../hooks/useAchievements').useAchievements();
+  const ALL_BADGES = require('../../hooks/useAchievements').ALL_BADGES;
+
   const [challengeForm, setChallengeForm] = useState({
     title: '',
     description: '',
@@ -423,6 +428,138 @@ export default function SocialModal() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
   };
 
+  
+  const renderYou = () => {
+    const acceptedFriends = socialStore.friends.filter(f => f.status === 'accepted');
+    const userRankInfo = socialStore.globalRanking.find(u => u.id === profile?.id);
+    const userRankIndex = socialStore.globalRanking.findIndex(u => u.id === profile?.id);
+    const userGrade = userRankInfo ? getRank(userRankInfo.points) : getRank(0);
+    const myPosts = socialStore.posts.filter(p => p.user_id === profile?.id);
+    const currentBadgeId = profile?.selectedBadge || (profile?.role === 'super_admin' ? 'super_admin' : profile?.role === 'admin' ? 'admin' : profile?.isPro ? 'pro' : 'verified');
+    const currentBadge = ALL_BADGES[currentBadgeId] || ALL_BADGES.verified;
+
+    return (
+      <View style={s.tabContent}>
+        <GlassCard style={{ marginBottom: 16, padding: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            {profile?.avatarUrl ? (
+              <Image source={{ uri: profile.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+            ) : (
+              <View style={[s.avatarPlaceholder, { backgroundColor: colors.primary, width: 64, height: 64, borderRadius: 32 }]}>
+                <Text style={[s.avatarInitials, { fontSize: 24 }]}>{profile?.name?.[0]}</Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: 'bold' }}>{profile?.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <View style={[s.chip, { backgroundColor: currentBadge.colors[0] + '20', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                  <Text style={{ fontSize: 12 }}>{currentBadge.icon}</Text>
+                  <Text style={{ color: currentBadge.colors[0], fontSize: 12, fontWeight: '700' }}>{currentBadge.label}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          <View style={{ flexDirection: 'row', marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border + '30', justifyContent: 'space-around' }}>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>{acceptedFriends.length}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Amigos</Text>
+            </View>
+            <View style={{ width: 1, backgroundColor: colors.border + '30' }} />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>#{userRankIndex >= 0 ? userRankIndex + 1 : '-'}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Ranking</Text>
+            </View>
+            <View style={{ width: 1, backgroundColor: colors.border + '30' }} />
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: 'bold' }}>{Math.round(userRankInfo?.points || 0)}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Puntos</Text>
+            </View>
+          </View>
+        </GlassCard>
+
+        <TouchableOpacity
+          onPress={() => router.push('/modals/achievements' as any)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: '#F59E0B18',
+            borderWidth: 1.5,
+            borderColor: '#F59E0B40',
+            borderRadius: 16,
+            paddingHorizontal: 18,
+            paddingVertical: 14,
+            marginBottom: 20,
+            marginTop: 8,
+          }}
+        >
+          <Trophy size={22} color="#F59E0B" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#F59E0B', fontWeight: '800', fontSize: 15 }}>Logros</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 1 }}>Ver todos tus logros</Text>
+          </View>
+          <View style={{ backgroundColor: '#F59E0B', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14 }}>
+              {achievements.filter((a: any) => a.unlocked).length}/{achievements.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={[s.sectionTitle, { color: colors.textPrimary, marginLeft: 8, marginBottom: 12 }]}>Tus Publicaciones</Text>
+        {myPosts.length === 0 ? (
+          <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 10 }}>Aún no has publicado nada.</Text>
+        ) : (
+          myPosts.map(post => (
+            <GlassCard key={post.id} style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+              <View style={{ padding: 16 }}>
+                <View style={s.postHeader}>
+                  <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser({ ...post.user_profile, id: post.user_id })}>
+                    {post.user_profile?.avatar_url ? (
+                      <Image source={{ uri: post.user_profile.avatar_url }} style={s.avatarSmall} />
+                    ) : (
+                      <View style={[s.avatarPlaceholder, { backgroundColor: colors.primary, width: 32, height: 32 }]}>
+                        <Text style={[s.avatarInitials, { fontSize: 14 }]}>{post.user_profile?.name?.[0]}</Text>
+                      </View>
+                    )}
+                    <View>
+                      <Text style={[s.userName, { color: colors.textPrimary }]}>{post.user_profile?.name}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                        {new Date(post.created_at).toLocaleDateString()} {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => socialStore.deletePost(post.id)}>
+                    <Trash2 size={16} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={[s.postContent, { color: colors.textPrimary }]}>{post.content}</Text>
+                {post.image_url && (
+                  <Image source={{ uri: post.image_url }} style={s.postImage} resizeMode="cover" />
+                )}
+              </View>
+              <View style={[s.postFooter, { borderTopColor: colors.border + '33' }]}>
+                <View style={s.postAction}>
+                  <Heart size={18} color={post.is_liked ? colors.error : colors.textSecondary} fill={post.is_liked ? colors.error : 'transparent'} />
+                  <Text style={{ color: post.is_liked ? colors.error : colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
+                    {post.likes_count > 0 ? post.likes_count : ''} Me gusta
+                  </Text>
+                </View>
+                <View style={s.postAction}>
+                  <MessageSquare size={18} color={colors.textSecondary} />
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
+                    {post.comments_count > 0 ? post.comments_count : ''} Comentarios
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          ))
+        )}
+      </View>
+    );
+  };
+
+
   const renderFeed = () => (
     <View style={s.tabContent}>
       {/* Post Creation */}
@@ -486,7 +623,7 @@ export default function SocialModal() {
           <GlassCard key={post.id} style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
             <View style={{ padding: 16 }}>
               <View style={s.postHeader}>
-                <View style={s.userInfo}>
+                <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser({ ...post.user_profile, id: post.user_id })}>
                   {post.user_profile?.avatar_url ? (
                     <Image source={{ uri: post.user_profile.avatar_url }} style={s.avatarSmall} />
                   ) : (
@@ -500,7 +637,7 @@ export default function SocialModal() {
                       {new Date(post.created_at).toLocaleDateString()} {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
                 {post.user_id === profile?.id && (
                   <TouchableOpacity onPress={() => socialStore.deletePost(post.id)}>
                     <Trash2 size={16} color={colors.error} />
@@ -649,7 +786,7 @@ export default function SocialModal() {
           
           {searchResults.map(user => (
             <View key={user.id} style={[s.userRow, { borderBottomColor: colors.border + '33' }]}>
-              <View style={s.userInfo}>
+              <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser(user)}>
                 {user.avatar_url ? (
                   <Image source={{ uri: user.avatar_url }} style={s.avatar} />
                 ) : (
@@ -661,7 +798,7 @@ export default function SocialModal() {
                   <Text style={[s.userName, { color: colors.textPrimary }]}>{user.name}</Text>
                   <Text style={{ color: colors.textMuted, fontSize: 12 }}>{user.email}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity 
                 style={[s.actionBtn, { backgroundColor: colors.primary }]}
                 onPress={() => handleAddFriend(user.id)}
@@ -679,7 +816,7 @@ export default function SocialModal() {
             {receivedRequests.map(req => (
               <GlassCard key={req.id} style={{ marginBottom: 8, padding: 12 }}>
                 <View style={s.userRow}>
-                  <View style={s.userInfo}>
+                  <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser(req.friend_profile)}>
                     {req.friend_profile?.avatar_url ? (
                       <Image source={{ uri: req.friend_profile.avatar_url }} style={s.avatarSmall} />
                     ) : (
@@ -688,7 +825,7 @@ export default function SocialModal() {
                       </View>
                     )}
                     <Text style={[s.userName, { color: colors.textPrimary }]}>{req.friend_profile?.name}</Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity 
                       style={[s.iconBtn, { backgroundColor: colors.success }]}
@@ -715,7 +852,7 @@ export default function SocialModal() {
             {sentRequests.map(req => (
               <GlassCard key={req.id} style={{ marginBottom: 8, padding: 12, opacity: 0.8 }}>
                 <View style={s.userRow}>
-                  <View style={s.userInfo}>
+                  <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser(req.friend_profile)}>
                     {req.friend_profile?.avatar_url ? (
                       <Image source={{ uri: req.friend_profile.avatar_url }} style={s.avatarSmall} />
                     ) : (
@@ -724,7 +861,7 @@ export default function SocialModal() {
                       </View>
                     )}
                     <Text style={[s.userName, { color: colors.textPrimary }]}>{req.friend_profile?.name}</Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full }}>
                     <Text style={{ color: colors.textMuted, fontSize: 11 }}>Pendiente</Text>
                   </View>
@@ -744,7 +881,7 @@ export default function SocialModal() {
           acceptedFriends.map(friend => (
             <GlassCard key={friend.id} style={{ marginBottom: 8, padding: 12 }}>
               <View style={s.userRow}>
-                <View style={s.userInfo}>
+                <TouchableOpacity style={s.userInfo} onPress={() => setInspectingUser(friend.friend_profile)}>
                   {friend.friend_profile?.avatar_url ? (
                     <Image source={{ uri: friend.friend_profile.avatar_url }} style={s.avatarSmall} />
                   ) : (
@@ -753,7 +890,7 @@ export default function SocialModal() {
                     </View>
                   )}
                   <Text style={[s.userName, { color: colors.textPrimary }]}>{friend.friend_profile?.name}</Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity 
                   style={s.iconBtn}
                   onPress={() => router.push({
@@ -832,7 +969,7 @@ export default function SocialModal() {
             const rank = getRank(user.points);
             return (
               <View key={user.id} style={[s.userRow, { borderBottomColor: colors.border + '33' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }} onPress={() => setInspectingUser(user)}>
                   <Text style={{ fontSize: 16, fontWeight: 'bold', color: index < 3 ? '#F59E0B' : colors.textMuted, width: 24 }}>
                     {index + 1}
                   </Text>
@@ -868,7 +1005,7 @@ export default function SocialModal() {
                       <Text style={[s.rankText, { color: rank.color }]}>{rank.label}</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ fontWeight: '800', color: colors.primary, fontSize: 14 }}>{Math.round(user.points)}</Text>
                   <Text style={{ fontSize: 10, color: colors.textMuted }}>Puntos</Text>
@@ -1100,7 +1237,7 @@ export default function SocialModal() {
 
       <View style={s.tabsWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 4 }}>
-          {(['feed', 'friends', 'ranking', 'challenges'] as TabType[]).map((tab) => {
+          {(['you', 'feed', 'friends', 'ranking', 'challenges'] as TabType[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity 
@@ -1124,7 +1261,7 @@ export default function SocialModal() {
                     s.tabText, 
                     { color: isActive ? '#fff' : colors.textSecondary },
                   ]}>
-                    {tab === 'feed' ? 'Comunidad' : tab === 'friends' ? 'Amigos' : tab === 'ranking' ? 'Ranking' : 'Retos'}
+                    {tab === 'you' ? 'Tú' : tab === 'feed' ? 'Comunidad' : tab === 'friends' ? 'Amigos' : tab === 'ranking' ? 'Ranking' : 'Retos'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -1135,12 +1272,139 @@ export default function SocialModal() {
 
       <GestureDetector gesture={swipeGesture}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          {activeTab === 'you' && renderYou()}
           {activeTab === 'feed' && renderFeed()}
           {activeTab === 'friends' && renderFriends()}
           {activeTab === 'ranking' && renderRanking()}
           {activeTab === 'challenges' && renderChallenges()}
         </ScrollView>
       </GestureDetector>
+
+      
+      <Modal
+        visible={!!inspectingUser}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInspectingUser(null)}
+      >
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', padding: 24, zIndex: 1000 }]}>
+          <GlassCard style={{ padding: 0, overflow: 'hidden', borderRadius: 24 }}>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <TouchableOpacity style={{ position: 'absolute', top: 12, right: 12, padding: 8, backgroundColor: colors.surfaceAlt, borderRadius: 20 }} onPress={() => setInspectingUser(null)}>
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              {/* Avatar */}
+              <View style={{
+                width: 90, height: 90, borderRadius: 45, marginBottom: 14, marginTop: 8,
+                shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+                borderWidth: 3, borderColor: colors.primary + '60',
+              }}>
+                {inspectingUser?.avatar_url ? (
+                  <Image source={{ uri: inspectingUser.avatar_url }} style={{ width: 84, height: 84, borderRadius: 42 }} />
+                ) : (
+                  <View style={[s.avatarPlaceholder, { backgroundColor: colors.primary, width: 84, height: 84, borderRadius: 42 }]}>
+                    <Text style={[s.avatarInitials, { fontSize: 32 }]}>{inspectingUser?.name?.[0]}</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '900', letterSpacing: -0.4, marginBottom: 4, textAlign: 'center' }}>{inspectingUser?.name}</Text>
+
+              {/* Points row */}
+              {(() => {
+                const rankInfo = socialStore.globalRanking.find(u => u.id === inspectingUser?.id);
+                const rankIndex = socialStore.globalRanking.findIndex(u => u.id === inspectingUser?.id);
+                if (!rankInfo) return null;
+                const grade = getRank(rankInfo.points);
+                return (
+                  <View style={{ flexDirection: 'row', gap: 20, marginTop: 10, marginBottom: 4 }}>
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: colors.textPrimary, fontWeight: '900', fontSize: 16 }}>#{rankIndex + 1}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 10 }}>Ranking</Text>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: colors.border + '40' }} />
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 16 }}>{Math.round(rankInfo.points)}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 10 }}>Puntos</Text>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: colors.border + '40' }} />
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{ backgroundColor: grade.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ color: grade.color, fontWeight: '900', fontSize: 14 }}>{grade.label}</Text>
+                      </View>
+                      <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 2 }}>Clase</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* Action buttons */}
+              {(() => {
+                const friendStatus = socialStore.friends.find(f =>
+                  (f.user_id_1 === profile?.id && f.user_id_2 === inspectingUser?.id) ||
+                  (f.user_id_2 === profile?.id && f.user_id_1 === inspectingUser?.id)
+                );
+
+                if (inspectingUser?.id === profile?.id) return null;
+
+                return (
+                  <View style={{ width: '100%', gap: 10, marginTop: 20 }}>
+                    {/* Ver Perfil */}
+                    <TouchableOpacity
+                      style={{
+                        height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: colors.surfaceAlt,
+                        borderWidth: 1, borderColor: colors.border + '40',
+                        flexDirection: 'row', gap: 8,
+                      }}
+                      onPress={() => {
+                        router.push({ pathname: '/modals/user-profile', params: { userId: inspectingUser.id, name: inspectingUser.name, avatarUrl: inspectingUser.avatar_url } });
+                        setInspectingUser(null);
+                      }}
+                    >
+                      <Users size={16} color={colors.textPrimary} />
+                      <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Ver Perfil Completo</Text>
+                    </TouchableOpacity>
+
+                    {/* Friend action */}
+                    {friendStatus?.status === 'accepted' ? (
+                      <View style={{ height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success + '20', flexDirection: 'row', gap: 8 }}>
+                        <Check size={16} color={colors.success} />
+                        <Text style={{ color: colors.success, fontWeight: '700', fontSize: 14 }}>Son Amigos</Text>
+                      </View>
+                    ) : friendStatus?.status === 'pending' ? (
+                      <View style={{ height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt, flexDirection: 'row', gap: 8 }}>
+                        <Text style={{ color: colors.textMuted, fontWeight: '700', fontSize: 14 }}>Solicitud Pendiente</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={{
+                          height: 48, borderRadius: 14, overflow: 'hidden',
+                          shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
+                        }}
+                        onPress={async () => {
+                          await handleAddFriend(inspectingUser.id);
+                          setInspectingUser(null);
+                        }}
+                      >
+                        <LinearGradient
+                          colors={[colors.primary, colors.secondary || '#A855F7']}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                        >
+                          <Plus size={18} color="#fff" />
+                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Añadir Amigo</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()}
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
 
       <ImagePickerModal
         visible={isImageModalVisible}
