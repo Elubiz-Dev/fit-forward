@@ -12,14 +12,8 @@ import i18n from 'i18next';
 import { useTheme } from '../hooks/useTheme';
 import * as NavigationBar from 'expo-navigation-bar';
 
-// Safely detect if edge-to-edge is enabled to avoid warnings
+// Safely detect if edge-to-edge is enabled
 let isEdgeToEdgeActive = false;
-try {
-  const { isEdgeToEdge } = require('react-native-is-edge-to-edge');
-  isEdgeToEdgeActive = isEdgeToEdge();
-} catch (e) {
-  // Fallback
-}
 
 
 SplashScreen.preventAutoHideAsync();
@@ -99,20 +93,24 @@ export default function RootLayout() {
   useEffect(() => {
 
     const handleAuthStateChange = async (newSession: any) => {
-      setSession(newSession);
-      if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
-        // Initialize RevenueCat with user ID
-        await initPurchases(newSession.user.id);
-      } else {
-        setProfile(null);
-        // Logout from RevenueCat
-        // await revenueCat.logout();
+      try {
+        setSession(newSession);
+        if (newSession?.user) {
+          await fetchProfile(newSession.user.id);
+          // Initialize RevenueCat with user ID
+          await initPurchases(newSession.user.id);
+        } else {
+          setProfile(null);
+          // Logout from RevenueCat
+          // await revenueCat.logout();
+        }
+      } catch (err) {
+        console.error('Error in auth state change:', err);
+      } finally {
+        // Only hide splash/set loading false once we have tried to get the profile
+        setLoading(false);
+        SplashScreen.hideAsync();
       }
-      
-      // Only hide splash/set loading false once we have tried to get the profile
-      setLoading(false);
-      SplashScreen.hideAsync();
     };
 
     // Initialize auth
