@@ -4,6 +4,7 @@
     "strict": true,
     "strictNullChecks": true,
     "target": "ESNext",
+    "jsx": "react-native",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "paths": {

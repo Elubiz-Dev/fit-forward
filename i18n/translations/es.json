@@ -119,14 +119,16 @@
     "sendResetLink": "Enviar Enlace",
     "sending": "Enviando...",
     "emailSentSub": "Enviamos un enlace de restablecimiento a",
-    "backToLogin": "Volver al Login"
+    "backToLogin": "Volver al Login",
+    "termsRead": "He leído y acepto los",
+    "termsLink": "Términos y Condiciones"
   },
   "tabs": {
     "dashboard": "Progreso",
     "tracker": "Principal",
-    "nutritionist": "Nutricionista",
-    "trainer": "Entrenador",
-    "doctor": "Médico",
+    "nutritionist": "Alimentación",
+    "trainer": "Entrenamiento",
+    "doctor": "Bienestar",
     "planner": "Planificador",
     "profile": "Perfil",
     "coach": "Coach"
@@ -151,6 +153,8 @@
     "recentLogs": "Registros Recientes",
     "seeAll": "Ver todo",
     "fallbackName": "ahí",
+    "hello": "¡Hola",
+    "achievements": "Logros",
     "low": "Bajo",
     "medium": "Medio",
     "high": "Alto",
@@ -445,7 +449,9 @@
     "editWeightSubtitle": "Registra tu peso actual",
     "editHeightSubtitle": "Establece tu estatura actual",
     "editAgeSubtitle": "Configura tu edad actual",
-    "otherMeasurements": "Otras Medidas"
+    "otherMeasurements": "Otras Medidas",
+    "otherGender": "Otro",
+    "specifyGender": "Especifica tu género..."
   },
   "recipes": {
     "title": "Recetas IA",
@@ -464,24 +470,24 @@
     "upgradePro": "Mejora a Pro para coaching ilimitado",
     "online": "En línea · Con tecnología de Groq",
     "nutritionist": {
-      "label": "Nutricionista",
-      "welcome": "¡Hola! Soy tu Nutricionista IA. ¿En qué puedo ayudarte con tu alimentación hoy?",
+      "label": "Coach de Alimentación",
+      "welcome": "¡Hola! Soy tu Coach de Alimentación IA. ¿En qué puedo ayudarte con tu dieta hoy?",
       "suggest1": "Dame una idea de cena ligera 🥗",
       "suggest2": "¿Qué snacks son buenos para perder peso? 🍎",
       "suggest3": "¿Cuánta proteína debo comer al día? 🍗",
       "suggest4": "Analiza mi dieta actual 📊"
     },
     "trainer": {
-      "label": "Entrenador personal",
-      "welcome": "¡Hola! Soy tu Entrenador Personal IA. ¿Listo para el entrenamiento de hoy?",
+      "label": "Coach de Entrenamiento",
+      "welcome": "¡Hola! Soy tu Coach de Entrenamiento IA. ¿Listo para el entrenamiento de hoy?",
       "suggest1": "Dame una rutina de 20 min en casa 🏠",
       "suggest2": "¿Cómo mejorar mi sentadilla? 🏋️",
       "suggest3": "Plan de entrenamiento para ganar músculo 💪",
       "suggest4": "¿Qué estiramientos hacer después de correr? 🏃"
     },
     "doctor": {
-      "label": "Médico Personal",
-      "welcome": "¡Hola! Soy tu Médico Personal IA. ¿En qué te puedo ayudar con tu salud hoy?",
+      "label": "Coach de Bienestar",
+      "welcome": "¡Hola! Soy tu Coach de Bienestar IA. ¿Cómo puedo asistirte con tu bienestar hoy?",
       "suggest1": "¿Qué debo hacer si me siento mareado tras entrenar? 😵‍💫",
       "suggest2": "¿Hay interacciones con mis medicamentos? 💊",
       "suggest3": "¿Cómo puedo mejorar mi calidad de sueño? 🛌",
@@ -665,7 +671,6 @@
     "medicalConditionsSub": "Esto nos ayuda a hacer recomendaciones más seguras para ti",
     "medicationsTitle": "¿Actualmente tomas algún medicamento o suplemento?",
     "medicationsSub": "Esto nos ayuda a evitar conflictos con tu plan nutricional",
-    "anabolicsDisclaimer": "Bajo su propia responsabilidad. La app no apoya el uso de estas sustancias.",
     "skipStep": "Omitir este paso",
     "otherSpecify": "Otra (especificar)",
     "otherPlaceholder": "Escribe aquí...",
@@ -705,7 +710,6 @@
       "multivitamins": "Vitaminas / Multivitamínicos",
       "omega3": "Omega-3",
       "iron": "Hierro",
-      "anabolics": "Anabólicos",
       "none": "Ninguno"
     },
     "projectionTitle": "¡Así será tu progreso!",
@@ -719,7 +723,10 @@
     "warningOverweightMaintain": "Tu peso actual es alto. Considera la meta de pérdida de peso.",
     "maintainHealthy": "¡Excelente! Estás en un peso ideal para mantenerte en forma.",
     "currentGoal": "Peso actual",
-    "nextGoal": "Peso objetivo"
+    "nextGoal": "Peso objetivo",
+    "termsTitle": "Términos y Condiciones",
+    "termsSub": "Lee y acepta para continuar con tu plan",
+    "termsAgreement": "He leído y acepto los Términos de Servicio y la Política de Privacidad de FitGO. Entiendo que mis datos serán usados para personalizar mis recomendaciones."
   },
   "scan": {
     "title": "Escanear Alimento",
@@ -2347,5 +2354,98 @@
     "barbell reverse wrist curl - prone variation": "Curl de muñeca inverso con barra - variación boca abajo",
     "firm style hanging oblique knee raise": "Elevación de rodilla oblicua colgante estilo firme",
     "horizontal dumbbell standing alternate overhead press": "Press de hombros alterno de pie con mancuernas horizontales"
+  },
+  "nutritionist": "Alimentación",
+  "doctor": "Bienestar",
+  "social": {
+    "title": "FitGo Social",
+    "sharedFrom": "Compartido desde FitGo",
+    "cameraPermission": "Se necesita permiso para acceder a la cámara.",
+    "galleryPermission": "Se necesita permiso para acceder a la galería.",
+    "tabs": {
+      "you": "Tú",
+      "feed": "Comunidad",
+      "friends": "Amigos",
+      "ranking": "Ranking",
+      "challenges": "Retos"
+    },
+    "you": {
+      "friends": "Amigos",
+      "ranking": "Ranking",
+      "points": "Puntos",
+      "achievements": "Logros",
+      "viewAllAchievements": "Ver todos tus logros",
+      "yourPosts": "Tus Publicaciones",
+      "noPosts": "Aún no has publicado nada."
+    },
+    "feed": {
+      "postPlaceholder": "¿Qué estás pensando?",
+      "photo": "Foto",
+      "noPosts": "Aún no hay publicaciones.",
+      "firstToShare": "¡Sé el primero en compartir algo!",
+      "like": "Me gusta",
+      "liked": "Te gusta",
+      "comment": "Comentar",
+      "share": "Compartir",
+      "writeComment": "Escribe un comentario...",
+      "edited": "(editado)"
+    },
+    "friends": {
+      "addFriends": "Añadir Amigos",
+      "searchPlaceholder": "Nombre, Email o ID...",
+      "searchBtn": "Buscar",
+      "sendRequest": "Enviar Solicitud",
+      "receivedRequests": "Solicitudes Recibidas",
+      "sentRequests": "Solicitudes Enviadas",
+      "pending": "Pendiente",
+      "myFriends": "Mis Amigos",
+      "noFriends": "Aún no tienes amigos."
+    },
+    "ranking": {
+      "currentRank": "Tu Rango Actual",
+      "inWorld": "del mundo",
+      "points": "PUNTOS",
+      "globalRanking": "Ranking Global",
+      "description": "Compite por la constancia. Los puntos se calculan basados en tus registros diarios.",
+      "instructionsTitle": "¿Cómo subir de puntos?",
+      "instructionsDesc": "Gana puntos y sube de rango completando estas acciones:\n• Registrar comida: 10 pts\n• Registrar actividad: 50 pts\n• Completar un reto: 100 pts\n• Desbloquear un logro: 100 pts\n\nLa constancia es la clave. ¡Sigue registrando todos los días para ser leyenda en FitGo!",
+      "gotIt": "¡Entendido!"
+    },
+    "challenges": {
+      "fitgoChallenges": "Retos FitGo",
+      "suggestAI": "Sugerencia de Fitz (IA)",
+      "acceptChallenge": "Aceptar Reto",
+      "newCustomChallenge": "Nuevo Reto Personalizado",
+      "createChallenge": "Crear Nuevo Reto",
+      "challengeTitle": "Título del Reto",
+      "titlePlaceholder": "Ej. Semana de Acero",
+      "description": "Descripción",
+      "descPlaceholder": "Descripción del reto...",
+      "type": "Tipo",
+      "steps": "Pasos",
+      "calories": "Calorías",
+      "physical": "Físico",
+      "days": "Días",
+      "customGoal": "Objetivo personalizado",
+      "customGoalPlaceholder": "Ej. Hacer 100 flexiones en total...",
+      "targetSteps": "Objetivo (Pasos por día)",
+      "targetCalories": "Objetivo (Calorías por día)",
+      "participants": "¿Quiénes participan?",
+      "participantsDesc": "Toca para seleccionar. Puedes incluirte a ti y a varios amigos.",
+      "me": "Yo",
+      "startOnlyMe": "🎯 Comenzar (solo yo)",
+      "startWithFriends": "⚔️ Yo + {count} amigo(s)",
+      "challengeFriendsOnly": "⚔️ Retar a {count} amigo(s) (sin mí)",
+      "start": "🎯 Comenzar",
+      "activeChallenges": "Retos Activos",
+      "noActiveChallenges": "No hay retos activos."
+    },
+    "profileModal": {
+      "fullProfile": "Ver Perfil Completo",
+      "areFriends": "Son Amigos",
+      "pendingRequest": "Solicitud Pendiente",
+      "addFriend": "Añadir Amigo",
+      "class": "Clase"
+    }
   }
 }

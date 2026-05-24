@@ -4,6 +4,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { triggerInstantNotification } from '../services/notifications';
 
+let activeUnreadChannel: any = null;
+let activeSocialChannel: any = null;
 
 export interface Friend {
   id: string;
@@ -168,8 +170,11 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   subscribeToUnreadMessages: (userId: string) => {
+    if (activeUnreadChannel) {
+      return () => {};
+    }
     const uniqueSuffix = Math.random().toString(36).substring(7);
-    const channel = supabase.channel(`unread_counts_${userId}_${uniqueSuffix}`)
+    activeUnreadChannel = supabase.channel(`unread_counts_${userId}_${uniqueSuffix}`)
       .on(
         'postgres_changes',
         {
@@ -191,9 +196,9 @@ export const useSocialStore = create<SocialState>((set, get) => ({
               .eq('id', senderId)
               .single()
               .then(({ data }) => {
-                const senderName = data?.name || 'Alguien';
+                const senderName = data?.name || 'Someone';
                 triggerInstantNotification(
-                  `💬 Nuevo mensaje de ${senderName}`,
+                  `💬 New message from ${senderName}`,
                   content
                 );
               });
@@ -214,12 +219,20 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       )
       .subscribe();
       
-    return () => supabase.removeChannel(channel);
+    return () => {
+      if (activeUnreadChannel) {
+        supabase.removeChannel(activeUnreadChannel);
+        activeUnreadChannel = null;
+      }
+    };
   },
 
   subscribeToSocialEvents: (userId: string) => {
+    if (activeSocialChannel) {
+      return () => {};
+    }
     const uniqueSuffix = Math.random().toString(36).substring(7);
-    const channel = supabase.channel(`social_events_${userId}_${uniqueSuffix}`)
+    activeSocialChannel = supabase.channel(`social_events_${userId}_${uniqueSuffix}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
         get().fetchPosts();
       })
@@ -242,10 +255,10 @@ export const useSocialStore = create<SocialState>((set, get) => ({
               .eq('id', senderId)
               .single()
               .then(({ data }) => {
-                const senderName = data?.name || 'Alguien';
+                const senderName = data?.name || 'Someone';
                 triggerInstantNotification(
-                  `👥 Solicitud de amistad`,
-                  `${senderName} te ha enviado una solicitud de amistad.`
+                  `👥 Friend Request`,
+                  `${senderName} sent you a friend request.`
                 );
               });
           }
@@ -260,10 +273,10 @@ export const useSocialStore = create<SocialState>((set, get) => ({
                 .eq('id', friendId)
                 .single()
                 .then(({ data }) => {
-                  const friendName = data?.name || 'Tu amigo';
+                  const friendName = data?.name || 'Your friend';
                   triggerInstantNotification(
-                    `🤝 ¡Solicitud de amistad aceptada!`,
-                    `${friendName} ha aceptado tu solicitud de amistad. ¡Ya pueden chatear!`
+                    `🤝 Friend request accepted!`,
+                    `${friendName} accepted your friend request. You can now chat!`
                   );
                 });
             }
@@ -278,7 +291,12 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      if (activeSocialChannel) {
+        supabase.removeChannel(activeSocialChannel);
+        activeSocialChannel = null;
+      }
+    };
   },
 
   searchUsers: async (query: string) => {

@@ -164,7 +164,9 @@
     "deleteAccountError": "Não foi possível excluir a conta. Saia e entre novamente, ou entre em contato com o suporte.",
     "otherMeasurements": "Outras medidas",
     "medicationsSupplements": "Medicamentos & Suplementos",
-    "selectBadge": "Escolha seu Badge"
+    "selectBadge": "Escolha seu Badge",
+    "otherGender": "Outro",
+    "specifyGender": "Especifique o seu gênero..."
   },
   "coach": {
     "title": "Fitz Coach",
@@ -174,8 +176,8 @@
     "upgradePro": "Mude para Pro para coaching ilimitado",
     "online": "Online · Alimentado por Groq",
     "nutritionist": {
-      "label": "Nutricionista",
-      "welcome": "Olá! Eu sou seu Nutricionista IA. Como posso ajudar com sua dieta hoje?",
+      "label": "Coach de Alimentação",
+      "welcome": "Olá! Sou seu Coach de Alimentação IA. Como posso ajudar com sua dieta hoje?",
       "suggest1": "Dê-me uma ideia de jantar leve 🥗",
       "suggest2": "Quais lanches são bons para perder peso? 🍎",
       "suggest3": "Quanta proteína devo comer diariamente? 🍗",
@@ -190,8 +192,8 @@
       "suggest4": "Quais alongamentos fazer após correr? 🏃"
     },
     "doctor": {
-      "label": "Médico Pessoal",
-      "welcome": "Olá! Sou seu Médico Pessoal IA.",
+      "label": "Coach de Bem-estar",
+      "welcome": "Olá! Sou seu Coach de Bem-estar IA. Como posso ajudar com seu bem-estar hoje?",
       "suggest1": "O que fazer se sentir tontura após o treino? 😵‍💫",
       "suggest2": "Há interações com meus medicamentos? 💊",
       "suggest3": "Como melhorar a qualidade do sono? 🛋️",
@@ -297,7 +299,9 @@
     "sendResetLink": "Enviar link de redefinição",
     "sending": "Enviando...",
     "emailSentSub": "Enviamos um link de redefinição para",
-    "backToLogin": "Voltar ao login"
+    "backToLogin": "Voltar ao login",
+    "termsRead": "Li e aceito os",
+    "termsLink": "Termos e Condições"
   },
   "dashboard": {
     "greetingMorning": "Bom dia",
@@ -319,6 +323,8 @@
     "recentLogs": "Registros Recentes",
     "seeAll": "Ver todos",
     "fallbackName": "amigo",
+    "hello": "Olá",
+    "achievements": "Conquistas",
     "low": "Baixo",
     "medium": "Médio",
     "high": "Alto",
@@ -585,7 +591,6 @@
     "medicalConditionsSub": "Isso nos ajuda a fazer recomendações mais seguras para você",
     "medicationsTitle": "Você toma algum medicamento ou suplemento?",
     "medicationsSub": "Isso nos ajuda a evitar conflitos com seu plano nutricional",
-    "anabolicsDisclaimer": "Sob sua própria responsabilidade. O aplicativo não apoia o uso dessas substâncias.",
     "skipStep": "Pular esta etapa",
     "otherSpecify": "Outro (especificar)",
     "otherPlaceholder": "Digite aqui...",
@@ -625,7 +630,6 @@
       "multivitamins": "Vitaminas / Multivitamínicos",
       "omega3": "Omega-3",
       "iron": "Ferro",
-      "anabolics": "Anabolizantes",
       "none": "Nenhum"
     },
     "dietTypeTitle": "Que tipo de dieta prefere?",
@@ -677,7 +681,10 @@
     "activityLightEx": "Caminhada rápida · yoga · ciclismo leve",
     "activityModerateEx": "Academia · cardio · natação · aulas em grupo",
     "activityActiveEx": "Musculação · HIIT · esporte amador",
-    "activityVeryActiveEx": "Atleta competitivo · 2 treinos/dia"
+    "activityVeryActiveEx": "Atleta competitivo · 2 treinos/dia",
+    "termsTitle": "Termos e Condições",
+    "termsSub": "Leia e aceite para continuar",
+    "termsAgreement": "Li e aceito os Termos de Serviço e a Política de Privacidade do FitGO. Entendo que meus dados serão usados para personalizar minhas recomendações."
   },
   "reminders": {
     "stayOnTrack": "Mantenha-se no caminho",
@@ -777,5 +784,98 @@
     "exercisesCount": "exercícios"
   },
   "exerciseNames": {},
-  "equipment": {}
+  "equipment": {},
+  "nutritionist": "Alimentação",
+  "doctor": "Bem-estar",
+  "social": {
+    "title": "FitGo Social",
+    "sharedFrom": "Compartilhado do FitGo",
+    "cameraPermission": "É necessária permissão para a câmera.",
+    "galleryPermission": "É necessária permissão para a galeria.",
+    "tabs": {
+      "you": "Você",
+      "feed": "Comunidade",
+      "friends": "Amigos",
+      "ranking": "Ranking",
+      "challenges": "Desafios"
+    },
+    "you": {
+      "friends": "Amigos",
+      "ranking": "Ranking",
+      "points": "Pontos",
+      "achievements": "Conquistas",
+      "viewAllAchievements": "Ver todas as conquistas",
+      "yourPosts": "Suas postagens",
+      "noPosts": "Você ainda não postou nada."
+    },
+    "feed": {
+      "postPlaceholder": "No que você está pensando?",
+      "photo": "Foto",
+      "noPosts": "Ainda não há postagens.",
+      "firstToShare": "Seja o primeiro a compartilhar algo!",
+      "like": "Curtir",
+      "liked": "Curtiu",
+      "comment": "Comentar",
+      "share": "Compartilhar",
+      "writeComment": "Escreva um comentário...",
+      "edited": "(editado)"
+    },
+    "friends": {
+      "addFriends": "Adicionar Amigos",
+      "searchPlaceholder": "Nome, E-mail ou ID...",
+      "searchBtn": "Buscar",
+      "sendRequest": "Enviar Solicitação",
+      "receivedRequests": "Solicitações Recebidas",
+      "sentRequests": "Solicitações Enviadas",
+      "pending": "Pendente",
+      "myFriends": "Meus Amigos",
+      "noFriends": "Você ainda não tem amigos."
+    },
+    "ranking": {
+      "currentRank": "Sua Classificação Atual",
+      "inWorld": "no mundo",
+      "points": "PONTOS",
+      "globalRanking": "Ranking Global",
+      "description": "Compita pela constância. Os pontos são calculados com base em seus registros diários e conquistas.",
+      "instructionsTitle": "Como ganhar pontos?",
+      "instructionsDesc": "Ganhe pontos e suba de nível concluindo estas ações:\n• Registrar refeição: 10 pts\n• Registrar atividade: 50 pts\n• Completar desafio: 100 pts\n• Desbloquear conquista: 100 pts\n\nA constância é a chave. Continue registrando diariamente para se tornar uma lenda do FitGo!",
+      "gotIt": "Entendi!"
+    },
+    "challenges": {
+      "fitgoChallenges": "Desafios FitGo",
+      "suggestAI": "Sugestão do Fitz (IA)",
+      "acceptChallenge": "Aceitar Desafio",
+      "newCustomChallenge": "Novo Desafio Personalizado",
+      "createChallenge": "Criar Novo Desafio",
+      "challengeTitle": "Título do Desafio",
+      "titlePlaceholder": "ex. Semana de Ferro",
+      "description": "Descrição",
+      "descPlaceholder": "Descrição do desafio...",
+      "type": "Tipo",
+      "steps": "Passos",
+      "calories": "Calorias",
+      "physical": "Físico",
+      "days": "Dias",
+      "customGoal": "Objetivo Personalizado",
+      "customGoalPlaceholder": "ex. 100 flexões...",
+      "targetSteps": "Objetivo (Passos por dia)",
+      "targetCalories": "Objetivo (Calorias por dia)",
+      "participants": "Quem está participando?",
+      "participantsDesc": "Toque para selecionar. Você pode se incluir e a vários amigos.",
+      "me": "Eu",
+      "startOnlyMe": "🎯 Começar (só eu)",
+      "startWithFriends": "⚔️ Eu + {count} amigo(s)",
+      "challengeFriendsOnly": "⚔️ Desafiar {count} amigo(s) (sem mim)",
+      "start": "🎯 Começar",
+      "activeChallenges": "Desafios Ativos",
+      "noActiveChallenges": "Nenhum desafio ativo."
+    },
+    "profileModal": {
+      "fullProfile": "Ver Perfil Completo",
+      "areFriends": "Vocês são amigos",
+      "pendingRequest": "Solicitação Pendente",
+      "addFriend": "Adicionar Amigo",
+      "class": "Classe"
+    }
+  }
 }

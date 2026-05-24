@@ -11,6 +11,7 @@ import Svg, { Circle, G, Path, Polygon, Line, Text as SvgText } from 'react-nati
 import { BarChart } from 'react-native-gifted-charts';
 import { Spacing, Radius } from '../../../constants';
 import { useAuthStore, useNutritionStore, selectDailyTotals, useSettingsStore, usePurchaseStore } from '../../../store';
+import { KeyboardTypeOptions } from 'react-native';
 import { useTheme } from '../../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useSocialStore } from '../../../store';
@@ -98,11 +99,14 @@ export default function TrackerScreen() {
     addWater, dailyWater, dailySteps, setSteps, addActivityLog,
     removeActivityLog, updateActivityLog,
     addSteps, dailyNeat, dailyExercise, activityLogs,
-    setLogs, setActivityLogs, addExtraSnack, removeExtraSnack
+    setLogs, setActivityLogs, addExtraSnack, removeExtraSnack,
+    removeLog
   } = useNutritionStore();
   const { energyUnit, volumeUnit } = useSettingsStore();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
+  // Multi-select state: Set of selected log IDs
+  const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
   const { totalUnreadCount, friends } = useSocialStore();
 
   const pendingRequestsCount = useMemo(() => {
@@ -120,9 +124,12 @@ export default function TrackerScreen() {
     message: string;
     confirmText?: string;
     cancelText?: string;
-    onConfirm: () => void;
+    onConfirm: (val?: string) => void;
     onCancel?: () => void;
     actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[];
+    showInput?: boolean;
+    initialInputValue?: string;
+    keyboardType?: KeyboardTypeOptions;
   }>({
     visible: false,
     type: 'info',
@@ -135,19 +142,25 @@ export default function TrackerScreen() {
     type: AlertType,
     title: string,
     message: string,
-    onConfirm: () => void = () => {},
+    onConfirm: (val?: string) => void = () => {},
     onCancel: () => void = () => {},
     confirmText?: string,
     cancelText?: string,
-    actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[]
+    actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[],
+    showInput?: boolean,
+    initialInputValue?: string,
+    keyboardType?: KeyboardTypeOptions
   ) => {
     setAlert({
       visible: true,
       type,
       title,
       message,
-      onConfirm: () => {
-        onConfirm();
+      showInput,
+      initialInputValue,
+      keyboardType,
+      onConfirm: (val?: string) => {
+        onConfirm(val);
         setAlert(s => ({ ...s, visible: false }));
       },
       onCancel: () => {
@@ -243,7 +256,7 @@ export default function TrackerScreen() {
       arr.push({
         label: d.toLocaleDateString(language, { weekday: 'narrow' }).toUpperCase(),
         dayNum: d.getDate(),
-        full: d.toISOString().split('T')[0],
+        full: getLocalDateString(d),
       });
     }
     return arr;
@@ -300,7 +313,7 @@ export default function TrackerScreen() {
     for (let i = 27; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const hasLogs = todayLogs.some(l => l.loggedAt.startsWith(dateStr));
       const dayLabel = d.getDay(); // 0=Sun
       result.push({ dateStr, hasLogs, dayLabel, dayNum: d.getDate() });
@@ -326,7 +339,7 @@ export default function TrackerScreen() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      days.push(d.toISOString().split('T')[0]);
+      days.push(getLocalDateString(d));
     }
 
     const mealColors: Record<string, string> = {
@@ -406,6 +419,9 @@ export default function TrackerScreen() {
         onConfirm={alert.onConfirm}
         onCancel={alert.onCancel}
         actions={alert.actions}
+        showInput={alert.showInput}
+        initialInputValue={alert.initialInputValue}
+        keyboardType={alert.keyboardType}
       />
       {/* Header */}
       <View style={s.header}>
@@ -428,7 +444,11 @@ export default function TrackerScreen() {
         </View>
         <TouchableOpacity 
           style={s.socialBtn} 
-          onPress={() => router.push('/modals/social' as any)}
+          activeOpacity={0.7}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push('/modals/social' as any);
+          }}
         >
           {socialNotificationCount > 0 ? (
             <LinearGradient
@@ -640,44 +660,163 @@ export default function TrackerScreen() {
           const mealCals = Math.round(mealLogs.reduce((s, l) => s + (l.calories || 0), 0));
           const isExtraSnack = m.startsWith('snack') && m !== 'snack';
           const snackNumber = isExtraSnack ? m.replace('snack', '') : '';
+          // Which logs in THIS meal are selected
+          const mealSelectedIds = mealLogs.map(l => l.id).filter(id => selectedLogIds.has(id));
+          const selCount = mealSelectedIds.length;
+          const isSelecting = selCount > 0;
+
+          const handleLogPress = (log: typeof mealLogs[0]) => {
+            if (isSelecting) {
+              // Toggle selection
+              setSelectedLogIds(prev => {
+                const next = new Set(prev);
+                if (next.has(log.id)) next.delete(log.id);
+                else next.add(log.id);
+                return next;
+              });
+            } else {
+              // Normal: go to edit
+              router.push({ 
+                pathname: '/modals/food-detail', 
+                params: { 
+                  foodJson: JSON.stringify(log.foodItem), 
+                  logId: log.id,
+                  initialGrams: String(log.grams),
+                  meal: log.meal,
+                  date: selectedDate
+                } 
+              } as any);
+            }
+          };
+
+          const handleLogLongPress = (log: typeof mealLogs[0]) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setSelectedLogIds(prev => {
+              const next = new Set(prev);
+              next.add(log.id);
+              return next;
+            });
+          };
+
+          const handleDeleteSelected = () => {
+            showAlert(
+              'confirm',
+              t('tracker.removeEntry', 'Eliminar'),
+              selCount === 1
+                ? t('tracker.removeConfirm', { name: mealLogs.find(l => selectedLogIds.has(l.id))?.foodItem.name || '' })
+                : `¿Eliminar ${selCount} alimentos?`,
+              async () => {
+                await Promise.all(mealSelectedIds.map(id => removeLog(id)));
+                setSelectedLogIds(new Set());
+              },
+              () => {},
+              t('common.remove', 'Eliminar'),
+              t('common.cancel', 'Cancelar')
+            );
+          };
+
+          const handleEditSelected = () => {
+            const logId = mealSelectedIds[0];
+            const log = mealLogs.find(l => l.id === logId);
+            if (!log) return;
+            setSelectedLogIds(new Set());
+            router.push({ 
+              pathname: '/modals/food-detail', 
+              params: { 
+                foodJson: JSON.stringify(log.foodItem), 
+                logId: log.id,
+                initialGrams: String(log.grams),
+                meal: log.meal,
+                date: selectedDate
+              } 
+            } as any);
+          };
           
           return (
             <AnimatedCard key={m} index={idx + 2}>
-              <GlassCard noPadding showStripe accentColor={mealCals > 0 ? colors.primary : colors.border}>
+              <GlassCard noPadding showStripe accentColor={isSelecting ? colors.primary : mealCals > 0 ? colors.primary : colors.border}>
               <View style={[s.mealCard]}>
               <View style={s.cardHeader}>
-                <Text style={[s.cardTitle, { color: colors.textPrimary }]}>
-                  {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
-                </Text>
-                {isExtraSnack && m === `snack${(profile?.extraSnacks || 0) + 1}` && (
-                  <TouchableOpacity onPress={removeExtraSnack}>
-                    <Text style={{ color: colors.error, fontSize: 13 }}>{t('common.remove', 'Remove')}</Text>
-                  </TouchableOpacity>
-                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.cardTitle, { color: colors.textPrimary }]}>
+                    {isExtraSnack ? `Snack ${snackNumber}` : t(`tracker.${m}`, m)}
+                  </Text>
+                  <Text style={[s.mealSub, { color: colors.textSecondary, marginBottom: 0 }]}>🔥 {mealCals} {energyLabel}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {isSelecting && selCount === 1 && (
+                    <TouchableOpacity
+                      onPress={handleEditSelected}
+                      style={[s.selActionBtn, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '55' }]}
+                    >
+                      <Text style={[s.selActionText, { color: colors.primary }]}>✏️ {t('common.edit', 'Editar')}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isSelecting && (
+                    <TouchableOpacity
+                      onPress={handleDeleteSelected}
+                      style={[s.selActionBtn, { backgroundColor: colors.error + '22', borderColor: colors.error + '55' }]}
+                    >
+                      <Text style={[s.selActionText, { color: colors.error }]}>🗑️ {selCount > 1 ? `${selCount}` : ''} {t('common.remove', 'Eliminar')}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isSelecting && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedLogIds(new Set())}
+                      style={[s.selActionBtn, { backgroundColor: colors.border + '55', borderColor: colors.border }]}
+                    >
+                      <Text style={[s.selActionText, { color: colors.textSecondary }]}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!isSelecting && isExtraSnack && m === `snack${(profile?.extraSnacks || 0) + 1}` && (
+                    <TouchableOpacity onPress={removeExtraSnack}>
+                      <Text style={{ color: colors.error, fontSize: 13 }}>{t('common.remove', 'Remove')}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-              <Text style={[s.mealSub, { color: colors.textSecondary }]}>🔥 {mealCals} {energyLabel}</Text>
               
-              {mealLogs.map(log => (
-                <TouchableOpacity 
-                  key={log.id} 
-                  style={s.logItem}
-                  onPress={() => router.push({ 
-                    pathname: '/modals/food-detail', 
-                    params: { 
-                      foodJson: JSON.stringify(log.foodItem), 
-                      logId: log.id,
-                      initialGrams: String(log.grams),
-                      meal: log.meal,
-                      date: selectedDate
-                    } 
-                  } as any)}
-                >
-                  <Text style={[s.logName, { color: colors.textPrimary }]}>{log.foodItem.name}</Text>
-                  <Text style={[s.logCal, { color: colors.textSecondary }]}>{Math.round(convertEnergy(log.calories, 'kcal', energyUnit))} {energyLabel}</Text>
-                </TouchableOpacity>
-              ))}
+              {mealLogs.map(log => {
+                const isSelected = selectedLogIds.has(log.id);
+                return (
+                  <TouchableOpacity 
+                    key={log.id} 
+                    style={[
+                      s.logItem,
+                      isSelected && { backgroundColor: colors.primary + '18', borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 }
+                    ]}
+                    onPress={() => handleLogPress(log)}
+                    onLongPress={() => handleLogLongPress(log)}
+                    delayLongPress={350}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+                      {isSelecting && (
+                        <View style={[
+                          s.checkCircle,
+                          isSelected
+                            ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                            : { backgroundColor: 'transparent', borderColor: colors.textMuted }
+                        ]}>
+                          {isSelected && <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>✓</Text>}
+                        </View>
+                      )}
+                      <Text style={[s.logName, { color: colors.textPrimary, flex: 1 }]}>{log.foodItem.name}</Text>
+                    </View>
+                    <Text style={[s.logCal, { color: isSelected ? colors.primary : colors.textSecondary }]}>
+                      {Math.round(convertEnergy(log.calories, 'kcal', energyUnit))} {energyLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
 
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]} onPress={() => handleAddMeal(m as Meal)}>
+              <TouchableOpacity
+                style={[s.addBtn, { backgroundColor: colors.surfaceAlt }]}
+                onPress={() => {
+                  setSelectedLogIds(new Set());
+                  handleAddMeal(m as Meal);
+                }}
+              >
                 <Text style={[s.addBtnText, { color: colors.textPrimary }]}>+</Text>
               </TouchableOpacity>
               </View>
@@ -1007,7 +1146,28 @@ export default function TrackerScreen() {
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{t('tracker.water')}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
-            <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
+            <TouchableOpacity onPress={() => {
+              showAlert(
+                'info',
+                t('tracker.water'),
+                t('tracker.enterWater', 'Ingresa la cantidad de agua en ml:'),
+                (val) => {
+                  if (val && !isNaN(Number(val))) {
+                    const diff = Number(val) - rawWater;
+                    addWater(diff);
+                  }
+                },
+                () => {},
+                t('common.save', 'Guardar'),
+                t('common.cancel', 'Cancelar'),
+                undefined,
+                true,
+                rawWater.toString(),
+                'numeric'
+              );
+            }}>
+              <Text style={[s.waterVal, { color: colors.textPrimary }]}>💧 {(waterIntake / 1000).toFixed(1)} <Text style={{fontSize: 16, color: colors.textSecondary}}>/ 3.5 L</Text></Text>
+            </TouchableOpacity>
             <Text style={[s.waterSub, { color: colors.textSecondary }]}>{Math.floor(waterIntake / 250)} {t('tracker.of')} 14 {t('tracker.glasses')}</Text>
           </View>
           <View style={s.waterControls}>
@@ -1032,9 +1192,29 @@ export default function TrackerScreen() {
           </View>
           <View style={s.stepsRow}>
             <Text style={{ fontSize: 24 }}>👟</Text>
-            <Text style={[s.stepsVal, { color: colors.textPrimary }]}>
-              {steps} <Text style={{ fontSize: 16, color: colors.textSecondary }}>/ 6000 {t('tracker.steps').toLowerCase()}</Text>
-            </Text>
+            <TouchableOpacity onPress={() => {
+              showAlert(
+                'info',
+                t('tracker.steps'),
+                t('tracker.enterSteps', 'Ingresa el número de pasos:'),
+                (val) => {
+                  if (val && !isNaN(Number(val))) {
+                    setSteps(Number(val));
+                  }
+                },
+                () => {},
+                t('common.save', 'Guardar'),
+                t('common.cancel', 'Cancelar'),
+                undefined,
+                true,
+                steps.toString(),
+                'numeric'
+              );
+            }}>
+              <Text style={[s.stepsVal, { color: colors.textPrimary }]}>
+                {steps} <Text style={{ fontSize: 16, color: colors.textSecondary }}>/ 6000 {t('tracker.steps').toLowerCase()}</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={[s.progressBar, { backgroundColor: colors.border + '55' }]}>
             <View style={[s.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%`, backgroundColor: colors.success }]} />
@@ -1103,9 +1283,12 @@ const s = StyleSheet.create({
   mealSub:       { fontSize: 13, marginBottom: 12 },
   addBtn:        { borderRadius: Radius.full, paddingVertical: 12, alignItems: 'center', marginTop: 10 },
   addBtnText:    { fontSize: 24, lineHeight: 28 },
-  logItem:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  logItem:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingVertical: 4 },
   logName:       { fontSize: 15 },
   logCal:        { fontSize: 14 },
+  selActionBtn:  { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
+  selActionText: { fontSize: 12, fontWeight: '700' },
+  checkCircle:   { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 
   waterVal:      { fontSize: 24, fontWeight: 'bold' },
   waterSub:      { fontSize: 14 },

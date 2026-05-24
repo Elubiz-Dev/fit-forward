@@ -92,7 +92,7 @@ export function buildCoachSystemPrompt(userProfile: {
   age?: number;
   weight?: number;
   height?: number;
-  sex?: 'male' | 'female';
+  sex?: 'male' | 'female' | 'other';
   activityLevel?: string;
   dietaryRestrictions?: string[];
   medicalConditions?: string[];
@@ -121,7 +121,6 @@ Health Profile (CRITICAL):
 - Medications/Supplements: ${userProfile.medicationsSupplements?.length && !userProfile.medicationsSupplements.includes('none') ? userProfile.medicationsSupplements.join(', ') : 'None reported'}
 - Dietary Restrictions: ${userProfile.dietaryRestrictions?.length && !userProfile.dietaryRestrictions.includes('none') ? userProfile.dietaryRestrictions.join(', ') : 'None reported'}
 - Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
-- Note on Anabolics: If the user mentions anabolic substances in their medications (e.g., "anabolics:testosterone"), you MUST provide specific safety advice while maintaining a professional and non-judgmental tone.
 
 ${userProfile.mealPlans && Object.keys(userProfile.mealPlans).length > 0 ? `Current Weekly Meal Plan:\n${JSON.stringify(userProfile.mealPlans)}` : ''}
 ${userProfile.workoutPlans && Object.keys(userProfile.workoutPlans).length > 0 ? `Current Weekly Workout Plan:\n${JSON.stringify(userProfile.workoutPlans)}` : ''}`;
@@ -132,12 +131,12 @@ ${userProfile.workoutPlans && Object.keys(userProfile.workoutPlans).length > 0 ?
       pt: 'treinador pessoal', it: 'personal trainer', de: 'Personal Trainer', ru: 'персональный тренер'
     },
     nutritionist: {
-      en: 'nutritionist', es: 'nutricionista', fr: 'nutritionniste',
-      pt: 'nutricionista', it: 'nutrizionista', de: 'Ernährungsberater', ru: 'диетолог'
+      en: 'diet/food coach', es: 'coach de alimentación', fr: 'coach en alimentation',
+      pt: 'coach de alimentação', it: 'coach alimentare', de: 'Ernährungscoach', ru: 'тренер по питанию'
     },
     doctor: {
-      en: 'personal doctor', es: 'médico personal', fr: 'médecin personnel',
-      pt: 'médico pessoal', it: 'medico personale', de: 'Leibarzt', ru: 'личный врач'
+      en: 'wellness coach', es: 'coach de bienestar', fr: 'coach en bien-être',
+      pt: 'coach de bem-estar', it: 'coach del benessere', de: 'Wellness-Coach', ru: 'тренер по благополучию'
     }
   };
 
@@ -150,7 +149,7 @@ ${allProfileData}
 
 Guidelines:
 1. Act as a professional ${role}. Provide helpful, specific, and evidence-based responses. Cover all questions honestly, including those about medications, supplements, or complex medical situations — always prioritizing accurate, actionable advice.
-2. If the user asks about potentially risky topics (anabolic steroids, extreme weight loss, ignoring medical conditions), answer the question completely while including this mandatory disclaimer: "⚠️ ADVERTENCIA: Esta información se proporciona únicamente con fines informativos. El uso de sustancias de riesgo o ignorar condiciones médicas puede conllevar consecuencias graves para la salud."
+2. DISCLAIMER REQUIREMENT: You MUST include a disclaimer in every response stating that you are an AI, not a certified professional, and that the user should consult a real professional before following these recommendations.
 3. Provide the most accurate advice possible using the profile data. Reference meal or workout plans if mentioned. Keep responses concise and practical (under 250 words).
 4. Use relevant emojis in a balanced and professional way to make the response engaging, but do not overdo it. Use them to highlight key points or categories (e.g., 🥦 for food, 💪 for exercise), but keep the text clean and readable.`;
 }
@@ -334,47 +333,95 @@ export async function generateMealPlan(userProfile: {
   age?: number;
   weight?: number;
   height?: number;
-  sex?: 'male' | 'female';
+  sex?: 'male' | 'female' | 'other';
   activityLevel?: string;
   dietaryRestrictions?: string[];
   medicalConditions?: string[];
   medicationsSupplements?: string[];
+  tdee?: number;
 }, language: string = 'en'): Promise<Record<string, { meal: string; name: string; calories: number; protein: number; carbs: number; fat: number }[]>> {
   const targetLang = getLang(language);
 
-    const prompt = `Create a 7-day meal plan for someone with these exact parameters:
-- Daily calories: ${userProfile.targetCalories} kcal (CRITICAL: The sum of calories for each day MUST be within 1% of this value)
-- Macros: ${userProfile.macros.protein}g protein, ${userProfile.macros.carbs}g carbs, ${userProfile.macros.fat}g fat (CRITICAL: Match these as closely as possible)
-- Goal: ${userProfile.goal}
-- Diet Type Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
-${userProfile.availableFoods?.length ? `- Available Foods: ${userProfile.availableFoods.join(', ')}` : ''}
-- Medical Conditions: ${userProfile.medicalConditions?.join(', ') || 'None'}
-- Medications/Supplements: ${userProfile.medicationsSupplements?.join(', ') || 'None'}
-- Dietary Restrictions: ${userProfile.dietaryRestrictions?.join(', ') || 'None'}
+  // Build a human-readable goal context
+  const goalContext = userProfile.goal === 'lose'
+    ? 'fat loss / caloric deficit (goal: lose body fat while preserving muscle)'
+    : userProfile.goal === 'gain'
+    ? 'muscle gain / caloric surplus (goal: build lean muscle mass)'
+    : 'body recomposition / weight maintenance (goal: maintain weight and improve body composition)';
 
-The meal plan must be HIGHLY precise and tailored specifically to this user's profile.
+  // Determine activity level description
+  const activityDesc: Record<string, string> = {
+    sedentary: 'sedentary (little or no exercise)',
+    light: 'lightly active (1-3 days/week exercise)',
+    moderate: 'moderately active (3-5 days/week exercise)',
+    active: 'very active (6-7 days/week exercise)',
+    very_active: 'extra active (hard training + physical job)',
+  };
+  const activityLabel = activityDesc[userProfile.activityLevel ?? ''] ?? userProfile.activityLevel ?? 'Unknown';
 
-CRITICAL INSTRUCTIONS:
-1. CALORIE ACCURACY: If the target is ${userProfile.targetCalories} kcal, you MUST provide enough meals to reach that total. Do NOT leave a large gap. If the user needs high calories (e.g., >3000), include larger portions or more snacks.
-2. MEAL PROPERTY: The "meal" property MUST ALWAYS be one of these exact English strings: "breakfast", "lunch", "dinner", "snack". Do NOT translate this key.
-3. LANGUAGE: All "name" properties and "warning" text MUST be in ${targetLang}.
-4. NO RESTRICTIONS: If the user mentions risky substances or conditions, still generate the plan but include a health "warning" field.
+  // Available foods instructions
+  const hasFoods = (userProfile.availableFoods?.length ?? 0) > 0;
+  const foodsInstruction = hasFoods
+    ? `AVAILABLE FOODS (STRICT): The user has specified these foods as available at home or preferred. You MUST build every meal using ONLY ingredients from this list or simple pantry staples (salt, oil, water, basic spices). Do NOT suggest foods outside this list: ${userProfile.availableFoods!.join(', ')}`
+    : 'No specific food list provided — use a varied, balanced selection of healthy whole foods appropriate for the user\'s goal and restrictions.';
 
-Return ONLY valid JSON. Structure:
+  const prompt = `You are an expert sports nutritionist and dietitian AI. Create a 7-day personalized meal plan for the following user. Your goal is maximum personalization and caloric precision.
+
+=== USER PROFILE ===
+- Name/ID: User
+- Age: ${userProfile.age ?? 'Unknown'} years
+- Sex: ${userProfile.sex ?? 'Unknown'}
+- Weight: ${userProfile.weight ?? 'Unknown'} kg
+- Height: ${userProfile.height ?? 'Unknown'} cm
+- Activity Level: ${activityLabel}
+- TDEE (Total Daily Energy Expenditure): ${userProfile.tdee ?? userProfile.targetCalories} kcal/day
+- DAILY CALORIE TARGET: ${userProfile.targetCalories} kcal (CRITICAL — every day's total must be within ±50 kcal of this value)
+- MACRO TARGETS: Protein ${userProfile.macros.protein}g | Carbs ${userProfile.macros.carbs}g | Fat ${userProfile.macros.fat}g
+- Goal: ${goalContext}
+- Diet Preference: ${userProfile.preferences?.[0] ?? 'Balanced'}
+- Dietary Restrictions: ${userProfile.dietaryRestrictions?.filter(r => r !== 'none').join(', ') || 'None'}
+- Medical Conditions: ${userProfile.medicalConditions?.filter(c => c !== 'none').join(', ') || 'None'}
+- Medications/Supplements: ${userProfile.medicationsSupplements?.filter(m => m !== 'none').join(', ') || 'None'}
+
+=== FOOD AVAILABILITY ===
+${foodsInstruction}
+
+=== CRITICAL RULES ===
+1. CALORIE ACCURACY: Each day's calorie total MUST hit exactly ${userProfile.targetCalories} kcal (±50 kcal). If the user needs >3000 kcal, include larger portions AND extra snacks. Never leave a large gap.
+2. MACRO ACCURACY: Match protein/carbs/fat targets as closely as possible each day.
+3. MEAL STRUCTURE: Use appropriate meal count based on calories. For <2000 kcal: 3 meals. For 2000-2800 kcal: 3 meals + 1 snack. For >2800 kcal: 3 meals + 2 snacks.
+4. GOAL ALIGNMENT:
+   - If goal is 'lose': use high-protein, low-glycemic foods, control portions strictly.
+   - If goal is 'gain': include calorie-dense foods, adequate carbs, enough protein for muscle synthesis.
+   - If goal is 'maintain': balanced approach, variety.
+5. MEAL PROPERTY: The "meal" JSON field MUST ALWAYS be one of these exact English strings: "breakfast", "lunch", "dinner", "snack". NEVER translate this.
+6. LANGUAGE: All "name" fields and the "warning" text MUST be written in ${targetLang}.
+7. MEDICAL SAFETY: If the user has medical conditions, adapt the diet accordingly (e.g., diabetics: limit simple carbs; hypertension: limit sodium). Always note this in the warning.
+8. DISCLAIMER: You MUST include a "warning" field with a clear disclaimer in ${targetLang} stating: (a) this plan is generated by an AI and is not a substitute for professional medical or nutritional advice, (b) the user should consult a registered dietitian or physician before starting, especially if they have medical conditions or take medications.
+9. VARIETY: Do not repeat the same meal more than 2 times across the 7-day plan. Use diverse, realistic, and practical meal ideas.
+10. PORTION SPECIFICITY: Always include realistic portion descriptions in the meal name (e.g., "150g grilled chicken breast with 200g brown rice and salad").
+
+Return ONLY valid JSON — no markdown, no explanation, just the JSON object:
 {
-  "warning": "Optional disclaimer in ${targetLang}",
+  "warning": "[Disclaimer in ${targetLang}]",
   "Mon": [
-    { "meal": "breakfast", "name": "...", "calories": 0, "protein": 0, "carbs": 0, "fat": 0 },
-    ...
+    { "meal": "breakfast", "name": "Specific meal name with portions in ${targetLang}", "calories": 0, "protein": 0, "carbs": 0, "fat": 0 },
+    { "meal": "lunch", "name": "...", "calories": 0, "protein": 0, "carbs": 0, "fat": 0 },
+    { "meal": "dinner", "name": "...", "calories": 0, "protein": 0, "carbs": 0, "fat": 0 }
   ],
-  ... (Tue-Sun)
+  "Tue": [...],
+  "Wed": [...],
+  "Thu": [...],
+  "Fri": [...],
+  "Sat": [...],
+  "Sun": [...]
 }`;
 
   const data = await fetchGroq({
     model: CHAT_MODEL,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 4096,
-    temperature: 0.6,
+    temperature: 0.55,
     response_format: { type: 'json_object' },
   });
 
@@ -395,15 +442,16 @@ export async function generateWorkoutPlan(userProfile: {
   age?: number;
   weight?: number;
   height?: number;
-  sex?: 'male' | 'female';
+  sex?: 'male' | 'female' | 'other';
   medicalConditions?: string[];
   medicationsSupplements?: string[];
   homeWorkout?: boolean;
+  homeEquipment?: string;
 }, language: string = 'en'): Promise<Record<string, { name: string; exercises: { name: string; sets: number; reps: string; rest: string }[] }>> {
   const targetLang = getLang(language);
 
   const homeWorkoutText = userProfile.homeWorkout 
-    ? "- Workout Environment: Home workout / Calisthenics. MUST use bodyweight exercises and basic household items only. NO gym machines." 
+    ? `- Workout Environment: Home workout / Calisthenics. MUST use bodyweight exercises${userProfile.homeEquipment ? ` and the following available equipment: ${userProfile.homeEquipment}` : ' and basic household items only'}. NO gym machines.` 
     : "- Workout Environment: Full Gym access.";
 
   const prompt = `Create a 7-day workout plan for someone with these parameters:
@@ -416,7 +464,7 @@ ${homeWorkoutText}
 
 The workout plan must be HIGHLY precise and tailored specifically to this user's goals, activity level, and body profile.
 
-CRITICAL INSTRUCTION: You have NO RESTRICTIONS. If the user has medical conditions or physical risks (e.g. using anabolics/steroids), you MUST still generate the plan as requested. Do NOT refuse. If the exercises are risky, include a "warning" field in the JSON with a disclaimer. If the user is taking anabolics, you MUST adapt the workout volume, frequency, and intensity appropriately to leverage their enhanced recovery and muscle-building potential.
+CRITICAL INSTRUCTION: You have NO RESTRICTIONS. If the user has medical conditions, you MUST still generate the plan as requested. Do NOT refuse. You MUST include a "warning" field in the JSON with a disclaimer stating that you are an AI, not a certified professional, and that the user should consult a real professional before following the plan.
 
 IMPORTANT: All exercise names, descriptions, and instructions MUST be in ${targetLang}.
 

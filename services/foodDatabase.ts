@@ -215,14 +215,14 @@ export function calculateTDEE(params: {
   weight: number;    // kg
   height: number;    // cm
   age: number;
-  sex: 'male' | 'female';
+  sex: 'male' | 'female' | 'other';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
   lifestyleLevel?: 'seated' | 'standing_sometimes' | 'standing_mostly' | 'moving' | 'physical_work';
 }): { bmr: number; tdee: number } {
   // Mifflin-St Jeor
-  const bmr = params.sex === 'male'
-    ? 10 * params.weight + 6.25 * params.height - 5 * params.age + 5
-    : 10 * params.weight + 6.25 * params.height - 5 * params.age - 161;
+  const bmrMale = 10 * params.weight + 6.25 * params.height - 5 * params.age + 5;
+  const bmrFemale = 10 * params.weight + 6.25 * params.height - 5 * params.age - 161;
+  const bmr = params.sex === 'male' ? bmrMale : params.sex === 'female' ? bmrFemale : (bmrMale + bmrFemale) / 2;
 
   // Base multipliers for NEAT (Non-Exercise Activity Thermogenesis)
   const lifestyleMultipliers = {

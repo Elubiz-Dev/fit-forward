@@ -5,7 +5,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { FoodItem } from '../../services/foodDatabase';
-import { useAuthStore, useNutritionStore, useSettingsStore } from '../../store';
+import { useSettingsStore, useAuthStore, useNutritionStore } from '../../store';
+import * as Crypto from 'expo-crypto';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { convertEnergy } from '../../utils/units';
@@ -121,45 +122,49 @@ export default function FoodDetailModal() {
       return;
     }
 
-    if (logId) {
-      // Update existing log
-      await updateLog(logId, {
-        grams: g,
-        meal,
-        calories: cal,
-        protein:  pro,
-        carbs:    carb,
-        fat,
-        sugar,
-        fiber,
-        sodium,
-        iron,
-        calcium,
-        saturatedFat: satFat,
-        transFat,
-      });
-    } else {
-      // Add new log
-      const localId = `${Date.now()}-${food.id}`;
-      // Optimistic update
-      await addLog({
-        id:       localId,
-        foodItem: food,
-        grams:    g,
-        meal,
-        loggedAt: date ? `${date}T${new Date().toISOString().split('T')[1]}` : new Date().toISOString(),
-        calories: cal,
-        protein:  pro,
-        carbs:    carb,
-        fat,
-        sugar,
-        fiber,
-        sodium,
-        iron,
-        calcium,
-        saturatedFat: satFat,
-        transFat,
-      });
+    try {
+      if (logId) {
+        // Update existing log
+        await updateLog(logId, {
+          grams: g,
+          meal,
+          calories: cal,
+          protein:  pro,
+          carbs:    carb,
+          fat,
+          sugar,
+          fiber,
+          sodium,
+          iron,
+          calcium,
+          saturatedFat: satFat,
+          transFat,
+        });
+      } else {
+        // Add new log
+        const localId = Crypto.randomUUID();
+        await addLog({
+          id:       localId,
+          foodItem: food,
+          grams:    g,
+          meal,
+          loggedAt: date ? `${date}T${new Date().toISOString().split('T')[1]}` : new Date().toISOString(),
+          calories: cal,
+          protein:  pro,
+          carbs:    carb,
+          fat,
+          sugar,
+          fiber,
+          sodium,
+          iron,
+          calcium,
+          saturatedFat: satFat,
+          transFat,
+        });
+      }
+    } catch (err) {
+      // Log was saved locally; sync error is non-blocking
+      console.error('[FoodDetail] Sync error (local save succeeded):', err);
     }
     router.back();
   };

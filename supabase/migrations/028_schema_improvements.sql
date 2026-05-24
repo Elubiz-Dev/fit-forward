@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.daily_metrics (
 ALTER TABLE public.daily_metrics ENABLE ROW LEVEL SECURITY;
 
 -- RLS policy: each user sees only their own rows
+DROP POLICY IF EXISTS "daily_metrics_own" ON public.daily_metrics;
 CREATE POLICY "daily_metrics_own"
   ON public.daily_metrics
   USING (auth.uid() = user_id);
