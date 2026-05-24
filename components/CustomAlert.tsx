@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Platform } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Platform, TextInput, KeyboardTypeOptions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, CheckCircle2, Info, HelpCircle, XCircle, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../hooks/useTheme';
@@ -16,9 +16,12 @@ interface CustomAlertProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm: (val?: string) => void;
   onCancel?: () => void;
   actions?: { text: string; onPress: () => void; type?: 'primary' | 'secondary' | 'destructive' }[];
+  showInput?: boolean;
+  initialInputValue?: string;
+  keyboardType?: KeyboardTypeOptions;
 }
 
 export const CustomAlert: React.FC<CustomAlertProps> = ({ 
@@ -30,15 +33,20 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
   cancelText = 'Cancel', 
   onConfirm, 
   onCancel,
-  actions
+  actions,
+  showInput,
+  initialInputValue = '',
+  keyboardType = 'numeric'
 }) => {
   const colors = useTheme();
   const scale = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
+  const [inputValue, setInputValue] = React.useState(initialInputValue);
 
   useEffect(() => {
     if (visible) {
+      setInputValue(initialInputValue);
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
@@ -138,6 +146,16 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
           <View style={styles.content}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
             <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
+            
+            {showInput && (
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]}
+                value={inputValue}
+                onChangeText={setInputValue}
+                keyboardType={keyboardType}
+                autoFocus
+              />
+            )}
           </View>
           
           <View style={[styles.buttonRow, actions ? { flexDirection: 'column' } : {}]}>
@@ -171,7 +189,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
                 
                 <TouchableOpacity 
                   style={[styles.button, onCancel ? { flex: 1.5 } : { width: '100%' }]} 
-                  onPress={onConfirm} 
+                  onPress={() => onConfirm(inputValue)} 
                   activeOpacity={0.85}
                 >
                   <LinearGradient
@@ -268,6 +286,17 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     opacity: 0.8,
     paddingHorizontal: 10,
+  },
+  input: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    fontSize: 18,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   buttonRow: {
     flexDirection: 'row',

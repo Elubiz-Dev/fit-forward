@@ -26,6 +26,7 @@ export default function ProgressEvaluationModal() {
     strengths: string[];
     improvements: string[];
     estimatedFatPercentage: string;
+    base64ImageData?: string;
   } | null>(null);
 
   const [showHistory, setShowHistory] = useState(false);
@@ -77,9 +78,11 @@ export default function ProgressEvaluationModal() {
     setIsAnalyzing(true);
     try {
       const response = await analyzePhysiquePhoto(base64Image, language);
+      const dataUri = `data:image/jpeg;base64,${base64Image}`;
       const newEvaluation = {
         id: Math.random().toString(36).substring(7),
         uri: imageUri,
+        base64ImageData: dataUri,
         date: getLocalDateString(),
         ...response
       };
@@ -139,7 +142,9 @@ export default function ProgressEvaluationModal() {
   };
 
   const viewHistoryItem = (item: typeof evaluations[0]) => {
-    setImageUri(item.uri);
+    // Use base64 data URI if available (persists across app sessions), otherwise fall back to uri
+    const displayUri = item.base64ImageData || item.uri;
+    setImageUri(displayUri);
     setResult(item);
     setShowHistory(false);
   };
@@ -168,7 +173,7 @@ export default function ProgressEvaluationModal() {
              ) : (
                evaluations.map(e => (
                  <TouchableOpacity key={e.id} style={[s.historyItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]} onPress={() => viewHistoryItem(e)}>
-                   <Image source={{ uri: e.uri }} style={s.historyThumb} />
+                   <Image source={{ uri: e.base64ImageData || e.uri }} style={s.historyThumb} />
                    <View style={s.historyInfo}>
                      <Text style={[s.historyDate, { color: colors.textPrimary }]}>{e.date}</Text>
                      <Text style={[s.historyFat, { color: colors.textSecondary }]}>Grasa: {e.estimatedFatPercentage}</Text>

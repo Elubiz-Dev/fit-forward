@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator, TextInput,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, LayoutAnimation, UIManager
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,19 +25,22 @@ import { useTranslation } from 'react-i18next';
 import { calculateTDEE, calculateMacros } from '../services/foodDatabase';
 import { supabase } from '../services/supabase';
 import { CustomAlert, AlertType } from '../components/CustomAlert';
-
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // ─── Step types ────────────────────────────────────────────────────────────────
 const STEPS = [
   'goal', 'stats', 'activity', 'lifestyle',
   'dietaryRestrictions', 'medicalConditions', 'medications', 
-  'dietType', 'diet', 'personalization', 'projection'
+  'dietType', 'diet', 'personalization', 'terms', 'projection'
 ] as const;
 type Step = typeof STEPS[number];
 
 interface OnboardingData {
   goal:         'lose' | 'maintain' | 'gain';
-  sex:          'male' | 'female';
+  sex:          'male' | 'female' | 'other';
+  customGender?: string;
   age:          number;
   weight:       number;
   height:       number;
@@ -52,6 +55,7 @@ interface OnboardingData {
   availableFoods: string[];
   weightUnit:   'kg' | 'lbs';
   heightUnit:   'cm' | 'ft';
+  termsAccepted?: boolean;
 }
 
 // ─── Step 1: Goal ─────────────────────────────────────────────────────────────
@@ -104,29 +108,44 @@ function GoalStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
                 { backgroundColor: colors.surface, borderColor: colors.border }, 
                 isActive && { 
                   borderColor: g.accent, 
-                  backgroundColor: g.accent + '12',
                   shadowColor: g.accent,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 12,
+                  elevation: 8,
                 }
               ]}
               onPress={() => onChange({ goal: g.id })}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
+              {isActive && (
+                <LinearGradient
+                  colors={[g.accent + '1C', g.accent + '05']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              )}
               <View style={[
                 step.iconContainer, 
-                { backgroundColor: colors.background, borderColor: isActive ? g.accent + '40' : colors.border + '40' },
-                isActive && { shadowColor: g.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 }
+                { backgroundColor: colors.background, borderColor: isActive ? g.accent + '50' : colors.border + '40' },
+                isActive && { shadowColor: g.accent, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 6 }
               ]}>
                 {g.icon}
               </View>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: g.accent }]}>{g.title}</Text>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: g.accent, fontWeight: '900' }]}>{g.title}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{g.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: isActive ? g.accent : colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: g.accent }]} />}
+              <View style={[
+                step.radioOuter, 
+                { 
+                  borderColor: isActive ? g.accent : colors.border,
+                  backgroundColor: isActive ? g.accent : 'transparent',
+                  borderWidth: 2
+                }
+              ]}>
+                {isActive && <Check size={14} color="#FFF" strokeWidth={4} />}
               </View>
             </TouchableOpacity>
           );
@@ -151,33 +170,53 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
       </View>
 
       <View style={step.statsGrid}>
-        {/* Sex */}
         <View style={step.field}>
           <Text style={[step.fieldLabel, { color: colors.textSecondary }]}>{t('onboarding.sexLabel')}</Text>
           <View style={step.sexRow}>
-            {(['male', 'female'] as const).map((s) => {
+            {(['male', 'female', 'other'] as const).map((s) => {
               const active = data.sex === s;
-              const accentColor = s === 'male' ? '#4D94FF' : '#FF4D88';
+              const accentColor = s === 'male' ? '#3B82F6' : s === 'female' ? '#EC4899' : '#8B5CF6';
               return (
                 <TouchableOpacity
                   key={s}
                   style={[
                     step.sexBtn, 
                     { backgroundColor: colors.surface, borderColor: colors.border }, 
-                    active && { borderColor: accentColor, shadowColor: accentColor, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }
+                    active && { 
+                      borderColor: accentColor, 
+                      shadowColor: accentColor, 
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.25, 
+                      shadowRadius: 8, 
+                      elevation: 4 
+                    }
                   ]}
                   onPress={() => onChange({ sex: s })}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={active ? [accentColor + '20', accentColor + '05'] : ['transparent', 'transparent']}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <View style={[step.sexIconWrap, { backgroundColor: active ? accentColor : colors.background }]}>
-                    {s === 'male' ? <Mars size={20} color={active ? '#fff' : colors.textSecondary} /> : <Venus size={20} color={active ? '#fff' : colors.textSecondary} />}
+                  {active && (
+                    <LinearGradient
+                      colors={[accentColor + '18', accentColor + '04']}
+                      style={StyleSheet.absoluteFill}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                    />
+                  )}
+                  <View style={[
+                    step.sexIconWrap, 
+                    { backgroundColor: active ? accentColor : colors.background },
+                    active && { shadowColor: accentColor, shadowOpacity: 0.3, shadowRadius: 4 }
+                  ]}>
+                    {s === 'male' ? <Mars size={20} color={active ? '#fff' : colors.textSecondary} /> : 
+                     s === 'female' ? <Venus size={20} color={active ? '#fff' : colors.textSecondary} /> : 
+                     <PersonStanding size={20} color={active ? '#fff' : colors.textSecondary} />}
                   </View>
-                  <Text style={[step.sexLabel, { color: colors.textSecondary }, active && { color: colors.textPrimary, fontWeight: '900' }]}>
-                    {t(`profile.${s}`)}
+                  <Text style={[
+                    step.sexLabel, 
+                    { color: colors.textSecondary }, 
+                    active && { color: colors.textPrimary, fontWeight: '900' }
+                  ]}>
+                    {s === 'other' ? t('profile.otherGender') : (t(`profile.${s}`) as string)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -185,7 +224,29 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
           </View>
         </View>
 
-        {/* Numeric fields */}
+        {data.sex === 'other' && (
+          <View style={step.field}>
+            <TextInput
+              style={[
+                step.numDisplay, 
+                { 
+                  backgroundColor: colors.surface, 
+                  borderColor: colors.primary, 
+                  paddingHorizontal: 16, 
+                  height: 56, 
+                  fontSize: 16, 
+                  fontWeight: '600',
+                  color: colors.textPrimary
+                }
+              ]}
+              placeholder={t('profile.specifyGender')}
+              placeholderTextColor={colors.textMuted}
+              value={data.customGender ?? ''}
+              onChangeText={(text) => onChange({ customGender: text })}
+            />
+          </View>
+        )}
+
         {[
           { label: t('profile.age'), key: 'age', unit: t('profile.ageYears'), min: 15, max: 80, icon: <Activity size={18} /> },
           { label: t('profile.weight'), key: 'weight', unit: data.weightUnit === 'lbs' ? 'lbs' : 'kg', min: data.weightUnit === 'lbs' ? 66 : 30, max: data.weightUnit === 'lbs' ? 550 : 250, icon: <Target size={18} /> },
@@ -198,7 +259,14 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
               </View>
               {(key === 'weight' || key === 'height') && (
                 <TouchableOpacity 
-                  style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '30' }}
+                  style={{ 
+                    backgroundColor: colors.primary + '12', 
+                    paddingHorizontal: 12, 
+                    paddingVertical: 6, 
+                    borderRadius: 20, 
+                    borderWidth: 1.5, 
+                    borderColor: colors.primary + '25' 
+                  }}
                   onPress={() => {
                     if (key === 'weight') {
                       const newUnit = data.weightUnit === 'lbs' ? 'kg' : 'lbs';
@@ -206,8 +274,6 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
                       onChange({ weightUnit: newUnit, weight: newWeight });
                     } else {
                       const newUnit = data.heightUnit === 'ft' ? 'cm' : 'ft';
-                      // cm to ft: cm / 30.48
-                      // ft to cm: ft * 30.48
                       const newHeight = newUnit === 'ft' 
                         ? Number(((data.height ?? 170) / 30.48).toFixed(1))
                         : Math.round((data.height ?? 5.6) * 30.48);
@@ -226,7 +292,16 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
             </View>
             <View style={step.numRow}>
               <TouchableOpacity
-                style={[step.numBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[
+                  step.numBtn, 
+                  { 
+                    backgroundColor: colors.surface, 
+                    borderColor: colors.border,
+                    shadowColor: colors.primary,
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4
+                  }
+                ]}
                 onPress={() => {
                   const cur = (data as any)[key] ?? min;
                   const stepVal = key === 'height' && data.heightUnit === 'ft' ? 0.1 : 1;
@@ -237,13 +312,43 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
                 <Minus size={24} color={colors.primary} />
               </TouchableOpacity>
               
-              <View style={[step.numDisplay, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[step.numValue, { color: colors.textPrimary }]}>{(data as any)[key] ?? '-'}</Text>
+              <View style={[
+                step.numDisplay, 
+                { 
+                  backgroundColor: colors.surface, 
+                  borderColor: colors.border,
+                  shadowColor: colors.primary,
+                  shadowOpacity: 0.05,
+                  shadowRadius: 6
+                }
+              ]}>
+                <TextInput 
+                  style={[step.numValue, { color: colors.textPrimary, padding: 0, textAlign: 'center', minWidth: 60 }]}
+                  keyboardType="numeric"
+                  value={((data as any)[key] ?? '').toString()}
+                  onChangeText={(text) => {
+                    const parsed = parseFloat(text.replace(',', '.'));
+                    if (!isNaN(parsed)) {
+                      onChange({ [key]: parsed });
+                    } else if (text === '') {
+                      onChange({ [key]: undefined as any });
+                    }
+                  }}
+                />
                 <Text style={[step.numUnit, { color: colors.textSecondary }]}>{unit}</Text>
               </View>
 
               <TouchableOpacity
-                style={[step.numBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[
+                  step.numBtn, 
+                  { 
+                    backgroundColor: colors.surface, 
+                    borderColor: colors.border,
+                    shadowColor: colors.primary,
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4
+                  }
+                ]}
                 onPress={() => {
                   const cur = (data as any)[key] ?? min;
                   const stepVal = key === 'height' && data.heightUnit === 'ft' ? 0.1 : 1;
@@ -323,20 +428,46 @@ function ActivityStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
               style={[
                 step.optionCard, 
                 { backgroundColor: colors.surface, borderColor: colors.border }, 
-                isActive && { borderColor: a.color, backgroundColor: a.color + '10' }
+                isActive && { 
+                  borderColor: a.color,
+                  shadowColor: a.color,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 10,
+                  elevation: 6
+                }
               ]}
               onPress={() => onChange({ activityLevel: a.id })}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View style={[step.iconContainer, { backgroundColor: colors.background, borderColor: isActive ? a.color : 'rgba(255,255,255,0.05)' }]}>
+              {isActive && (
+                <LinearGradient
+                  colors={[a.color + '1C', a.color + '04']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              )}
+              <View style={[
+                step.iconContainer, 
+                { backgroundColor: colors.background, borderColor: isActive ? a.color + '50' : colors.border + '40' },
+                isActive && { shadowColor: a.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 6 }
+              ]}>
                 {a.icon}
               </View>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{a.label}</Text>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: a.color, fontWeight: '900' }]}>{a.label}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{a.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: isActive ? a.color : colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: a.color }]} />}
+              <View style={[
+                step.radioOuter, 
+                { 
+                  borderColor: isActive ? a.color : colors.border,
+                  backgroundColor: isActive ? a.color : 'transparent',
+                  borderWidth: 2
+                }
+              ]}>
+                {isActive && <Check size={14} color="#FFF" strokeWidth={4} />}
               </View>
             </TouchableOpacity>
           );
@@ -408,20 +539,46 @@ function LifestyleStep({ data, onChange }: { data: Partial<OnboardingData>; onCh
               style={[
                 step.optionCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
-                isActive && { borderColor: lv.color, backgroundColor: lv.color + '10' }
+                isActive && { 
+                  borderColor: lv.color,
+                  shadowColor: lv.color,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 10,
+                  elevation: 6
+                }
               ]}
               onPress={() => onChange({ lifestyle: lv.id })}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View style={[step.iconContainer, { backgroundColor: colors.background, borderColor: isActive ? lv.color : 'rgba(255,255,255,0.05)' }]}>
+              {isActive && (
+                <LinearGradient
+                  colors={[lv.color + '1C', lv.color + '04']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              )}
+              <View style={[
+                step.iconContainer, 
+                { backgroundColor: colors.background, borderColor: isActive ? lv.color : 'rgba(255,255,255,0.05)' },
+                isActive && { shadowColor: lv.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 6 }
+              ]}>
                 {lv.icon}
               </View>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }]}>{lv.label}</Text>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: lv.color, fontWeight: '900' }]}>{lv.label}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{lv.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: isActive ? lv.color : colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: lv.color }]} />}
+              <View style={[
+                step.radioOuter, 
+                { 
+                  borderColor: isActive ? lv.color : colors.border,
+                  backgroundColor: isActive ? lv.color : 'transparent',
+                  borderWidth: 2
+                }
+              ]}>
+                {isActive && <Check size={14} color="#FFF" strokeWidth={4} />}
               </View>
             </TouchableOpacity>
           );
@@ -455,26 +612,13 @@ function HealthProfileStep({
   
   const selected = data[fieldKey] || [];
   const predefinedKeys = Object.keys(itemsObj);
-  const customValues = selected.filter(k => !predefinedKeys.includes(k) && !k.startsWith('anabolics:'));
+  const customValues = selected.filter(k => !predefinedKeys.includes(k));
   const customText = customValues.length > 0 ? customValues[0].replace('custom:', '') : '';
+  const [customFocused, setCustomFocused] = useState(false);
 
   const toggle = (id: string) => {
     if (id === 'none') {
       onChange({ [fieldKey]: ['none'] });
-      return;
-    }
-    
-    // If it's anabolics, we keep the 'anabolics' key or 'anabolics:...' key
-    const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
-    
-    if (id === 'anabolics') {
-      if (currentAnabolics) {
-        // Remove it
-        onChange({ [fieldKey]: selected.filter(x => x !== currentAnabolics) });
-      } else {
-        // Add it
-        onChange({ [fieldKey]: [...selected.filter(x => x !== 'none'), 'anabolics'] });
-      }
       return;
     }
 
@@ -485,33 +629,14 @@ function HealthProfileStep({
   };
 
   const setCustomText = (text: string) => {
-    const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none' && !k.startsWith('anabolics'));
-    const anabolicsPart = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:')) || '';
+    const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none');
     
     if (text.trim() === '') {
-      const final = [...base];
-      if (anabolicsPart) final.push(anabolicsPart);
-      onChange({ [fieldKey]: final });
+      onChange({ [fieldKey]: [...base] });
     } else {
-      const final = [...base, `custom:${text}`];
-      if (anabolicsPart) final.push(anabolicsPart);
-      onChange({ [fieldKey]: final });
+      onChange({ [fieldKey]: [...base, `custom:${text}`] });
     }
   };
-
-  const setAnabolicsText = (text: string) => {
-    const base = selected.filter(k => k !== 'anabolics' && !k.startsWith('anabolics:'));
-    if (text.trim() === '') {
-      onChange({ [fieldKey]: [...base, 'anabolics'] });
-    } else {
-      onChange({ [fieldKey]: [...base, `anabolics:${text}`] });
-    }
-  };
-
-  const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
-  const anabolicsText = currentAnabolics?.startsWith('anabolics:') ? currentAnabolics.replace('anabolics:', '') : '';
-
-
   return (
     <View style={step.container}>
       <View style={step.headerSection}>
@@ -524,7 +649,7 @@ function HealthProfileStep({
 
       <View style={{ gap: 12 }}>
         {Object.entries(itemsObj).map(([key, label]) => {
-          const isActive = selected.includes(key) || (key === 'anabolics' && !!currentAnabolics);
+          const isActive = selected.includes(key);
           return (
             <View key={key} style={{ gap: 8 }}>
               <TouchableOpacity
@@ -533,16 +658,24 @@ function HealthProfileStep({
                   { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 14, paddingHorizontal: 16 }, 
                   isActive && { 
                     borderColor: colors.primary, 
-                    backgroundColor: colors.primary + '12',
                     shadowColor: colors.primary,
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.15,
                     shadowRadius: 8,
+                    elevation: 3
                   }
                 ]}
                 onPress={() => toggle(key)}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
+                {isActive && (
+                  <LinearGradient
+                    colors={[colors.primary + '14', colors.primary + '03']}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                )}
                 <Text style={[
                   step.optionTitle, 
                   { color: colors.textPrimary, flex: 1, fontSize: 16 },
@@ -563,66 +696,34 @@ function HealthProfileStep({
                   {isActive && <Check size={14} color="#fff" strokeWidth={4} />}
                 </View>
               </TouchableOpacity>
-
-              {key === 'anabolics' && isActive && (
-                <View style={{ marginHorizontal: 4, gap: 10 }}>
-                  <View style={{ 
-                    backgroundColor: colors.error + '08', 
-                    padding: 14, 
-                    borderRadius: 16, 
-                    borderWidth: 1, 
-                    borderColor: colors.error + '20' 
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <AlertCircle size={18} color={colors.error} />
-                      <Text style={{ color: colors.error, fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        {t('common.warning', 'Aviso')}
-                      </Text>
-                    </View>
-                    <Text style={{ color: colors.error, fontSize: 13, lineHeight: 20, opacity: 0.9 }}>
-                      {t('onboarding.anabolicsDisclaimer')}
-                    </Text>
-                  </View>
-                  
-                  <TextInput
-                    style={{
-                      backgroundColor: colors.background,
-                      color: colors.textPrimary,
-                      padding: 14,
-                      borderRadius: 16,
-                      borderWidth: 1.5,
-                      borderColor: colors.border,
-                      fontSize: 15,
-                      fontWeight: '600'
-                    }}
-                    placeholder={t('onboarding.otherPlaceholder')}
-                    placeholderTextColor={colors.textMuted}
-                    value={anabolicsText}
-                    onChangeText={setAnabolicsText}
-                  />
-                </View>
-              )}
             </View>
           );
         })}
 
-        
         {/* Custom Input */}
         <View style={[
-            step.optionCard, 
-            { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 14, flexDirection: 'column', alignItems: 'stretch' },
-            customText.length > 0 && { 
-              borderColor: colors.primary, 
-              backgroundColor: colors.primary + '12',
-              shadowColor: colors.primary,
-              shadowOpacity: 0.1,
-              shadowRadius: 10
-            }
-          ]}>
+          step.optionCard, 
+          { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 14, flexDirection: 'column', alignItems: 'stretch' },
+          (customText.length > 0 || customFocused) && { 
+            borderColor: colors.primary, 
+            shadowColor: colors.primary,
+            shadowOpacity: 0.1,
+            shadowRadius: 10,
+            elevation: 2
+          }
+        ]}>
+          {customText.length > 0 && (
+            <LinearGradient
+              colors={[colors.primary + '0C', colors.primary + '02']}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
+          )}
           <Text style={[
             step.optionTitle, 
             { color: colors.textPrimary, marginLeft: 16, marginBottom: 12, fontSize: 16 },
-            customText.length > 0 && { color: colors.primary, fontWeight: '800' }
+            (customText.length > 0 || customFocused) && { color: colors.primary, fontWeight: '800' }
           ]}>
             {t('onboarding.otherSpecify')}
           </Text>
@@ -633,7 +734,7 @@ function HealthProfileStep({
               padding: 14,
               borderRadius: 16,
               borderWidth: 1.5,
-              borderColor: colors.border,
+              borderColor: customFocused ? colors.primary : colors.border,
               marginHorizontal: 16,
               fontSize: 15,
               fontWeight: '600'
@@ -642,7 +743,11 @@ function HealthProfileStep({
             placeholderTextColor={colors.textMuted}
             value={customText}
             onChangeText={setCustomText}
-            onFocus={() => { if(selected.includes('none')) toggle('none'); }}
+            onFocus={() => { 
+              setCustomFocused(true);
+              if(selected.includes('none')) toggle('none'); 
+            }}
+            onBlur={() => setCustomFocused(false)}
           />
         </View>
       </View>
@@ -733,29 +838,44 @@ function DietTypeStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
                 { backgroundColor: colors.surface, borderColor: colors.border },
                 isActive && { 
                   borderColor: dt.color, 
-                  backgroundColor: dt.color + '12',
                   shadowColor: dt.color,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.28,
+                  shadowRadius: 10,
+                  elevation: 6
                 }
               ]}
               onPress={() => onChange({ dietType: dt.id as any })}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
+              {isActive && (
+                <LinearGradient
+                  colors={[dt.color + '1C', dt.color + '04']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              )}
               <View style={[
                 step.iconContainer, 
                 { backgroundColor: colors.background, borderColor: isActive ? dt.color : 'rgba(255,255,255,0.05)' },
-                isActive && { shadowColor: dt.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 }
+                isActive && { shadowColor: dt.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 6 }
               ]}>
                 {React.cloneElement(dt.icon as any, { color: isActive ? dt.color : colors.textSecondary })}
               </View>
               <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: dt.color }]}>{dt.title}</Text>
+                <Text style={[step.optionTitle, { color: colors.textPrimary }, isActive && { color: dt.color, fontWeight: '900' }]}>{dt.title}</Text>
                 <Text style={[step.optionSub, { color: colors.textSecondary }]}>{dt.sub}</Text>
               </View>
-              <View style={[step.radioOuter, { borderColor: isActive ? dt.color : colors.border }]}>
-                {isActive && <View style={[step.radioInner, { backgroundColor: dt.color }]} />}
+              <View style={[
+                step.radioOuter, 
+                { 
+                  borderColor: isActive ? dt.color : colors.border,
+                  backgroundColor: isActive ? dt.color : 'transparent',
+                  borderWidth: 2
+                }
+              ]}>
+                {isActive && <Check size={14} color="#FFF" strokeWidth={4} />}
               </View>
             </TouchableOpacity>
           );
@@ -950,27 +1070,29 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
                     { backgroundColor: colors.surface, borderColor: colors.border }, 
                     active && { 
                       borderColor: colors.primary, 
-                      backgroundColor: colors.primary + '15',
                       shadowColor: colors.primary,
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
+                      shadowOffset: { width: 0, height: 3 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 6,
+                      elevation: 4,
                     }
                   ]}
                   onPress={() => toggle(item.id)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
                   {active && (
                     <LinearGradient
-                      colors={[colors.primary + '10', colors.primary + '05']}
+                      colors={[colors.primary + '20', colors.primary + '07']}
                       style={StyleSheet.absoluteFill}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
                     />
                   )}
-                  <Text style={{ fontSize: 16, marginRight: 8 }}>{item.emoji}</Text>
+                  <Text style={{ fontSize: 17, marginRight: 6 }}>{item.emoji}</Text>
                   <Text style={[
                     step.dietPillText, 
-                    { color: colors.textSecondary }, 
-                    active && { color: colors.textPrimary, fontWeight: '800' }
+                    { color: active ? colors.textPrimary : colors.textSecondary }, 
+                    active && { fontWeight: '800', color: colors.primary }
                   ]}>
                     {t(`onboarding.foodItems.${item.label}`) || item.label}
                   </Text>
@@ -983,13 +1105,71 @@ function DietStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
     </View>
   );
 }
+
+// ─── Step 5b: Terms & Conditions ──────────────────────────────────────────────
+function TermsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange: (d: Partial<OnboardingData>) => void }) {
+  const { t } = useTranslation();
+  const colors = useTheme();
+
+  return (
+    <View style={step.container}>
+      <View style={step.headerSection}>
+        <View style={[step.targetCircle, { backgroundColor: colors.primary + '15', shadowColor: colors.primary, elevation: 12 }]}>
+          <Check size={42} color={colors.primary} />
+        </View>
+        <Text style={[step.title, { color: colors.textPrimary }]}>{t('onboarding.termsTitle')}</Text>
+        <Text style={[step.sub, { color: colors.textSecondary }]}>{t('onboarding.termsSub')}</Text>
+      </View>
+
+      <TouchableOpacity
+        style={[
+          step.optionCard, 
+          { backgroundColor: colors.surface, borderColor: colors.border, padding: 20 },
+          data.termsAccepted && {
+            borderColor: colors.primary,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            elevation: 4,
+          }
+        ]}
+        onPress={() => onChange({ termsAccepted: !data.termsAccepted })}
+        activeOpacity={0.8}
+      >
+        {data.termsAccepted && (
+          <LinearGradient
+            colors={[colors.primary + '14', colors.primary + '03']}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        )}
+        <View style={[
+          step.radioOuter, 
+          { 
+            borderColor: data.termsAccepted ? colors.primary : colors.border, 
+            backgroundColor: data.termsAccepted ? colors.primary : 'transparent',
+            borderRadius: 8,
+            borderWidth: 2
+          }
+        ]}>
+          {data.termsAccepted && <Check size={14} color="#FFF" strokeWidth={4} />}
+        </View>
+        <Text style={{ color: data.termsAccepted ? colors.textPrimary : colors.textSecondary, fontSize: 14, flex: 1, lineHeight: 22, fontWeight: '500' }}>
+          {t('onboarding.termsAgreement')}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Step 6: Personalization ──────────────────────────────────────────────────
 function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>; onChange: (d: Partial<OnboardingData>) => void }) {
   const { t } = useTranslation();
   const colors = useTheme();
 
   useEffect(() => {
-    // Initialize or sync target weight based on goal
     const defaultW = data.weightUnit === 'lbs' ? 154 : 70;
     const cur = data.weight ?? defaultW;
     const tar = data.targetWeight ?? cur;
@@ -1072,10 +1252,9 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
       </View>
 
       <View style={step.optionList}>
-        {/* Current Weight */}
         <TouchableOpacity 
           style={[step.optionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => {}} // Could open a picker
+          onPress={() => {}}
           activeOpacity={0.7}
         >
           <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
@@ -1086,7 +1265,6 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
           <ChevronRight size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
-        {/* Target Weight */}
         <View style={{ gap: 8 }}>
           <View style={[step.optionCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 8 }]}>
             <View style={[step.iconContainer, { backgroundColor: colors.background }]}>
@@ -1114,7 +1292,24 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
                 <Text style={{ color: colors.primary }}>-</Text>
               </TouchableOpacity>
               
-              <Text style={[step.numValueSmall, { color: colors.textPrimary }]}>{currentVal} {unitLabel}</Text>
+              <TextInput 
+                style={[step.numValueSmall, { color: colors.textPrimary, padding: 0, minWidth: 40, textAlign: 'center' }]}
+                keyboardType="numeric"
+                value={data.targetWeight !== undefined ? data.targetWeight.toString() : ''}
+                placeholder={currentVal.toString()}
+                placeholderTextColor={colors.textMuted}
+                onChangeText={(text) => {
+                  if (text === '') {
+                    onChange({ targetWeight: undefined });
+                  } else {
+                    const parsed = parseFloat(text.replace(/[^0-9]/g, ''));
+                    if (!isNaN(parsed)) {
+                      onChange({ targetWeight: parsed });
+                    }
+                  }
+                }}
+              />
+              <Text style={{ color: colors.textSecondary, fontSize: 16, fontWeight: '700', marginLeft: 4 }}>{unitLabel}</Text>
               
               <TouchableOpacity 
                 onPress={() => {
@@ -1136,22 +1331,38 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
             </View>
           </View>
           
-          {/* Health Recommendation / Warning Box */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: statusColor + '15', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: statusColor + '30' }}>
-            <View style={{ marginRight: 10 }}>
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            backgroundColor: statusColor + '12', 
+            padding: 14, 
+            borderRadius: 16, 
+            borderWidth: 1.5, 
+            borderColor: statusColor + '40',
+            shadowColor: statusColor,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+          }}>
+            <View style={{ 
+              width: 34, height: 34, borderRadius: 17, 
+              backgroundColor: statusColor + '20', 
+              justifyContent: 'center', alignItems: 'center',
+              marginRight: 12 
+            }}>
               {statusIcon}
             </View>
-            <Text style={{ color: statusColor, fontSize: 13, flex: 1, fontWeight: '500', lineHeight: 18 }}>
+            <Text style={{ color: statusColor, fontSize: 13, flex: 1, fontWeight: '600', lineHeight: 19 }}>
               {statusText}
             </Text>
           </View>
         </View>
 
-        {/* Velocity */}
         <View style={step.field}>
           <Text style={[step.fieldLabel, { color: colors.textSecondary, marginTop: 10 }]}>{t('onboarding.velocity')}</Text>
           <View style={step.sexRow}>
             {(['slow', 'moderate', 'fast'] as const).map((v) => {
+              const velocityAccent = v === 'slow' ? '#10B981' : v === 'moderate' ? '#F59E0B' : '#EF4444';
               const active = data.velocity === v;
               return (
                 <TouchableOpacity
@@ -1159,12 +1370,28 @@ function PersonalizationStep({ data, onChange }: { data: Partial<OnboardingData>
                   style={[
                     step.sexBtn, 
                     { backgroundColor: colors.surface, borderColor: colors.border }, 
-                    active && { borderColor: colors.primary, backgroundColor: colors.primary + '08' }
+                    active && { 
+                      borderColor: velocityAccent, 
+                      shadowColor: velocityAccent,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 8,
+                      elevation: 3
+                    }
                   ]}
                   onPress={() => onChange({ velocity: v })}
+                  activeOpacity={0.8}
                 >
+                  {active && (
+                    <LinearGradient
+                      colors={[velocityAccent + '18', velocityAccent + '04']}
+                      style={StyleSheet.absoluteFill}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                    />
+                  )}
                   <Text 
-                    style={[step.sexLabel, { color: colors.textSecondary }, active && { color: colors.textPrimary }]}
+                    style={[step.sexLabel, { color: active ? velocityAccent : colors.textSecondary, fontWeight: active ? '900' : '600' }]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -1191,7 +1418,6 @@ function ProjectionStep({ data }: { data: Partial<OnboardingData> }) {
   const tKg = isLbs ? (data.targetWeight ?? 143) / 2.20462 : (data.targetWeight ?? 65);
   
   const diffKg = Math.abs(tKg - wKg);
-  // Velocity in kg/week roughly
   const velocityMap = { slow: 0.25, moderate: 0.5, fast: 1.0 };
   const vKg = velocityMap[data.velocity ?? 'moderate'];
   
@@ -1216,72 +1442,85 @@ function ProjectionStep({ data }: { data: Partial<OnboardingData> }) {
   const startY = isMaintaining ? cH/2 : isLosing ? 20 : cH - 20;
   const endY = isMaintaining ? cH/2 : isLosing ? cH - 20 : 20;
 
-  // Draw curve using simple SVG path
-  const curvePath = `M 20 ${startY} Q ${cW/2} ${startY + (endY - startY)*0.2} ${cW - 20} ${endY}`;
-  // Or a wavy path to simulate ups and downs but trending
   const mY = (startY + endY) / 2;
   const wavyPath = isMaintaining 
     ? `M 20 ${startY} L ${cW-20} ${endY}` 
     : `M 20 ${startY} C ${cW*0.3} ${startY}, ${cW*0.3} ${mY}, ${cW*0.5} ${mY} S ${cW*0.7} ${endY}, ${cW-20} ${endY}`;
 
+  const accentLine = colors.primary;
+
   return (
     <View style={step.container}>
-      <View style={{ alignItems: 'center', marginBottom: 30, marginTop: 20 }}>
-        <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', marginBottom: 30 }}>
-          <Check size={36} color="#FFF" strokeWidth={3} />
+      <View style={{ alignItems: 'center', marginBottom: 28, marginTop: 10 }}>
+        <View style={{
+          width: 72, height: 72, borderRadius: 36, 
+          backgroundColor: '#10B981',
+          justifyContent: 'center', alignItems: 'center', 
+          marginBottom: 20,
+          shadowColor: '#10B981',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
+          elevation: 10
+        }}>
+          <Check size={38} color="#FFF" strokeWidth={3} />
         </View>
         <Text style={[step.title, { color: colors.textPrimary, fontSize: 24 }]}>{t('onboarding.projectionTitle', '...y así será tu progreso')}</Text>
       </View>
 
-      <View style={{ backgroundColor: colors.surface, borderRadius: 24, borderWidth: 1, borderColor: colors.border, padding: 20, paddingTop: 30, position: 'relative', overflow: 'hidden' }}>
-        {/* Top Labels */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-          <View style={{ alignItems: 'center', width: 80 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>{t('onboarding.currentGoal', 'Objetivo actual')}</Text>
+      <View style={{ 
+        backgroundColor: colors.surface, 
+        borderRadius: 28, 
+        borderWidth: 1.5, 
+        borderColor: colors.border, 
+        padding: 20, 
+        paddingTop: 24, 
+        position: 'relative', 
+        overflow: 'hidden',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4
+      }}>
+        <LinearGradient
+          colors={[accentLine + '08', 'transparent']}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 4 }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>{t('onboarding.currentGoal', 'Inicio')}</Text>
+            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '900' }}>{data.weight} {unitLabel}</Text>
           </View>
-          <View style={{ alignItems: 'center', width: 90 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>{t('onboarding.nextGoal', 'Siguiente objetivo')}</Text>
-            <Trophy size={16} color="#F59E0B" />
+          <View style={{ alignItems: 'center' }}>
+            <Trophy size={18} color="#F59E0B" />
+            <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>{t('onboarding.nextGoal', 'Meta')}</Text>
+            <Text style={{ color: '#F59E0B', fontSize: 16, fontWeight: '900' }}>{data.targetWeight} {unitLabel}</Text>
           </View>
         </View>
 
-        {/* SVG Chart */}
-        <View style={{ height: cH, marginVertical: 10 }}>
+        <View style={{ height: cH + 10, marginVertical: 8 }}>
           <Svg width="100%" height="100%" viewBox={`0 0 ${cW} ${cH}`}>
             <Defs>
               <SvgLinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor="#F59E0B" stopOpacity="0.3" />
-                <Stop offset="1" stopColor="#F59E0B" stopOpacity="0" />
+                <Stop offset="0" stopColor={accentLine} stopOpacity="0.25" />
+                <Stop offset="1" stopColor={accentLine} stopOpacity="0" />
               </SvgLinearGradient>
             </Defs>
-            {/* Guide lines */}
-            <SvgLine x1="20" y1="0" x2="20" y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="4,4" />
-            <SvgLine x1={cW-20} y1="0" x2={cW-20} y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="4,4" />
-            
-            {/* Area under curve (approximate) */}
+            <SvgLine x1="20" y1="0" x2="20" y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="5,5" />
+            <SvgLine x1={cW-20} y1="0" x2={cW-20} y2={cH} stroke={colors.border} strokeWidth="1" strokeDasharray="5,5" />
             <Path d={`${wavyPath} L ${cW-20} ${cH} L 20 ${cH} Z`} fill="url(#grad)" />
-            
-            {/* Main curve */}
-            <Path d={wavyPath} fill="none" stroke="#F59E0B" strokeWidth="3" />
-
-            {/* Start and End Points */}
-            <Circle cx="20" cy={startY} r="6" fill="#FFF" stroke="#F59E0B" strokeWidth="3" />
-            <Circle cx={cW-20} cy={endY} r="6" fill="#FFF" stroke="#F59E0B" strokeWidth="3" />
+            <Path d={wavyPath} fill="none" stroke={accentLine} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            <Circle cx="20" cy={startY} r="7" fill={colors.surface} stroke={accentLine} strokeWidth="3" />
+            <Circle cx={cW-20} cy={endY} r="7" fill={colors.surface} stroke="#F59E0B" strokeWidth="3" />
           </Svg>
-
-          {/* Value Tooltips */}
-          <View style={{ position: 'absolute', left: 20, top: startY - 35, transform: [{ translateX: -30 }], backgroundColor: '#F59E0B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-            <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>{data.weight} {unitLabel}</Text>
-          </View>
-          <View style={{ position: 'absolute', left: cW - 20, top: endY - 35, transform: [{ translateX: -30 }], backgroundColor: '#F59E0B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-            <Text style={{ color: '#000', fontWeight: '800', fontSize: 12 }}>{data.targetWeight} {unitLabel}</Text>
-          </View>
         </View>
 
-        {/* X Axis Labels */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 2 }}>
           {labels.map((lbl, idx) => (
-            <Text key={idx} style={{ color: colors.textSecondary, fontSize: 11 }}>{lbl}</Text>
+            <Text key={idx} style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600' }}>{lbl}</Text>
           ))}
         </View>
       </View>
@@ -1348,11 +1587,11 @@ const step = StyleSheet.create({
     flex: 1, 
     borderRadius: 24, 
     borderWidth: 2, 
-    paddingVertical: 18,
+    paddingVertical: 16,
     alignItems: 'center', 
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     overflow: 'hidden'
   },
   sexIconWrap:      {
@@ -1439,7 +1678,6 @@ export default function OnboardingScreen() {
   const { setProfile, profile }       = useAuthStore();
   const { setMassUnit, setLengthUnit } = useSettingsStore();
 
-  // Custom Alert State
   const [alert, setAlert] = useState<{
     visible: boolean;
     type: AlertType;
@@ -1492,8 +1730,6 @@ export default function OnboardingScreen() {
   }, [error]);
 
   useEffect(() => {
-    // When starting onboarding, clear any leftover local data from previous sessions
-    // to ensure the new user starts with a clean slate.
     useCoachStore.getState().resetAll();
     useBodyStore.getState().reset();
     useRecipesStore.getState().reset();
@@ -1508,16 +1744,30 @@ export default function OnboardingScreen() {
 
   const canProceed = () => {
     if (stepId === 'goal')     return !!data.goal;
-    if (stepId === 'stats')    return !!data.sex && !!data.age && !!data.weight && !!data.height;
+    if (stepId === 'stats') {
+      const sexOk = !!data.sex && (data.sex !== 'other' || !!data.customGender);
+      return sexOk && !!data.age && !!data.weight && !!data.height;
+    }
     if (stepId === 'activity') return !!data.activityLevel;
     if (stepId === 'lifestyle') return !!data.lifestyle;
+    if (stepId === 'dietaryRestrictions') return !!data.dietaryRestrictions;
+    if (stepId === 'medicalConditions') return !!data.medicalConditions;
+    if (stepId === 'medications') return !!data.medicationsSupplements;
     if (stepId === 'dietType') return !!data.dietType;
+    if (stepId === 'diet') {
+      const cur = data.availableFoods ?? [];
+      for (const cat of FOOD_CATEGORIES) {
+        const selectedInCategory = cat.items.filter(item => cur.includes(item.id));
+        if (selectedInCategory.length < cat.min) return false;
+      }
+      return true;
+    }
     if (stepId === 'personalization') return !!data.targetWeight && !!data.velocity;
+    if (stepId === 'terms') return !!data.termsAccepted;
     return true;
   };
 
   const handleNext = () => {
-    // Validation for food selection step
     if (stepId === 'diet') {
       const cur = data.availableFoods ?? [];
       for (const cat of FOOD_CATEGORIES) {
@@ -1532,7 +1782,6 @@ export default function OnboardingScreen() {
       }
     }
 
-    // Weight Goal Validation
     if (stepId === 'personalization') {
       const curWeight = data.weight ?? 0;
       const tarWeight = data.targetWeight ?? curWeight;
@@ -1546,7 +1795,6 @@ export default function OnboardingScreen() {
         return;
       }
       if (data.goal === 'maintain' && tarWeight !== curWeight) {
-        // Force maintain to match
         updateData({ targetWeight: curWeight });
       }
     }
@@ -1562,8 +1810,6 @@ export default function OnboardingScreen() {
     setSaving(true);
     try {
       const d = data as OnboardingData;
-      
-      // Convert weights to kg for database
       const isLbs = d.weightUnit === 'lbs';
       const isFt = d.heightUnit === 'ft';
       const wKg = isLbs ? Math.round(d.weight / 2.20462) : d.weight;
@@ -1577,15 +1823,13 @@ export default function OnboardingScreen() {
         lifestyleLevel: d.lifestyle,
       });
       
-      // Calculate macros based on dietType
-      let macroRatio = { protein: 0.3, carbs: 0.4, fat: 0.3 }; // Default
+      let macroRatio = { protein: 0.3, carbs: 0.4, fat: 0.3 };
       if (d.dietType === 'high_protein') macroRatio = { protein: 0.4, carbs: 0.3, fat: 0.3 };
       if (d.dietType === 'low_carb')     macroRatio = { protein: 0.35, carbs: 0.15, fat: 0.5 };
       if (d.dietType === 'keto')         macroRatio = { protein: 0.25, carbs: 0.05, fat: 0.7 };
       if (d.dietType === 'low_fat')      macroRatio = { protein: 0.3, carbs: 0.55, fat: 0.15 };
 
       const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, d.goal);
-      // Overwrite macros with specific ratios if not default
       const finalProtein = Math.round((targetCalories * macroRatio.protein) / 4);
       const finalCarbs = Math.round((targetCalories * macroRatio.carbs) / 4);
       const finalFat = Math.round((targetCalories * macroRatio.fat) / 9);
@@ -1621,6 +1865,7 @@ export default function OnboardingScreen() {
         medicalConditions: d.medicalConditions ?? [],
         medicationsSupplements: d.medicationsSupplements ?? [],
         lifestyle:      d.lifestyle,
+        customGender:   d.customGender,
       };
 
       const { error: upsertError } = await supabase.from('users').upsert({
@@ -1677,6 +1922,7 @@ export default function OnboardingScreen() {
     dietType: <DietTypeStep data={data} onChange={updateData} />,
     diet:     <DietStep     data={data} onChange={updateData} />,
     personalization: <PersonalizationStep data={data} onChange={updateData} />,
+    terms: <TermsStep data={data} onChange={updateData} />,
     projection: <ProjectionStep data={data} />,
   };
 
@@ -1780,26 +2026,42 @@ export default function OnboardingScreen() {
 
 const s = StyleSheet.create({
   safe:                 { flex: 1 },
-  header:               { paddingTop: 12, paddingHorizontal: Spacing.base },
+  header:               { paddingTop: 14, paddingHorizontal: Spacing.base, paddingBottom: 10 },
   headerTop:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  backIconBtn:          { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  progressWrap:         { flex: 1, flexDirection: 'row', gap: 6 },
-  progressSegment:      { flex: 1, height: 6, borderRadius: 3 },
+  backIconBtn:          { 
+    width: 40, height: 40, 
+    justifyContent: 'center', alignItems: 'center',
+    borderRadius: 12,
+  },
+  progressWrap:         { flex: 1, flexDirection: 'row', gap: 5 },
+  progressSegment:      { 
+    flex: 1, 
+    height: 5, 
+    borderRadius: 4,
+  },
   scroll:               { flex: 1 },
-  content:              { padding: Spacing.base, paddingTop: 40, paddingBottom: 40 },
-  footer:               { padding: Spacing.base, paddingBottom: 36 },
-  nextBtn:              { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#7C5CFC', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  nextBtnDisabled:      { opacity: 0.5 },
-  nextGrad:             { padding: 18, alignItems: 'center' },
+  content:              { padding: Spacing.base, paddingTop: 32, paddingBottom: 40 },
+  footer:               { padding: Spacing.base, paddingBottom: 32 },
+  nextBtn:              { 
+    borderRadius: 22, 
+    overflow: 'hidden', 
+    elevation: 10, 
+    shadowColor: '#7C5CFC', 
+    shadowOffset: { width: 0, height: 6 }, 
+    shadowOpacity: 0.4, 
+    shadowRadius: 14 
+  },
+  nextBtnDisabled:      { opacity: 0.45 },
+  nextGrad:             { padding: 19, alignItems: 'center' },
   nextContent:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nextText:             { color: '#fff', fontWeight: '800', fontSize: 18, letterSpacing: 0.5 },
+  nextText:             { color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 0.4 },
   exitBtnSmall:         { padding: 4 },
-  exitText:             { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  exitText:             { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
   errorContainer:       {
     position: 'absolute',
     top: 60,
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
     zIndex: 9999,
   },
   errorGradient:        {
@@ -1808,11 +2070,11 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 12
   },
   errorText:            { color: '#FFF', fontSize: 14, fontWeight: '700', flex: 1 },
 });

@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
 import { getFoodByBarcode, searchFood } from '../../services/foodDatabase';
 import { analyzeFoodPhoto } from '../../services/groq';
+import * as Crypto from 'expo-crypto';
 import { useNutritionStore, useSettingsStore, useAuthStore, usePurchaseStore } from '../../store';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../hooks/useTheme';
@@ -445,9 +446,9 @@ export default function ScanModal() {
     const finalLoggedAt = date ? `${date}T${ts}` : new Date().toISOString();
 
     const localLogs = editedFoods.map((food, index) => ({
-      id:       `temp-${Date.now()}-${index}`,
+      id:       Crypto.randomUUID(),
       foodItem: {
-        id:       `ai-${Date.now()}-${index}`,
+        id:       Crypto.randomUUID(),
         name:     food.name,
         calories: Math.round((food.originalCal / food.originalGrams) * 100),
         protein:  Math.round((food.originalProt / food.originalGrams) * 100),
@@ -480,10 +481,14 @@ export default function ScanModal() {
 
     try {
       await Promise.all(localLogs.map(log => addLog(log)));
-      setShowSuccess(true);
+    } catch (err) {
+      // Logs were saved locally; Supabase sync error is non-blocking
+      console.error('[ScanModal] Sync error (local save succeeded):', err);
     } finally {
       setLoading(false);
     }
+    // Always show success and navigate back since local save succeeded
+    setShowSuccess(true);
   };
 
   let content;

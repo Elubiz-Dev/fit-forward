@@ -27,7 +27,8 @@ export interface UserProfile extends HealthProfile {
   name:            string;
   email:           string;
   avatarUrl?:      string;
-  sex:             'male' | 'female';
+  sex:             'male' | 'female' | 'other';
+  genderOther?:    string;
   age:             number;
   weight:          number;   // kg
   height:          number;   // cm
@@ -138,6 +139,7 @@ export interface ProgressPhoto {
 export interface ProgressEvaluation {
   id: string;
   uri: string;
+  base64ImageData?: string; // stored as data URI for persistence across sessions
   date: string;
   feedback: string;
   strengths: string[];

@@ -47,9 +47,12 @@ export default function TermsScreen() {
             El uso de la aplicación y la ejecución de cualquier ejercicio o plan nutricional se realiza estrictamente bajo tu propio riesgo. FitGO y sus desarrolladores no se hacen responsables de ninguna lesión, problema de salud, pérdida o daño que resulte del uso directo o indirecto de la aplicación. Eres responsable de asegurar que la ejecución de los ejercicios sea con la técnica correcta y el peso adecuado a tus capacidades.
           </Text>
 
-          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>4. Precisión de los Datos y Algoritmos (IA)</Text>
+          <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>4. Rol de la Inteligencia Artificial (Coaches IA) y Precisión de Datos</Text>
           <Text style={[s.paragraph, { color: colors.textSecondary }]}>
-            Nuestros planes de alimentación y entrenamiento son generados mediante modelos avanzados de Inteligencia Artificial (IA) y bases de datos nutricionales de terceros. Aunque nos esforzamos por ofrecer la mayor precisión posible, FitGO no garantiza que las macros, calorías o sugerencias estén 100% libres de errores.
+            Nuestros planes y el asesoramiento proporcionado por los "coaches" dentro de la aplicación son generados mediante modelos avanzados de Inteligencia Artificial (IA). <Text style={{fontWeight: 'bold', color: colors.error}}>Ningún coach virtual en la aplicación es un profesional certificado</Text> (ya sea entrenador, profesional de alimentación o de bienestar). Lo que dice la IA no deja de ser IA y siempre debes consultar a un profesional humano certificado antes de hacer o seguir cualquier recomendación dada por el coach o la app.
+          </Text>
+          <Text style={[s.paragraph, { color: colors.textSecondary }]}>
+            Aunque nos esforzamos por ofrecer la mayor precisión posible utilizando bases de datos nutricionales de terceros, FitGO no garantiza que las sugerencias estén libres de errores.
           </Text>
 
           <Text style={[s.sectionTitle, { color: colors.textPrimary }]}>5. Suscripciones y Pagos</Text>

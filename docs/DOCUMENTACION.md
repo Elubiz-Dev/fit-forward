@@ -44,8 +44,8 @@ La aplicación está dividida en 5 pestañas principales:
 ### 3. Inteligencia Artificial (AI Coach)
 El módulo más innovador de FitGO. Ofrece 3 "personalidades" o expertos distintos:
 - 🏋️ **Trainer (Entrenador):** Para consejos sobre rutinas, técnicas de ejercicio y motivación.
-- 🥗 **Nutritionist (Nutricionista):** Para análisis de dieta, recomendaciones de macros y recetas.
-- 🩺 **Doctor:** Para consultas de salud preventivas y bienestar general.
+- 🥗 **Coach de alimentación:** Para análisis de dieta, recomendaciones de macros y recetas.
+- 🩺 **Coach de bienestar:** Para consultas de bienestar general (recordando que no reemplaza a un profesional).
 - Incluye un chat interactivo e historial de las conversaciones para dar seguimiento al usuario.
 
 ### 4. Seguimiento Físico y Salud

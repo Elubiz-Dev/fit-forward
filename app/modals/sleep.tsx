@@ -6,15 +6,28 @@ import { useTheme } from '../../hooks/useTheme';
 import { useNutritionStore } from '../../store';
 import { Spacing, Radius } from '../../constants';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function SleepModal() {
   const { t } = useTranslation();
   const colors = useTheme();
-  const { setSleep } = useNutritionStore();
+  const { setSleep, dailySleep, selectedDate } = useNutritionStore();
+
+  // Pre-fill wake time based on existing saved sleep hours (bed=23:00 + saved hours)
+  const initialWaketime = useMemo(() => {
+    const saved = dailySleep[selectedDate];
+    if (saved && saved > 0) {
+      const totalMins = 23 * 60 + Math.round(saved * 60);
+      const wakeH = Math.floor(totalMins / 60) % 24;
+      const wakeM = totalMins % 60;
+      return `${String(wakeH).padStart(2, '0')}:${String(wakeM).padStart(2, '0')}`;
+    }
+    return '07:00';
+  }, []);
+
   const [bedtime, setBedtime] = useState('23:00');
-  const [waketime, setWaketime] = useState('07:00');
+  const [waketime, setWaketime] = useState(initialWaketime);
 
   const calculateHours = () => {
     try {
@@ -28,16 +41,19 @@ export default function SleepModal() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const hours = calculateHours();
     if (hours > 0 && hours <= 24) {
       try {
-        setSleep(hours); // Call without await to prevent UI hang
-        router.back();
+        await setSleep(hours);
       } catch (err) {
         console.error('Error saving sleep:', err);
+      } finally {
         router.back();
       }
+    } else {
+      // Invalid hours — go back anyway
+      router.back();
     }
   };
 

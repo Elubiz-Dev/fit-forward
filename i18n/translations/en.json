@@ -119,7 +119,9 @@
     "sendResetLink": "Send Reset Link",
     "sending": "Sending...",
     "emailSentSub": "We sent a password reset link to",
-    "backToLogin": "Back to Login"
+    "backToLogin": "Back to Login",
+    "termsRead": "I have read and accept the",
+    "termsLink": "Terms & Conditions"
   },
   "tabs": {
     "dashboard": "Progress",
@@ -151,6 +153,8 @@
     "recentLogs": "Recent Logs",
     "seeAll": "See all",
     "fallbackName": "there",
+    "hello": "Hello",
+    "achievements": "Achievements",
     "low": "Low",
     "medium": "Medium",
     "high": "High",
@@ -431,7 +435,9 @@
     "editNameSubtitle": "Update your profile display name",
     "editWeightSubtitle": "Record your current body weight",
     "editHeightSubtitle": "Set your current height",
-    "editAgeSubtitle": "Set your current age"
+    "editAgeSubtitle": "Set your current age",
+    "otherGender": "Other",
+    "specifyGender": "Specify your gender..."
   },
   "recipes": {
     "title": "AI Recipes",
@@ -450,8 +456,8 @@
     "upgradePro": "Upgrade to Pro for unlimited coaching",
     "online": "Online · Powered by Groq",
     "nutritionist": {
-      "label": "Nutritionist",
-      "welcome": "Hello! I am your AI Nutritionist. How can I help you with your diet today?",
+      "label": "Food Coach",
+      "welcome": "Hello! I am your AI Food Coach. How can I help you with your diet today?",
       "suggest1": "Give me a light dinner idea 🥗",
       "suggest2": "What snacks are good for weight loss? 🍎",
       "suggest3": "How much protein should I eat daily? 🍗",
@@ -466,8 +472,8 @@
       "suggest4": "What stretches to do after running? 🏃"
     },
     "doctor": {
-      "label": "Personal Doctor",
-      "welcome": "Hello! I am your AI Personal Doctor. How can I assist you with your health today?",
+      "label": "Wellness Coach",
+      "welcome": "Hello! I am your AI Wellness Coach. How can I assist you with your health today?",
       "suggest1": "What should I do if I feel dizzy after working out? 😵‍💫",
       "suggest2": "Are there any interactions with my medications? 💊",
       "suggest3": "How can I improve my sleep quality? 🛌",
@@ -623,7 +629,6 @@
     "medicalConditionsSub": "This helps us tailor safer recommendations for you",
     "medicationsTitle": "Do you take any medications or supplements?",
     "medicationsSub": "This helps us avoid conflicts with your nutritional plan",
-    "anabolicsDisclaimer": "At your own responsibility. The app does not support the use of these substances.",
     "skipStep": "Skip this step",
     "otherSpecify": "Other (specify)",
     "otherPlaceholder": "Type here...",
@@ -663,7 +668,6 @@
       "multivitamins": "Vitamins / Multivitamins",
       "omega3": "Omega-3",
       "iron": "Iron",
-      "anabolics": "Anabolics",
       "none": "None"
     },
     "projectionTitle": "Here's how your progress will look!",
@@ -677,7 +681,10 @@
     "warningOverweightMaintain": "Your current weight is high. Consider the weight loss goal.",
     "maintainHealthy": "Excellent! You're at an ideal weight to stay fit and healthy.",
     "currentGoal": "Current weight",
-    "nextGoal": "Target weight"
+    "nextGoal": "Target weight",
+    "termsTitle": "Terms & Conditions",
+    "termsSub": "Read and accept to continue with your plan",
+    "termsAgreement": "I have read and agree to FitGO's Terms of Service and Privacy Policy. I understand my data will be used to personalize my recommendations."
   },
   "scan": {
     "title": "Scan Food",
@@ -809,5 +816,98 @@
     "trap bar": "trap bar",
     "skierg machine": "skierg machine",
     "elliptical machine": "elliptical machine"
+  },
+  "nutritionist": "Diet/Food",
+  "doctor": "Wellness",
+  "social": {
+    "title": "FitGo Social",
+    "sharedFrom": "Shared from FitGo",
+    "cameraPermission": "Camera permission is required.",
+    "galleryPermission": "Gallery permission is required.",
+    "tabs": {
+      "you": "You",
+      "feed": "Community",
+      "friends": "Friends",
+      "ranking": "Ranking",
+      "challenges": "Challenges"
+    },
+    "you": {
+      "friends": "Friends",
+      "ranking": "Ranking",
+      "points": "Points",
+      "achievements": "Achievements",
+      "viewAllAchievements": "View all achievements",
+      "yourPosts": "Your Posts",
+      "noPosts": "You haven't posted anything yet."
+    },
+    "feed": {
+      "postPlaceholder": "What's on your mind?",
+      "photo": "Photo",
+      "noPosts": "No posts yet.",
+      "firstToShare": "Be the first to share something!",
+      "like": "Like",
+      "liked": "Liked",
+      "comment": "Comment",
+      "share": "Share",
+      "writeComment": "Write a comment...",
+      "edited": "(edited)"
+    },
+    "friends": {
+      "addFriends": "Add Friends",
+      "searchPlaceholder": "Name, Email or ID...",
+      "searchBtn": "Search",
+      "sendRequest": "Send Request",
+      "receivedRequests": "Received Requests",
+      "sentRequests": "Sent Requests",
+      "pending": "Pending",
+      "myFriends": "My Friends",
+      "noFriends": "You don't have friends yet."
+    },
+    "ranking": {
+      "currentRank": "Your Current Rank",
+      "inWorld": "in the world",
+      "points": "POINTS",
+      "globalRanking": "Global Ranking",
+      "description": "Compete for consistency. Points are calculated based on your daily logs and achievements.",
+      "instructionsTitle": "How to earn points?",
+      "instructionsDesc": "Earn points and rank up by completing the following actions:\n• Log a food: 10 points\n• Log an activity: 50 points\n• Complete a challenge: 100 points\n• Unlock an achievement: 100 points\n\nConsistency is key. Keep logging daily to become a FitGo legend!",
+      "gotIt": "Got it!"
+    },
+    "challenges": {
+      "fitgoChallenges": "FitGo Challenges",
+      "suggestAI": "Fitz Suggestion (AI)",
+      "acceptChallenge": "Accept Challenge",
+      "newCustomChallenge": "New Custom Challenge",
+      "createChallenge": "Create New Challenge",
+      "challengeTitle": "Challenge Title",
+      "titlePlaceholder": "e.g. Iron Week",
+      "description": "Description",
+      "descPlaceholder": "Challenge description...",
+      "type": "Type",
+      "steps": "Steps",
+      "calories": "Calories",
+      "physical": "Physical",
+      "days": "Days",
+      "customGoal": "Custom Goal",
+      "customGoalPlaceholder": "e.g. 100 pushups...",
+      "targetSteps": "Target (Steps per day)",
+      "targetCalories": "Target (Calories per day)",
+      "participants": "Who is participating?",
+      "participantsDesc": "Tap to select. You can include yourself and multiple friends.",
+      "me": "Me",
+      "startOnlyMe": "🎯 Start (only me)",
+      "startWithFriends": "⚔️ Me + {count} friend(s)",
+      "challengeFriendsOnly": "⚔️ Challenge {count} friend(s) (without me)",
+      "start": "🎯 Start",
+      "activeChallenges": "Active Challenges",
+      "noActiveChallenges": "No active challenges."
+    },
+    "profileModal": {
+      "fullProfile": "View Full Profile",
+      "areFriends": "You are Friends",
+      "pendingRequest": "Pending Request",
+      "addFriend": "Add Friend",
+      "class": "Class"
+    }
   }
 }

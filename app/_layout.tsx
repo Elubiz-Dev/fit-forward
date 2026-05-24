@@ -3,7 +3,10 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, LogBox } from 'react-native';
+
+// Ignore specific Supabase Auth errors that occur during development fast-refresh
+LogBox.ignoreLogs(['AuthApiError: Invalid Refresh Token: Refresh Token Not Found']);
 import { supabase } from '../services/supabase';
 import { useAuthStore, useSettingsStore, usePurchaseStore } from '../store';
 import { Colors } from '../constants';

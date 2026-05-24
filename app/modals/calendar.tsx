@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useNutritionStore } from '../../store';
 import { Radius } from '../../constants';
 import { useTranslation } from 'react-i18next';
+import { getLocalDateString } from '../../utils/date';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -75,12 +76,12 @@ export default function CalendarModal() {
 
   const handleSelectDay = (day: number) => {
     const newDate = new Date(calendarData.year, calendarData.month, day);
-    const dateString = newDate.toISOString().split('T')[0];
+    const dateString = getLocalDateString(newDate);
     setDate(dateString);
     router.back();
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -203,9 +204,7 @@ export default function CalendarModal() {
 
             {Array.from({ length: calendarData.daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const dayDate = new Date(calendarData.year, calendarData.month, day)
-                .toISOString()
-                .split('T')[0];
+              const dayDate = getLocalDateString(new Date(calendarData.year, calendarData.month, day));
               const isToday = dayDate === today;
               const isSelected = dayDate === selectedDate;
               const isActive = !!activeDays[dayDate];

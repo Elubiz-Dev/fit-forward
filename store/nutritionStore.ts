@@ -13,6 +13,16 @@ import type { FoodItem } from '../services/foodDatabase';
 import { getLocalDateString } from '../utils/date';
 import { useAuthStore } from './authStore';
 import { supabase } from '../services/supabase';
+import * as Crypto from 'expo-crypto';
+
+/** Returns true if the string is a valid UUID v4 format. */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidUUID = (v: string | null | undefined): boolean =>
+  !!v && UUID_REGEX.test(v);
+
+/** Returns the value if it's a valid UUID, otherwise generates a new one. */
+const ensureUUID = (v: string | null | undefined): string =>
+  isValidUUID(v) ? v! : Crypto.randomUUID();
 
 interface NutritionState {
   todayLogs:    FoodLog[];
@@ -184,6 +194,10 @@ export const useNutritionStore = create<NutritionState>()(
         const { activeDays } = get();
         if (activeDays[date]) return;
 
+        // Prevent updating streaks/active days for past dates. 
+        // Only the current local device day can be marked as newly active.
+        if (date !== getLocalDateString()) return;
+
         const newActiveDays = { ...activeDays, [date]: true };
         const newPlannedDays = Object.keys(newActiveDays).length;
         const streak = recalculateStreak(newActiveDays);
@@ -192,31 +206,35 @@ export const useNutritionStore = create<NutritionState>()(
       },
 
       addLog: async (log) => {
-        set((s) => ({ todayLogs: [...s.todayLogs, log] }));
-        get().updateActivity(log.loggedAt.split('T')[0]);
+        // Ensure the log has a valid UUID before anything else
+        const safeLog = isValidUUID(log.id) ? log : { ...log, id: Crypto.randomUUID() };
+        set((s) => ({ todayLogs: [...s.todayLogs, safeLog] }));
+        get().updateActivity(safeLog.loggedAt.split('T')[0]);
 
         const { profile } = useAuthStore.getState();
         if (profile?.id) {
           try {
             const { error } = await supabase.from('food_logs').insert({
-              id: log.id,
+              id: safeLog.id,
               user_id: profile.id,
-              food_id: log.foodItem.id,
-              food_name: log.foodItem.name,
-              calories: log.calories,
-              protein: log.protein,
-              carbs: log.carbs,
-              fat: log.fat,
-              sugar: log.sugar || 0,
-              fiber: log.fiber || 0,
-              sodium: log.sodium || 0,
-              iron: log.iron || 0,
-              calcium: log.calcium || 0,
-              saturated_fat: log.saturatedFat || 0,
-              trans_fat: log.transFat || 0,
-              grams: log.grams,
-              meal: log.meal,
-              logged_at: log.loggedAt
+              // food_id omitted: FK constraint requires entry in foods table,
+              // but our foods come from external APIs and don't exist there.
+              // food_name is sufficient to identify what was eaten.
+              food_name: safeLog.foodItem.name,
+              calories: safeLog.calories,
+              protein: safeLog.protein,
+              carbs: safeLog.carbs,
+              fat: safeLog.fat,
+              sugar: safeLog.sugar || 0,
+              fiber: safeLog.fiber || 0,
+              sodium: safeLog.sodium || 0,
+              iron: safeLog.iron || 0,
+              calcium: safeLog.calcium || 0,
+              saturated_fat: safeLog.saturatedFat || 0,
+              trans_fat: safeLog.transFat || 0,
+              grams: safeLog.grams,
+              meal: safeLog.meal,
+              logged_at: safeLog.loggedAt
             });
             if (error) {
               console.error('[NutritionStore] addLog Supabase error:', error);
@@ -433,14 +451,16 @@ export const useNutritionStore = create<NutritionState>()(
               loggedAt:  a.logged_at
             }));
             
-            // Safety: Only overwrite if we got data or if there's no local unsynced data
-            // (For now, we just replace, but we should verify the sync status)
-            set((s) => ({
-              activityLogs: [
-                ...s.activityLogs.filter(act => !act.loggedAt.startsWith(date)),
-                ...formattedActs
-              ]
-            }));
+            set((s) => {
+              const otherDaysActs = s.activityLogs.filter(act => !act.loggedAt.startsWith(date));
+              const mergedActs = new Map();
+              s.activityLogs.filter(act => act.loggedAt.startsWith(date)).forEach(a => mergedActs.set(a.id, a));
+              formattedActs.forEach(a => mergedActs.set(a.id, a));
+              
+              return {
+                activityLogs: [...otherDaysActs, ...Array.from(mergedActs.values())]
+              };
+            });
           }
 
           if (data && data.length > 0) {
@@ -479,17 +499,29 @@ export const useNutritionStore = create<NutritionState>()(
               transFat:     d.trans_fat,
             }));
 
-            // Merge food logs: keep others, replace current date ones
-            set((s) => ({
-              todayLogs: [
-                ...s.todayLogs.filter(log => !log.loggedAt.startsWith(date)),
-                ...formattedLogs
-              ] as any
-            }));
+            // Merge food logs: keep others, update existing with Supabase data, preserve unsynced local logs
+            set((s) => {
+              const otherDaysLogs = s.todayLogs.filter(log => !log.loggedAt.startsWith(date));
+              const mergedMap = new Map();
+              s.todayLogs.filter(log => log.loggedAt.startsWith(date)).forEach(l => mergedMap.set(l.id, l));
+              formattedLogs.forEach((l: any) => mergedMap.set(l.id, l));
+              
+              return {
+                todayLogs: [...otherDaysLogs, ...Array.from(mergedMap.values())] as any
+              };
+            });
           }
 
           if (hasActivityThisDay) {
-            get().updateActivity(date);
+            const currentActiveDays = get().activeDays;
+            if (!currentActiveDays[date]) {
+              const newActiveDays = { ...currentActiveDays, [date]: true };
+              set({ 
+                activeDays: newActiveDays, 
+                plannedDays: Object.keys(newActiveDays).length,
+                streakDays: recalculateStreak(newActiveDays)
+              });
+            }
           }
 
           // Force recalculate streak to avoid stale UI
@@ -499,10 +531,7 @@ export const useNutritionStore = create<NutritionState>()(
 
         } catch (err) {
           console.error('[NutritionStore] fetchLogs error:', err);
-          // Only clear logs for the failed date, not all cached data
-          set((s) => ({
-            todayLogs: s.todayLogs.filter(log => !log.loggedAt.startsWith(date))
-          }));
+          // Do NOT clear local logs on error to prevent data loss
           throw err; // Re-throw so UI can handle it
         }
       },

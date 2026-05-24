@@ -27,6 +27,7 @@ export default function UserProfileModal() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [userFriends, setUserFriends] = useState<any[]>([]);
+  const [totalFriends, setTotalFriends] = useState(0);
   const [showAchievements, setShowAchievements] = useState(false);
 
   const isMe = userId === myProfile?.id;
@@ -36,7 +37,7 @@ export default function UserProfileModal() {
       if (!userId) return;
       try {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('users')
           .select('*')
           .eq('id', userId)
           .single();
@@ -57,7 +58,7 @@ export default function UserProfileModal() {
       try {
         const { data } = await supabase
           .from('posts')
-          .select('*, user_profile:profiles!posts_user_id_fkey(name, avatar_url)')
+          .select('*, user_profile:user_id(name, avatar_url)')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(10);
@@ -73,13 +74,20 @@ export default function UserProfileModal() {
     async function loadFriends() {
       if (!userId) return;
       try {
-        const { data } = await supabase
-          .from('friendships')
-          .select('*, friend_profile:profiles!friendships_user_id_2_fkey(id, name, avatar_url)')
-          .eq('user_id_1', userId)
+        const { data, count } = await supabase
+          .from('friends')
+          .select('*, user1:user_id_1(id, name, avatar_url), user2:user_id_2(id, name, avatar_url)', { count: 'exact' })
+          .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
           .eq('status', 'accepted')
           .limit(12);
-        setUserFriends(data || []);
+          
+        const friendsList = (data || []).map((f: any) => ({
+          ...f,
+          friend_profile: f.user_id_1 === userId ? f.user2 : f.user1
+        }));
+        
+        setUserFriends(friendsList);
+        setTotalFriends(count || 0);
       } catch (err) {
         console.warn('Error loading friends:', err);
       }
@@ -130,7 +138,7 @@ export default function UserProfileModal() {
   const currentBadgeId = displayUser.selectedBadge || (displayUser.role === 'super_admin' ? 'super_admin' : displayUser.role === 'admin' ? 'admin' : displayUser.isPro ? 'pro' : 'verified');
   const currentBadge = ALL_BADGES[currentBadgeId] || ALL_BADGES.verified;
 
-  const theirUnlockedIds: string[] = displayUser.unlockedAchievements || [];
+  const theirUnlockedIds: string[] = displayUser.unlocked_achievements || [];
   const theirUnlockedCount = isMe
     ? myAchievements.filter(a => a.unlocked).length
     : theirUnlockedIds.length;
@@ -200,9 +208,18 @@ export default function UserProfileModal() {
           {!isMe && (
             <View style={{ marginBottom: 20 }}>
               {friendStatus?.status === 'accepted' ? (
-                <View style={[s.actionBtn, { backgroundColor: colors.success + '20' }]}>
-                  <Check size={20} color={colors.success} />
-                  <Text style={[s.actionBtnText, { color: colors.success }]}>Son Amigos</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[s.actionBtn, { flex: 1, backgroundColor: colors.success + '20' }]}>
+                    <Check size={20} color={colors.success} />
+                    <Text style={[s.actionBtnText, { color: colors.success }]}>Son Amigos</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={[s.actionBtn, { flex: 1, backgroundColor: colors.primary }]}
+                    onPress={() => router.push({ pathname: '/modals/chat', params: { friendId: userId, friendName: displayUser.name, friendAvatar: displayUser.avatar_url || '' } })}
+                  >
+                    <MessageSquare size={20} color="#fff" />
+                    <Text style={[s.actionBtnText, { color: '#fff' }]}>Mensaje</Text>
+                  </TouchableOpacity>
                 </View>
               ) : friendStatus?.status === 'pending' ? (
                 <View style={[s.actionBtn, { backgroundColor: colors.surfaceAlt }]}>
@@ -262,45 +279,45 @@ export default function UserProfileModal() {
 
           {/* Achievements Detail (expandable) */}
           {showAchievements && (
-            <View style={{ gap: 10, marginBottom: 20 }}>
-              {myAchievements.map(achievement => {
-                const iHaveIt = achievement.unlocked;
-                const theyHaveIt = isMe ? iHaveIt : theirUnlockedIds.includes(achievement.id);
-                if (!iHaveIt && !theyHaveIt) return null;
-                return (
-                  <GlassCard key={achievement.id} style={{ padding: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: colors.surfaceAlt, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                      <Text style={{ fontSize: 24 }}>{achievement.icon}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.textPrimary, fontWeight: 'bold', fontSize: 15 }}>{achievement.title}</Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: 12 }} numberOfLines={1}>{achievement.description}</Text>
-                    </View>
-                    {!isMe && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                        <View style={{ alignItems: 'center' }}>
-                          <Text style={{ fontSize: 9, color: colors.textMuted, marginBottom: 3 }}>Tú</Text>
-                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: iHaveIt ? colors.success + '25' : colors.error + '20', alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ fontSize: 10 }}>{iHaveIt ? '✓' : '✗'}</Text>
-                          </View>
-                        </View>
-                        <View style={{ alignItems: 'center' }}>
-                          <Text style={{ fontSize: 9, color: colors.textMuted, marginBottom: 3 }}>Él/Ella</Text>
-                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: theyHaveIt ? colors.success + '25' : colors.error + '20', alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ fontSize: 10 }}>{theyHaveIt ? '✓' : '✗'}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-                  </GlassCard>
-                );
-              })}
-              {myAchievements.filter(a => {
-                const iHave = a.unlocked;
-                const theyHave = isMe ? iHave : theirUnlockedIds.includes(a.id);
-                return iHave || theyHave;
-              }).length === 0 && (
-                <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 12 }}>No hay logros para comparar aún.</Text>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+              <View style={{ flex: 1, gap: 10 }}>
+                <View style={{ backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: Radius.md, alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={{ fontWeight: '800', color: colors.textPrimary }}>Tú</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{myAchievements.filter(a => a.unlocked).length} / {totalAchievements}</Text>
+                </View>
+                {myAchievements.filter(a => a.unlocked).length === 0 && (
+                   <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: 12, marginTop: 10 }}>Sin logros</Text>
+                )}
+                {myAchievements.map(achievement => {
+                  if (!achievement.unlocked) return null;
+                  return (
+                    <GlassCard key={`me-${achievement.id}`} style={{ padding: 12, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 32, marginBottom: 6 }}>{achievement.icon}</Text>
+                      <Text style={{ color: colors.textPrimary, fontWeight: 'bold', fontSize: 13, textAlign: 'center' }} numberOfLines={2}>{achievement.title}</Text>
+                    </GlassCard>
+                  );
+                })}
+              </View>
+
+              {!isMe && (
+                <View style={{ flex: 1, gap: 10 }}>
+                  <View style={{ backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: Radius.md, alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: '800', color: colors.textPrimary }} numberOfLines={1}>{displayUser.name?.split(' ')[0]}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{theirUnlockedCount} / {totalAchievements}</Text>
+                  </View>
+                  {theirUnlockedCount === 0 && (
+                     <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: 12, marginTop: 10 }}>Sin logros</Text>
+                  )}
+                  {myAchievements.map(achievement => {
+                    if (!theirUnlockedIds.includes(achievement.id)) return null;
+                    return (
+                      <GlassCard key={`them-${achievement.id}`} style={{ padding: 12, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 32, marginBottom: 6 }}>{achievement.icon}</Text>
+                        <Text style={{ color: colors.textPrimary, fontWeight: 'bold', fontSize: 13, textAlign: 'center' }} numberOfLines={2}>{achievement.title}</Text>
+                      </GlassCard>
+                    );
+                  })}
+                </View>
               )}
             </View>
           )}
@@ -311,7 +328,7 @@ export default function UserProfileModal() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <Users size={18} color={colors.primary} />
                 <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '800' }}>
-                  Amigos · {userFriends.length}
+                  Amigos · {totalFriends}
                 </Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>

@@ -13,6 +13,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
+import { CheckSquare, Square } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,6 +24,7 @@ export default function RegisterScreen() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{title: string, message: string, type: AlertType}>({ title: '', message: '', type: 'error' });
 
@@ -58,6 +60,10 @@ export default function RegisterScreen() {
     }
     if (password.length < 8) {
       showAlert(t('common.error'), t('auth.passwordShort'), 'warning');
+      return;
+    }
+    if (!termsAccepted) {
+      showAlert(t('common.error'), 'Debes aceptar los Términos y Condiciones para continuar.', 'warning');
       return;
     }
 
@@ -176,14 +182,27 @@ export default function RegisterScreen() {
         </TouchableOpacity>
 
         <View style={s.termsContainer}>
-          <Text style={[s.termsText, { color: colors.textSecondary }]}>
-            Al continuar, aceptas nuestros{' '}
-          </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/terms')}>
-            <Text style={[s.termsLink, { color: colors.primary }]}>
-              Términos y Condiciones
-            </Text>
+          <TouchableOpacity 
+            style={s.checkboxBtn} 
+            onPress={() => setTermsAccepted(!termsAccepted)}
+            activeOpacity={0.7}
+          >
+            {termsAccepted ? (
+              <CheckSquare size={20} color={colors.primary} />
+            ) : (
+              <Square size={20} color={colors.textSecondary} />
+            )}
           </TouchableOpacity>
+          <View style={s.termsTextWrapper}>
+            <Text style={[s.termsText, { color: colors.textSecondary }]}>
+              {t('auth.termsRead')}{' '}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/terms')}>
+              <Text style={[s.termsLink, { color: colors.primary }]}>
+                {t('auth.termsLink')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={s.divider}>
@@ -248,7 +267,9 @@ const s = StyleSheet.create({
   footer:       { flexDirection: 'row', justifyContent: 'center', marginTop: 32, paddingBottom: 20 },
   footerText:   { fontSize: 14 },
   footerLink:   { fontWeight: '700', fontSize: 14 },
-  termsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 16, paddingHorizontal: 10 },
-  termsText:    { fontSize: 13, textAlign: 'center' },
+  termsContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 16, paddingHorizontal: 10, gap: 8 },
+  checkboxBtn:  { padding: 4 },
+  termsTextWrapper: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  termsText:    { fontSize: 13 },
   termsLink:    { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
 });

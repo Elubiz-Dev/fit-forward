@@ -144,6 +144,7 @@ function WidgetCard({ title, value, subValue, icon, onPress, customContent, onLo
 // ─── Achievement Preview ───────────────────────────────────────────────────────
 function AchievementPreview({ achievements, onPress }: { achievements: Achievement[]; onPress: () => void }) {
   const colors = useTheme();
+  const { t } = useTranslation();
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   
   return (
@@ -157,7 +158,7 @@ function AchievementPreview({ achievements, onPress }: { achievements: Achieveme
         <Trophy size={18} color="#FFF" />
       </LinearGradient>
       <View style={ap.textWrap}>
-        <Text style={[ap.label, { color: colors.textSecondary }]}>Logros</Text>
+        <Text style={[ap.label, { color: colors.textSecondary }]}>{t('dashboard.achievements', 'Logros')}</Text>
         <Text style={[ap.value, { color: colors.textPrimary }]}>{unlockedCount} / {achievements.length}</Text>
       </View>
     </TouchableOpacity>
@@ -264,7 +265,7 @@ export default function DashboardScreen() {
   } else {
     const yest = new Date();
     yest.setDate(yest.getDate() - 1);
-    if (selectedDate === yest.toISOString().split('T')[0]) {
+    if (selectedDate === getLocalDateString(yest)) {
       dateLabel = t('tracker.yesterday', 'Ayer');
     } else {
       dateLabel = new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { month: 'short', day: 'numeric' });
@@ -480,7 +481,7 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={[s.greeting, { color: colors.textPrimary }]}>¡Hola, {name}!</Text>
+            <Text style={[s.greeting, { color: colors.textPrimary }]}>{t('dashboard.hello', '¡Hola')} {name}!</Text>
             <Text style={[s.date, { color: colors.textSecondary }]}>
               {new Date(selectedDate + 'T12:00:00').toLocaleDateString(language, { weekday: 'long', day: 'numeric', month: 'long' })}
             </Text>
@@ -544,16 +545,6 @@ export default function DashboardScreen() {
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <TouchableOpacity 
               style={{ flex: 1 }} 
-              onPress={() => router.push('/modals/body-measurements')}
-            >
-              <View style={[s.updateBtnSmall, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                <Scale size={18} color={colors.textPrimary} />
-                <Text style={[s.updateBtnTextSmall, { color: colors.textPrimary }]}>{t('dashboard.weight', 'Peso')}</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={{ flex: 1.5 }} 
               onPress={() => setGoalModalVisible(true)}
             >
               <LinearGradient
@@ -563,7 +554,7 @@ export default function DashboardScreen() {
                 style={s.updateBtnSmall}
               >
                 <Target size={18} color="#FFF" />
-                <Text style={[s.updateBtnTextSmall, { color: '#FFF' }]}>{t('profile.updateGoals', 'Objetivos')}</Text>
+                <Text style={[s.updateBtnTextSmall, { color: '#FFF' }]}>{t('profile.updateGoals', 'Actualizar Objetivos')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -619,12 +610,16 @@ export default function DashboardScreen() {
             
             const { targetCalories, protein, carbs, fat } = calculateMacros(tdee, newData.goal);
 
+            // Reset starting weight if they change their main goal (e.g., lose to gain)
+            const newStartingWeight = profile.goal !== newData.goal ? newData.weight : (profile.startingWeight || newData.weight);
+
             // Update Supabase
             const { error: upsertError } = await supabase
               .from('users')
               .update({
                 weight: newData.weight,
                 target_weight: newData.targetWeight,
+                starting_weight: newStartingWeight,
                 goal: newData.goal,
                 lifestyle: newData.lifestyle,
                 activity_level: finalActivityLevel,
@@ -648,7 +643,7 @@ export default function DashboardScreen() {
             setProfile({
               ...profile,
               weight: newData.weight,
-              startingWeight: profile.startingWeight || newData.weight,
+              startingWeight: newStartingWeight,
               targetWeight: newData.targetWeight,
               goal: newData.goal,
               lifestyle: newData.lifestyle,

@@ -87,11 +87,8 @@ export default function HealthProfileModal() {
   ) => {
     const selected = data[fieldKey] || [];
     const predefinedKeys = Object.keys(itemsObj);
-    const customValues = selected.filter(k => !predefinedKeys.includes(k) && !k.startsWith('anabolics:'));
+    const customValues = selected.filter(k => !predefinedKeys.includes(k));
     const customText = customValues.length > 0 ? customValues[0].replace('custom:', '') : '';
-
-    const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
-    const anabolicsText = currentAnabolics?.startsWith('anabolics:') ? currentAnabolics.replace('anabolics:', '') : '';
 
     const toggle = (id: string) => {
       if (id === 'none') {
@@ -99,19 +96,7 @@ export default function HealthProfileModal() {
         return;
       }
 
-      // If it's anabolics, we keep the 'anabolics' key or 'anabolics:...' key
-      const currentAnabolics = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:'));
-      
-      if (id === 'anabolics') {
-        if (currentAnabolics) {
-          // Remove it
-          updateData(fieldKey, selected.filter(x => x !== currentAnabolics));
-        } else {
-          // Add it
-          updateData(fieldKey, [...selected.filter(x => x !== 'none'), 'anabolics']);
-        }
-        return;
-      }
+
 
       const newSelection = selected.includes(id) 
         ? selected.filter(x => x !== id) 
@@ -120,26 +105,12 @@ export default function HealthProfileModal() {
     };
 
     const setCustomText = (text: string) => {
-      const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none' && !k.startsWith('anabolics'));
-      const anabolicsPart = selected.find(k => k === 'anabolics' || k.startsWith('anabolics:')) || '';
+      const base = selected.filter(k => predefinedKeys.includes(k) && k !== 'none');
       
       if (text.trim() === '') {
-        const final = [...base];
-        if (anabolicsPart) final.push(anabolicsPart);
-        updateData(fieldKey, final);
+        updateData(fieldKey, [...base]);
       } else {
-        const final = [...base, `custom:${text}`];
-        if (anabolicsPart) final.push(anabolicsPart);
-        updateData(fieldKey, final);
-      }
-    };
-
-    const setAnabolicsText = (text: string) => {
-      const base = selected.filter(k => k !== 'anabolics' && !k.startsWith('anabolics:'));
-      if (text.trim() === '') {
-        updateData(fieldKey, [...base, 'anabolics']);
-      } else {
-        updateData(fieldKey, [...base, `anabolics:${text}`]);
+        updateData(fieldKey, [...base, `custom:${text}`]);
       }
     };
 
@@ -158,7 +129,7 @@ export default function HealthProfileModal() {
 
         <View style={{ gap: 8 }}>
           {Object.entries(itemsObj).map(([key, label]) => {
-            const isActive = selected.includes(key) || (key === 'anabolics' && !!currentAnabolics);
+            const isActive = selected.includes(key);
             return (
               <View key={key} style={{ gap: 8 }}>
                 <TouchableOpacity
@@ -197,44 +168,7 @@ export default function HealthProfileModal() {
                   </View>
                 </TouchableOpacity>
 
-                {key === 'anabolics' && isActive && (
-                  <View style={{ marginHorizontal: 4, gap: 10 }}>
-                    <View style={{ 
-                      backgroundColor: colors.error + '08', 
-                      padding: 14, 
-                      borderRadius: 16, 
-                      borderWidth: 1, 
-                      borderColor: colors.error + '20' 
-                    }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <AlertCircle size={18} color={colors.error} />
-                        <Text style={{ color: colors.error, fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          {t('common.warning', 'Aviso')}
-                        </Text>
-                      </View>
-                      <Text style={{ color: colors.error, fontSize: 13, lineHeight: 20, opacity: 0.9 }}>
-                        {t('onboarding.anabolicsDisclaimer')}
-                      </Text>
-                    </View>
-                    
-                    <TextInput
-                      style={{
-                        backgroundColor: colors.background,
-                        color: colors.textPrimary,
-                        padding: 14,
-                        borderRadius: 16,
-                        borderWidth: 1.5,
-                        borderColor: colors.border,
-                        fontSize: 15,
-                        fontWeight: '600'
-                      }}
-                      placeholder={t('onboarding.otherPlaceholder')}
-                      placeholderTextColor={colors.textMuted}
-                      value={anabolicsText}
-                      onChangeText={setAnabolicsText}
-                    />
-                  </View>
-                )}
+
               </View>
             );
           })}

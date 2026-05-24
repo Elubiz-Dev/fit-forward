@@ -103,9 +103,9 @@ FitGO/
 - Generación de recetas personalizadas por IA según ingredientes disponibles
 - Agregar recetas directamente al planificador o al tracker
 
-### 4.8 Nutricionista Personal IA (Pro)
+### 4.8 Coach de Alimentación Personal IA (Pro)
 - Creación colaborativa de planes alimenticios estructurados (semana a semana)
-- El "nutricionista" (Gemini con prompt especializado) ajusta el plan según feedback del usuario
+- El "coach de alimentación" (Gemini con prompt especializado) ajusta el plan según feedback del usuario
 - Exportación del plan en PDF
 - Historial de planes anteriores
 
@@ -126,7 +126,7 @@ FitGO/
 | Reconocimiento por cámara | 🔒 Pro |
 | Registro por voz | 🔒 Pro |
 | Recetas | 🔒 Pro |
-| Nutricionista personal IA | 🔒 Pro |
+| Coach de alimentación personal IA | 🔒 Pro |
 | Seguimiento de medidas completo | 🔒 Pro |
 | Fotografías de progreso | 🔒 Pro |
 | Lista de compras automática | 🔒 Pro |
@@ -215,7 +215,7 @@ Todas las tablas tienen políticas RLS activas: cada usuario solo accede a sus p
 
 ### Fase 3 — Premium Features (4–5 semanas)
 - Recetas Pro
-- Nutricionista personal IA
+- Coach de alimentación personal IA
 - Análisis semanal automatizado
 - Exportación PDF
 - Lista de compras

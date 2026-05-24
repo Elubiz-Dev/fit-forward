@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
-  Modal, Platform, Dimensions
+  Modal, Platform, Dimensions, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -219,7 +219,21 @@ export function GoalWizardModal({ visible, onClose, onSave, initialData }: GoalW
                   <Text style={{ fontSize: 32, color: colors.primary }}>-</Text>
                 </TouchableOpacity>
                 <View style={wm.weightValue}>
-                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.weight || 70}</Text>
+                  <TextInput 
+                    style={[wm.weightText, { color: colors.textPrimary, padding: 0, minWidth: 100, textAlign: 'center' }]}
+                    keyboardType="numeric"
+                    value={data.weight !== undefined ? data.weight.toString() : ''}
+                    placeholder="70"
+                    placeholderTextColor={colors.textMuted}
+                    onChangeText={(text: string) => {
+                      if (text === '') {
+                        setData({...data, weight: undefined});
+                      } else {
+                        const val = parseFloat(text.replace(',', '.').replace(/[^0-9.]/g, ''));
+                        if (!isNaN(val)) setData({...data, weight: val});
+                      }
+                    }}
+                  />
                   <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
                 </View>
                 <TouchableOpacity 
@@ -418,7 +432,21 @@ export function GoalWizardModal({ visible, onClose, onSave, initialData }: GoalW
                 </TouchableOpacity>
 
                 <View style={wm.weightValue}>
-                  <Text style={[wm.weightText, { color: colors.textPrimary }]}>{data.targetWeight || data.weight}</Text>
+                  <TextInput 
+                    style={[wm.weightText, { color: colors.textPrimary, padding: 0, minWidth: 100, textAlign: 'center' }]}
+                    keyboardType="numeric"
+                    value={data.targetWeight !== undefined ? data.targetWeight.toString() : ''}
+                    placeholder={data.weight !== undefined ? data.weight.toString() : '70'}
+                    placeholderTextColor={colors.textMuted}
+                    onChangeText={(text: string) => {
+                      if (text === '') {
+                        setData({...data, targetWeight: undefined});
+                      } else {
+                        const val = parseFloat(text.replace(',', '.').replace(/[^0-9.]/g, ''));
+                        if (!isNaN(val)) setData({...data, targetWeight: val});
+                      }
+                    }}
+                  />
                   <Text style={[wm.weightUnit, { color: colors.textSecondary }]}>kg</Text>
                 </View>
 

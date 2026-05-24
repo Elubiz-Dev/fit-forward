@@ -42,6 +42,7 @@ import { GlassCard } from '../../../components/GlassCard';
 import { WeightProgressPath } from '../../../components/WeightProgressPath';
 import { UnitSelectionModal } from '../../../components/UnitSelectionModal';
 import { PhotoSourceModal } from '../../../components/PhotoSourceModal';
+import { getLocalDateString } from '../../../utils/date';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { GoalWizardModal, ACTIVITY_TO_EXERCISE } from '../../../components/GoalWizardModal';
@@ -799,7 +800,7 @@ export default function ProfileScreen() {
       
       // Add a body measurement if weight was changed to keep history synced
       if (updates.weight !== undefined && updates.weight !== profile.weight) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateString();
         addMeasurement({
           id: Date.now().toString(),
           date: todayStr,
@@ -1009,7 +1010,7 @@ export default function ProfileScreen() {
 
       // Add a body measurement if weight was changed to keep history synced
       if (newData.weight !== profile.weight) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateString();
         addMeasurement({
           id: Date.now().toString(),
           date: todayStr,
@@ -1033,6 +1034,7 @@ export default function ProfileScreen() {
     Alert.alert(t('profile.sex'), t('profile.bmrQuest'), [
       { text: t('profile.male', 'Hombre'), onPress: () => updateProfileField('sex', 'male') },
       { text: t('profile.female', 'Mujer'), onPress: () => updateProfileField('sex', 'female') },
+      { text: t('profile.other', 'Otro'), onPress: () => updateProfileField('sex', 'other') },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
@@ -1234,7 +1236,7 @@ export default function ProfileScreen() {
       XLSX.utils.book_append_sheet(wb, metricsWs, t('profile.sheetMetrics', "Métricas"));
 
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-      const uri = cacheDirectory + `FitGO_Data_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const uri = cacheDirectory + `FitGO_Data_${getLocalDateString()}.xlsx`;
       
       await writeAsStringAsync(uri, wbout, {
         encoding: EncodingType.Base64
@@ -1724,7 +1726,7 @@ export default function ProfileScreen() {
               <MenuRow icon={Scale} label={t('profile.weight', 'Peso')} value={`${profile?.weight ? convertMass(profile.weight, 'kg', massUnit).toFixed(1) : '--'} ${massUnit}`} indent onPress={() => openEdit('weight', t('profile.weight'), t('profile.enterWeight'), 'numeric')} iconColor="#10B981" />
               <MenuRow icon={Ruler} label={t('profile.height', 'Altura')} value={`${profile?.height ? convertLength(profile.height, 'cm', lengthUnit).toFixed(1) : '--'} ${lengthUnit}`} indent onPress={() => openEdit('height', t('profile.height'), t('profile.enterHeight'), 'numeric')} iconColor="#3B82F6" />
               <MenuRow icon={Calendar} label={t('profile.age', 'Edad')} value={`${profile?.age ?? '--'}`} indent onPress={() => openEdit('age', t('profile.age'), t('profile.enterAge'), 'numeric')} iconColor="#F59E0B" />
-              <MenuRow icon={Activity} label={t('profile.sex', 'Sexo')} value={profile?.sex ? (profile.sex === 'male' ? t('profile.male') : t('profile.female')) : '--'} indent onPress={handleEditSex} iconColor="#8B5CF6" />
+              <MenuRow icon={Activity} label={t('profile.sex', 'Sexo')} value={profile?.sex ? (profile.sex === 'male' ? t('profile.male') : profile.sex === 'female' ? t('profile.female') : t('profile.other', 'Otro')) : '--'} indent onPress={handleEditSex} iconColor="#8B5CF6" />
               
               <MenuRow icon={Database} label={t('profile.exportData', 'Exportar Data (Excel)')} rightIcon={!profile?.isPro ? '🔒' : undefined} indent onPress={profile?.isPro ? handleExportData : () => router.push('/modals/paywall')} iconColor="#10B981" />
               <MenuRow icon={Zap} label={t('profile.manageSubscription', 'Gestionar Suscripción')} indent onPress={handleManageSubscription} iconColor="#F59E0B" />
@@ -1749,7 +1751,7 @@ export default function ProfileScreen() {
           style={{ marginHorizontal: Spacing.base, marginBottom: Spacing.base }}
         >
           <Text style={[s.sectionTitle, { color: colors.textMuted }]}>{t('about.title', 'SOBRE FITGO')}</Text>
-          <MenuRow icon={FileText} label={t('profile.termsAndConditions', 'Términos y Condiciones')} onPress={undefined} iconColor="#6366F1" />
+          <MenuRow icon={FileText} label={t('profile.termsAndConditions', 'Términos y Condiciones')} onPress={() => router.push('/(auth)/terms' as any)} iconColor="#6366F1" />
           <MenuRow icon={Info} label={t('about.moreInfo', 'Más información')} rightIcon={showAbout ? '▼' : '›'} onPress={() => toggleSection(setShowAbout, showAbout)} iconColor="#3B82F6" />
           
           {showAbout && (
