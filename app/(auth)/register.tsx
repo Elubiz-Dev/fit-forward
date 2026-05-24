@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, KeyboardAvoidingView, Platform
+  ScrollView, Alert, KeyboardAvoidingView, Platform, Pressable, Dimensions
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,7 +13,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
-import { CheckSquare, Square } from 'lucide-react-native';
+import { CheckSquare, Square, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,6 +23,7 @@ export default function RegisterScreen() {
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
@@ -116,10 +117,16 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={[s.container, { backgroundColor: colors.background }]}
+      style={[s.container, { backgroundColor: '#0A0512' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={s.glow} />
+      <LinearGradient
+        colors={['#0A0512', '#24124D', '#0A0512']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={s.back} onPress={() => router.back()}>
           <Text style={[s.backText, { color: colors.primary }]}>← {t('common.back')}</Text>
@@ -131,42 +138,58 @@ export default function RegisterScreen() {
         <View style={s.form}>
           <View style={s.field}>
             <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>{t('auth.name')}</Text>
-            <TextInput
-              style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={name}
-              onChangeText={setName}
-              placeholder="John Doe"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="words"
-              autoComplete="name"
-            />
+            <View style={[s.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <User size={18} color={colors.textMuted} style={s.inputIcon} />
+              <TextInput
+                style={[s.input, { color: colors.textPrimary }]}
+                value={name}
+                onChangeText={setName}
+                placeholder="John Doe"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                autoComplete="name"
+              />
+            </View>
           </View>
 
           <View style={s.field}>
             <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>{t('auth.email')}</Text>
-            <TextInput
-              style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            <View style={[s.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Mail size={18} color={colors.textMuted} style={s.inputIcon} />
+              <TextInput
+                style={[s.input, { color: colors.textPrimary }]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
           </View>
 
           <View style={s.field}>
             <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>{t('auth.password')}</Text>
-            <TextInput
-              style={[s.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t('auth.passwordShort').split('.')[0]}
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              autoComplete="new-password"
-            />
+            <View style={[s.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Lock size={18} color={colors.textMuted} style={s.inputIcon} />
+              <TextInput
+                style={[s.input, { color: colors.textPrimary }]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
+                autoComplete="new-password"
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeBtn}>
+                {showPassword ? (
+                  <EyeOff size={18} color={colors.textMuted} />
+                ) : (
+                  <Eye size={18} color={colors.textMuted} />
+                )}
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -242,22 +265,33 @@ export default function RegisterScreen() {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const s = StyleSheet.create({
   container:    { flex: 1 },
-  glow:         { position: 'absolute', top: -60, right: -60, width: 250, height: 250, borderRadius: 125, backgroundColor: '#7C5CFC', opacity: 0.10 },
-  content:      { flexGrow: 1, padding: Spacing.base, paddingTop: 60 },
+  content:      { flexGrow: 1, padding: 24, paddingTop: 60 },
   back:         { marginBottom: 32 },
-  backText:     { fontSize: 15, fontWeight: '600' },
-  title:        { fontSize: 30, fontWeight: '800', marginBottom: 6 },
-  subtitle:     { fontSize: 15, marginBottom: 36 },
-  form:         { gap: 16 },
-  field:        { gap: 6 },
-  fieldLabel:   { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  input:        { borderRadius: Radius.md, borderWidth: 1.5, padding: Spacing.base, fontSize: 15, minHeight: 50 },
-  btn:          { borderRadius: Radius.md, overflow: 'hidden', marginTop: 28 },
+  backText:     { fontSize: 16, fontWeight: '700' },
+  title:        { fontSize: 32, fontWeight: '800', marginBottom: 8, letterSpacing: -0.5 },
+  subtitle:     { fontSize: 16, marginBottom: 36, opacity: 0.8 },
+  form:         { gap: 20 },
+  field:        { gap: 8 },
+  fieldLabel:   { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  inputIcon:    { marginRight: 10 },
+  input:        { flex: 1, fontSize: 16, minHeight: 52 },
+  eyeBtn:       { padding: 8, marginRight: -8 },
+  btn:          { borderRadius: Radius.lg, overflow: 'hidden', marginTop: 28, shadowColor: '#7C5CFC', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
   btnDisabled:  { opacity: 0.6 },
   btnGradient:  { padding: 18, alignItems: 'center' },
-  btnText:      { fontSize: 16, fontWeight: '700', color: '#fff' },
+  btnText:      { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   divider:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   divLine:      { flex: 1, height: 1 },
   divText:      { fontSize: 13 },

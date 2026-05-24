@@ -25,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 import { calculateTDEE, calculateMacros } from '../services/foodDatabase';
 import { supabase } from '../services/supabase';
 import { CustomAlert, AlertType } from '../components/CustomAlert';
+import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -115,7 +117,10 @@ function GoalStep({ data, onChange }: { data: Partial<OnboardingData>; onChange:
                   elevation: 8,
                 }
               ]}
-              onPress={() => onChange({ goal: g.id })}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onChange({ goal: g.id });
+              }}
               activeOpacity={0.8}
             >
               {isActive && (
@@ -191,7 +196,10 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
                       elevation: 4 
                     }
                   ]}
-                  onPress={() => onChange({ sex: s })}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onChange({ sex: s });
+                  }}
                   activeOpacity={0.8}
                 >
                   {active && (
@@ -327,11 +335,14 @@ function StatsStep({ data, onChange }: { data: Partial<OnboardingData>; onChange
                   keyboardType="numeric"
                   value={((data as any)[key] ?? '').toString()}
                   onChangeText={(text) => {
-                    const parsed = parseFloat(text.replace(',', '.'));
-                    if (!isNaN(parsed)) {
-                      onChange({ [key]: parsed });
-                    } else if (text === '') {
+                    if (text === '') {
                       onChange({ [key]: undefined as any });
+                    } else {
+                      const sanitized = text.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+                      const parsed = parseFloat(sanitized);
+                      if (!isNaN(parsed)) {
+                        onChange({ [key]: parsed });
+                      }
                     }
                   }}
                 />
@@ -437,7 +448,10 @@ function ActivityStep({ data, onChange }: { data: Partial<OnboardingData>; onCha
                   elevation: 6
                 }
               ]}
-              onPress={() => onChange({ activityLevel: a.id })}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onChange({ activityLevel: a.id });
+              }}
               activeOpacity={0.8}
             >
               {isActive && (
@@ -548,7 +562,10 @@ function LifestyleStep({ data, onChange }: { data: Partial<OnboardingData>; onCh
                   elevation: 6
                 }
               ]}
-              onPress={() => onChange({ lifestyle: lv.id })}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onChange({ lifestyle: lv.id });
+              }}
               activeOpacity={0.8}
             >
               {isActive && (
@@ -1990,14 +2007,23 @@ export default function OnboardingScreen() {
       </View>
       
       {/* Step content */}
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          {stepComponents[stepId]}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior="padding"
+          keyboardVerticalOffset={0}
+        >
+          <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+            {stepComponents[stepId]}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={{ flex: 1 }}>
+          <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+            {stepComponents[stepId]}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Navigation Footer */}
       <View style={s.footer}>
@@ -2009,7 +2035,10 @@ export default function OnboardingScreen() {
         >
           <LinearGradient colors={[colors.primary, '#4338CA']} style={s.nextGrad}>
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <ActivityIndicator color="#fff" />
+                <Text style={s.nextText}>{currentStep === STEPS.length - 1 ? t('onboarding.creatingPlan', 'Creando plan...') : t('common.loading', 'Cargando...')}</Text>
+              </View>
             ) : (
               <View style={s.nextContent}>
                 <Text style={s.nextText}>

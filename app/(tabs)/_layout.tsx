@@ -2,7 +2,7 @@ import { Tabs, router, usePathname } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
-import { FileText, BarChart2, MessageCircle, Calendar } from 'lucide-react-native';
+import { FileText, BarChart2, MessageCircle, Calendar, Trophy } from 'lucide-react-native';
 import { useAuthStore, usePurchaseStore } from '../../store';
 import React, { useCallback } from 'react';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
@@ -60,13 +60,15 @@ export default function TabsLayout() {
     '/(tabs)/dashboard',
     '/(tabs)/coach',
     '/(tabs)/planner',
+    '/(tabs)/social',
   ];
 
   const getCurrentTabIndex = useCallback(() => {
-    if (pathname.includes('tracker')) return 0;
+    if (pathname.includes('tracker'))  return 0;
     if (pathname.includes('dashboard')) return 1;
-    if (pathname.includes('coach')) return 2;
-    if (pathname.includes('planner')) return 3;
+    if (pathname.includes('coach'))    return 2;
+    if (pathname.includes('planner'))  return 3;
+    if (pathname.includes('social'))   return 4;
     return 0;
   }, [pathname]);
 
@@ -160,10 +162,17 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile/index"
+          name="social/index"
           options={{
-            href: null,
+            title: t('tabs.leagues', 'Ligas'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={Trophy} label={t('tabs.leagues', 'Ligas')} focused={focused} />
+            ),
           }}
+        />
+        <Tabs.Screen
+          name="profile/index"
+          options={{ href: null }}
         />
       </Tabs>
     </View>

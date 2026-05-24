@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, ScrollView, Alert, Image
+  KeyboardAvoidingView, Platform, ScrollView, Alert, Image, Pressable, Dimensions
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +14,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 import { CustomAlert, AlertType } from '../../components/CustomAlert';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -22,6 +23,7 @@ export default function LoginScreen() {
   const colors = useTheme();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]   = useState(false);
   const { setSession }          = useAuthStore();
   const [alertVisible, setAlertVisible] = useState(false);
@@ -95,9 +97,16 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: '#0A0512' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <LinearGradient
+        colors={['#0A0512', '#24124D', '#0A0512']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Image 
@@ -112,29 +121,42 @@ export default function LoginScreen() {
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('auth.email')}</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Mail size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('auth.password')}</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              autoComplete="password"
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Lock size={18} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.textPrimary }]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
+                autoComplete="password"
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                {showPassword ? (
+                  <EyeOff size={18} color={colors.textMuted} />
+                ) : (
+                  <Eye size={18} color={colors.textMuted} />
+                )}
+              </Pressable>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -194,23 +216,35 @@ export default function LoginScreen() {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container:   { flex: 1 },
-  scroll:      { flexGrow: 1, padding: Spacing.base },
+  scroll:      { flexGrow: 1, padding: 24 },
   header:      { alignItems: 'center', paddingTop: 60, paddingBottom: 40 },
-  logoImage:   { width: 80, height: 80, borderRadius: 24, marginBottom: 20 },
-  title:       { fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  subtitle:    { fontSize: 15 },
-  form:        { gap: Spacing.base },
-  field:       { gap: 6 },
-  fieldLabel:  { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  input:       { borderRadius: Radius.md, borderWidth: 1.5, padding: Spacing.base, fontSize: 15 },
-  forgotWrap:  { alignSelf: 'flex-end' },
-  forgotText:  { fontSize: 13, fontWeight: '500' },
-  btn:         { borderRadius: Radius.md, overflow: 'hidden', marginTop: 8 },
+  logoImage:   { width: 90, height: 90, borderRadius: 28, marginBottom: 20, shadowColor: '#7C5CFC', shadowOpacity: 0.3, shadowRadius: 15 },
+  title:       { fontSize: 32, fontWeight: '800', marginBottom: 8, letterSpacing: -0.5 },
+  subtitle:    { fontSize: 16 },
+  form:        { gap: 20 },
+  field:       { gap: 8 },
+  fieldLabel:  { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  inputIcon:   { marginRight: 10 },
+  input:       { flex: 1, fontSize: 16, minHeight: 52 },
+  eyeBtn:      { padding: 8, marginRight: -8 },
+  forgotWrap:  { alignSelf: 'flex-end', marginTop: -8 },
+  forgotText:  { fontSize: 13, fontWeight: '600' },
+  btn:         { borderRadius: Radius.lg, overflow: 'hidden', marginTop: 12, shadowColor: '#7C5CFC', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
   btnDisabled: { opacity: 0.6 },
-  btnGradient: { padding: Spacing.base, alignItems: 'center' },
-  btnText:     { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  btnGradient: { padding: 18, alignItems: 'center' },
+  btnText:     { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   divider:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 12 },
   divLine:      { flex: 1, height: 1 },
   divText:      { fontSize: 13 },

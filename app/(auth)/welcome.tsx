@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, Radius } from '../../constants';
@@ -7,7 +7,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../store';
 import LanguageModal from '../../components/LanguageModal';
-import { Settings } from 'lucide-react-native';
+import { Settings, Apple, Bot, BarChart3, Calendar, Zap, ShieldCheck } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
@@ -16,17 +17,24 @@ export default function WelcomeScreen() {
   const [langModalVisible, setLangModalVisible] = React.useState(false);
 
   const FEATURES = [
-    { icon: '🍎', label: t('welcome.feature1') },
-    { icon: '🤖', label: t('welcome.feature2') },
-    { icon: '📊', label: t('welcome.feature3') },
-    { icon: '📅', label: t('welcome.feature4') },
+    { icon: <Apple size={16} color="#FF6B6B" />, label: t('welcome.feature1') },
+    { icon: <Bot size={16} color="#4ECDC4" />, label: t('welcome.feature2') },
+    { icon: <BarChart3 size={16} color="#FFE66D" />, label: t('welcome.feature3') },
+    { icon: <Calendar size={16} color="#C7F464" />, label: t('welcome.feature4') },
+    { icon: <Zap size={16} color="#FF9F1C" />, label: 'Guerras de Macros' },
+    { icon: <ShieldCheck size={16} color="#7C5CFC" />, label: 'Ligas Élite' },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Decorative background glow */}
-      <View style={styles.glow1} />
-      <View style={styles.glow2} />
+    <View style={[styles.container, { backgroundColor: '#0A0512' }]}>
+      {/* Premium Fullscreen Lively Gradient */}
+      <LinearGradient
+        colors={['#0A0512', '#24124D', '#0A0512']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
 
       <TouchableOpacity 
         style={[styles.settingsBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
@@ -45,22 +53,15 @@ export default function WelcomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Image 
-            source={require('../../assets/fitgo.jpeg')} 
-            style={styles.logoImage} 
-          />
-          <Text style={[styles.motto, { color: colors.primary }]}>{t('welcome.motto')}</Text>
-          <Text style={[styles.brand, { color: colors.textPrimary }]}>FitGO</Text>
-          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-            {t('welcome.tagline')}
-          </Text>
+          <Text style={[styles.motto, { color: '#00FF95' }]}>{t('welcome.motto')}</Text>
+          <Text style={[styles.brand, { color: '#fff' }]}>FitGO</Text>
         </View>
 
         {/* Feature pills */}
         <View style={styles.features}>
-          {FEATURES.map((f) => (
-            <View key={f.label} style={[styles.pill, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-              <Text style={styles.pillIcon}>{f.icon}</Text>
+          {FEATURES.map((f, i) => (
+            <View key={i} style={[styles.pill, { backgroundColor: colors.surfaceAlt + '80', borderColor: colors.border + '60' }]}>
+              {f.icon}
               <Text style={[styles.pillLabel, { color: colors.textPrimary }]}>{f.label}</Text>
             </View>
           ))}
@@ -95,18 +96,10 @@ export default function WelcomeScreen() {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container:      { flex: 1 },
-  glow1: {
-    position: 'absolute', top: -80, left: -80,
-    width: 300, height: 300, borderRadius: 150,
-    backgroundColor: '#7C5CFC', opacity: 0.12,
-  },
-  glow2: {
-    position: 'absolute', top: 120, right: -100,
-    width: 240, height: 240, borderRadius: 120,
-    backgroundColor: '#22D3EE', opacity: 0.08,
-  },
   settingsBtn: {
     position: 'absolute',
     top: 60,
@@ -119,21 +112,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
   },
-  content:        { flexGrow: 1, padding: Spacing.base, paddingTop: 100 },
-  hero:           { alignItems: 'center', marginBottom: 48 },
-  logoImage:      { width: 100, height: 100, borderRadius: 32, marginBottom: 20 },
-  motto:          { fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 },
-  brand:          { fontSize: 38, fontWeight: '800', letterSpacing: -1, marginBottom: 16 },
-  tagline:        { fontSize: 17, textAlign: 'center', lineHeight: 26 },
-  features:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 48 },
-  pill:           { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
-  pillIcon:       { fontSize: 16 },
-  pillLabel:      { fontSize: 13, fontWeight: '500' },
+  content:        { flexGrow: 1, padding: Spacing.base, paddingTop: 140, justifyContent: 'center' },
+  hero:           { alignItems: 'center', marginBottom: 50 },
+  motto:          { fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 4, marginBottom: 12 },
+  brand:          { fontSize: 56, fontWeight: '900', letterSpacing: -2, marginBottom: 8, textShadowColor: '#7C5CFC', textShadowRadius: 20 },
+  features:       { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 48 },
+  pill:           { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1.5 },
+  pillLabel:      { fontSize: 14, fontWeight: '600' },
   ctas:           { gap: Spacing.md },
-  primaryBtn:     { borderRadius: Radius.lg, overflow: 'hidden' },
-  primaryGradient:{ padding: 18, alignItems: 'center' },
-  primaryText:    { fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
-  secondaryBtn:   { padding: 16, alignItems: 'center', borderRadius: Radius.lg, borderWidth: 1.5 },
-  secondaryText:  { fontSize: 15, fontWeight: '600' },
-  legal:          { marginTop: 24, textAlign: 'center', fontSize: 11, lineHeight: 18 },
+  primaryBtn:     { borderRadius: Radius.full, overflow: 'hidden', shadowColor: '#7C5CFC', shadowOpacity: 0.4, shadowRadius: 15, elevation: 8 },
+  primaryGradient:{ padding: 20, alignItems: 'center' },
+  primaryText:    { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  secondaryBtn:   { padding: 18, alignItems: 'center', borderRadius: Radius.full, borderWidth: 1.5 },
+  secondaryText:  { fontSize: 16, fontWeight: '700' },
+  legal:          { marginTop: 32, textAlign: 'center', fontSize: 12, lineHeight: 18, opacity: 0.6 },
 });

@@ -12,6 +12,7 @@ import { FoodLog, ActivityLog } from './types';
 import type { FoodItem } from '../services/foodDatabase';
 import { getLocalDateString } from '../utils/date';
 import { useAuthStore } from './authStore';
+import { useLeagueStore, POINTS } from './leagueStore';
 import { supabase } from '../services/supabase';
 import * as Crypto from 'expo-crypto';
 
@@ -239,6 +240,24 @@ export const useNutritionStore = create<NutritionState>()(
             if (error) {
               console.error('[NutritionStore] addLog Supabase error:', error);
               throw error;
+            }
+
+            // Gamification: Award points for logging meal
+            try {
+              const ls = useLeagueStore.getState();
+              await ls.awardPoints(profile.id, POINTS.MEAL_LOG, 'meal_log');
+              
+              // Check if this log perfected the macros for the day
+              const totals = selectDailyTotals(get());
+              if (profile.targetCalories && profile.macros) {
+                await ls.checkAndAwardMacroPoints(
+                  profile.id,
+                  { calories: totals.calories, protein: totals.protein, carbs: totals.carbs, fat: totals.fat },
+                  { calories: profile.targetCalories, protein: profile.macros.protein, carbs: profile.macros.carbs, fat: profile.macros.fat }
+                );
+              }
+            } catch (e) {
+              console.warn('[NutritionStore] Failed to award gamification points:', e);
             }
           } catch (err) {
             console.error('[NutritionStore] addLog sync error:', err);

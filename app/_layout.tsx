@@ -96,6 +96,7 @@ export default function RootLayout() {
   useEffect(() => {
 
     const handleAuthStateChange = async (newSession: any) => {
+      setLoading(true); // <--- PAUSE NAVIGATION WHILE FETCHING PROFILE
       try {
         setSession(newSession);
         if (newSession?.user) {
