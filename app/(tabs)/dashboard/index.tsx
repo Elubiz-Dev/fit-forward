@@ -464,7 +464,14 @@ export default function DashboardScreen() {
 
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient
+        colors={['rgba(59, 130, 246, 0.45)', 'rgba(147, 51, 234, 0.15)', 'transparent']}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 500 }}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={[s.safe, { backgroundColor: 'transparent' }]}>
       <CustomAlert 
         visible={alert.visible}
         type={alert.type}
@@ -668,6 +675,7 @@ export default function DashboardScreen() {
         }}
       />
     </SafeAreaView>
+    </View>
   );
 }
 

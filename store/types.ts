@@ -52,6 +52,7 @@ export interface UserProfile extends HealthProfile {
   badges?:         string[];
   selectedBadge?:  string;
   unlockedAchievements?: string[];
+  pinnedAchievements?:   string[];
 }
 
 export interface FoodLog {

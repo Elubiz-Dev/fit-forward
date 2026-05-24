@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Trophy, X, CheckCircle2, Lock } from 'lucide-react-native';
+import * as LucideIcons from 'lucide-react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { useAchievements, Achievement, ALL_BADGES } from '../../hooks/useAchievements';
 import { Spacing, Radius, Shadow } from '../../constants';
+// TEMPORARILY DISABLED FOR EXPO GO COMPATIBILITY
+// import LottieView from 'lottie-react-native';
+// import { LottieRegistry } from '../../hooks/LottieRegistry';
+
+import { useAuthStore } from '../../store';
+import { supabase } from '../../services/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -14,13 +20,42 @@ export default function AchievementsModal() {
   const router = useRouter();
   const colors = useTheme();
   const { achievements, unlockedCount } = useAchievements();
+  const { profile, setProfile } = useAuthStore();
+
+  const handleTogglePin = async (id: string) => {
+    if (!profile) return;
+    const current = profile.pinnedAchievements || [];
+    let newPinned = [...current];
+    
+    if (newPinned.includes(id)) {
+      newPinned = newPinned.filter(a => a !== id);
+    } else {
+      if (newPinned.length >= 3) {
+        newPinned.shift(); // Remove the oldest to keep max 3
+      }
+      newPinned.push(id);
+    }
+    
+    setProfile({ ...profile, pinnedAchievements: newPinned });
+    await supabase.from('users').update({ pinned_achievements: newPinned }).eq('id', profile.id);
+  };
+
+  const groupedAchievements = useMemo(() => {
+    return Object.entries(
+      achievements.reduce((acc, ach) => {
+        if (!acc[ach.category]) acc[ach.category] = [];
+        acc[ach.category].push(ach);
+        return acc;
+      }, {} as Record<string, Achievement[]>)
+    );
+  }, [achievements]);
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.closeBtn}>
-          <X color={colors.textPrimary} size={24} />
+          <LucideIcons.X color={colors.textPrimary} size={24} />
         </TouchableOpacity>
         <Text style={[s.title, { color: colors.textPrimary }]}>Mis Logros</Text>
         <View style={{ width: 40 }} />
@@ -35,7 +70,7 @@ export default function AchievementsModal() {
           style={s.statsCard}
         >
           <View style={s.statsIconBox}>
-            <Trophy size={48} color="#FFF" />
+            <LucideIcons.Trophy size={48} color="#FFF" />
           </View>
           <View>
             <Text style={s.statsValue}>{unlockedCount} / {achievements.length}</Text>
@@ -43,34 +78,111 @@ export default function AchievementsModal() {
           </View>
         </LinearGradient>
 
-        <View style={s.grid}>
-          {achievements.map((item) => (
-            <AchievementCard key={item.id} achievement={item} />
-          ))}
-        </View>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: Spacing.xl, textAlign: 'center' }}>
+          Toca un logro desbloqueado para fijarlo en tu vitrina (Máx 3)
+        </Text>
+
+        {groupedAchievements.map(([category, items]) => (
+          <View key={category} style={{ marginBottom: Spacing.xl }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, marginBottom: Spacing.md, paddingHorizontal: 4 }}>
+              {category}
+            </Text>
+            <View style={s.grid}>
+              {items.map((item) => (
+                <AchievementCard 
+                  key={item.id} 
+                  achievement={item} 
+                  isPinned={profile?.pinnedAchievements?.includes(item.id) || false}
+                  onTogglePin={() => item.unlocked && handleTogglePin(item.id)}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function AchievementCard({ achievement }: { achievement: Achievement }) {
+function AchievementCard({ 
+  achievement, isPinned, onTogglePin 
+}: { 
+  achievement: Achievement; isPinned: boolean; onTogglePin: () => void; 
+}) {
   const colors = useTheme();
   
+  const getTierColors = (tier: string) => {
+    switch(tier) {
+      case 'diamante': return ['#38BDF8', '#4F46E5'];
+      case 'oro': return ['#FBBF24', '#EA580C'];
+      case 'plata': return ['#9CA3AF', '#4B5563'];
+      case 'bronce': return ['#D97706', '#92400E'];
+      default: return ['#FFD700', '#FFA500'];
+    }
+  };
+
+  const tierColors = getTierColors(achievement.tier);
+  const isHolo = achievement.unlocked && (achievement.tier === 'oro' || achievement.tier === 'diamante');
+
   return (
-    <View style={[s.card, { backgroundColor: colors.surface }]}>
+    <TouchableOpacity 
+      activeOpacity={0.8}
+      onPress={onTogglePin}
+      style={[
+      s.card, 
+      { backgroundColor: colors.surface },
+      isHolo && { borderColor: tierColors[0] + '50', borderWidth: 1 }
+    ]}>
+      {isPinned && (
+        <View style={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+          <Text style={{ fontSize: 16 }}>📌</Text>
+        </View>
+      )}
       <View style={s.cardTop}>
         {achievement.unlocked ? (
           <LinearGradient
-            colors={['#FFD700', '#FFA500']}
-            style={s.iconCircle}
+            colors={tierColors as [string, string, ...string[]]}
+            style={[s.iconCircle, isHolo && { shadowColor: tierColors[0], shadowOpacity: 0.6, shadowRadius: 10, elevation: 8 }]}
           >
-            <Text style={s.emojiIcon}>{achievement.icon}</Text>
+            {achievement.iconType === 'lucide' && achievement.lucideIcon ? (
+              // @ts-ignore
+              React.createElement(LucideIcons[achievement.lucideIcon] || LucideIcons.Star, {
+                size: 32,
+                color: '#FFF',
+                strokeWidth: 2
+              })
+            ) : false && achievement.iconType === 'lottie' && achievement.lottieFile ? (
+              <LottieView
+                source={LottieRegistry[achievement.lottieFile]}
+                autoPlay
+                loop
+                style={{ width: 44, height: 44 }}
+              />
+            ) : (
+              <Text style={s.emojiIcon}>{achievement.icon}</Text>
+            )}
           </LinearGradient>
         ) : (
           <View style={[s.iconCircle, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={[s.emojiIcon, { opacity: 0.3 }]}>{achievement.icon}</Text>
+             {achievement.iconType === 'lucide' && achievement.lucideIcon ? (
+              // @ts-ignore
+              React.createElement(LucideIcons[achievement.lucideIcon] || LucideIcons.Star, {
+                size: 32,
+                color: colors.textSecondary,
+                opacity: 0.2
+              })
+            ) : false && achievement.iconType === 'lottie' && achievement.lottieFile ? (
+              <LottieView
+                source={LottieRegistry[achievement.lottieFile]}
+                autoPlay={false}
+                loop={false}
+                style={{ width: 44, height: 44, opacity: 0.2 }}
+              />
+            ) : (
+              <Text style={[s.emojiIcon, { opacity: 0.2 }]}>{achievement.icon}</Text>
+            )}
             <View style={s.lockOverlay}>
-              <Lock size={12} color={colors.textSecondary} />
+              <LucideIcons.Lock size={12} color={colors.textSecondary} />
             </View>
           </View>
         )}
@@ -87,14 +199,14 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         <View style={[
           s.rewardRow, 
           { 
-            backgroundColor: achievement.unlocked ? '#FFD700' + '15' : colors.surfaceAlt,
-            borderColor: achievement.unlocked ? '#FFD700' + '40' : colors.border
+            backgroundColor: achievement.unlocked ? tierColors[0] + '15' : colors.surfaceAlt,
+            borderColor: achievement.unlocked ? tierColors[0] + '40' : colors.border
           }
         ]}>
           <Text style={[
             s.rewardText, 
             { 
-              color: achievement.unlocked ? '#EAB308' : colors.textMuted,
+              color: achievement.unlocked ? tierColors[0] : colors.textMuted,
               fontWeight: achievement.unlocked ? '800' : '600'
             }
           ]}>
@@ -105,10 +217,10 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
       {achievement.unlocked && (
         <View style={s.checkMark}>
-          <CheckCircle2 size={16} color="#FFD700" />
+          <LucideIcons.CheckCircle2 size={16} color={tierColors[0]} />
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

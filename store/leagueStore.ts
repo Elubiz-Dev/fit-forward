@@ -187,6 +187,7 @@ export const useLeagueStore = create<LeagueStore>()(
       await get().fetchMySquad(userId);
       return data as Squad;
     } catch (err: any) {
+      console.error('[LeagueStore] Error creating squad:', err);
       set({ error: err.message, loading: false });
       return null;
     }

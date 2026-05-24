@@ -3,7 +3,8 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator, Platform, LogBox } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, LogBox, KeyboardAvoidingView, Image, Text } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 // Ignore specific Supabase Auth errors that occur during development fast-refresh
 LogBox.ignoreLogs(['AuthApiError: Invalid Refresh Token: Refresh Token Not Found']);
@@ -133,84 +134,118 @@ export default function RootLayout() {
   //    to prevent "flashes" of the wrong screens.
   if (isLoading) {
     return (
-      <View style={[styles.root, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
-        <ActivityIndicator color={colors.primary} size="large" />
+      <View style={[styles.root, { backgroundColor: '#0D0F14', justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar style="light" backgroundColor="#0D0F14" />
+        
+        <Animated.View entering={FadeIn.duration(800).springify()} style={{ alignItems: 'center' }}>
+          <Image 
+            source={require('../assets/splash-icon.png')} 
+            style={{ width: 120, height: 120, borderRadius: 24, marginBottom: 24 }} 
+            resizeMode="contain" 
+          />
+          <Text style={{ 
+            color: '#fff', 
+            fontSize: 32, 
+            fontWeight: '900', 
+            letterSpacing: 1,
+            textShadowColor: 'rgba(124, 92, 252, 0.5)',
+            textShadowOffset: { width: 0, height: 4 },
+            textShadowRadius: 12,
+            marginBottom: 8
+          }}>FitGO</Text>
+          <Text style={{ 
+            color: 'rgba(255,255,255,0.6)', 
+            fontSize: 16, 
+            fontWeight: '600', 
+            letterSpacing: 2,
+            textTransform: 'uppercase'
+          }}>Tu mejor versión</Text>
+        </Animated.View>
+
+        <View style={{ position: 'absolute', bottom: 60 }}>
+          <ActivityIndicator color="#7C5CFC" size="small" />
+        </View>
       </View>
     );
   }
 
   return (
     <GestureHandlerRootView style={[styles.root, { backgroundColor: colors.background }]}>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
-      <NavigationGuard />
-      <Stack screenOptions={{ 
-        headerShown: false, 
-        animation: 'fade',
-        contentStyle: { backgroundColor: colors.background }
-      }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen
-          name="modals/scan"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/food-detail"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/paywall"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/calendar"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={colors.background} />
+        <NavigationGuard />
+        <Stack screenOptions={{ 
+          headerShown: false, 
+          animation: 'fade',
+          contentStyle: { backgroundColor: colors.background }
+        }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen
+            name="modals/scan"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/food-detail"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/paywall"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/calendar"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
 
-        <Stack.Screen
-          name="modals/add-activity"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/select-neat"
-          options={{ presentation: 'modal', animation: 'slide_from_left' }}
-        />
-        <Stack.Screen
-          name="modals/select-activity-level"
-          options={{ presentation: 'modal', animation: 'slide_from_left' }}
-        />
-        <Stack.Screen
-          name="modals/body-measurements"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/sleep"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/food-selection"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/social"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/progress-evaluation"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/achievements"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="modals/reminders"
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-      </Stack>
+          <Stack.Screen
+            name="modals/add-activity"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/select-neat"
+            options={{ presentation: 'modal', animation: 'slide_from_left' }}
+          />
+          <Stack.Screen
+            name="modals/select-activity-level"
+            options={{ presentation: 'modal', animation: 'slide_from_left' }}
+          />
+          <Stack.Screen
+            name="modals/body-measurements"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/sleep"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/food-selection"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/social"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/progress-evaluation"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/achievements"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="modals/reminders"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+        </Stack>
+      </KeyboardAvoidingView>
     </GestureHandlerRootView>
   );
 }

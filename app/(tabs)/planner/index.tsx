@@ -593,7 +593,14 @@ export default function PlannerScreen() {
   const hasData = mode === 'nutrition' ? Object.keys(mealPlans).length > 0 : Object.keys(workoutPlans).length > 0;
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient
+        colors={['rgba(245, 158, 11, 0.45)', 'rgba(239, 68, 68, 0.15)', 'transparent']}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 500 }}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={[s.safe, { backgroundColor: 'transparent' }]}>
       <CustomAlert visible={alert.visible} type={alert.type} title={alert.title} message={alert.message} onConfirm={alert.onConfirm} />
 
       {/* Pre-generation confirmation modal */}
@@ -943,6 +950,7 @@ export default function PlannerScreen() {
 
       <SuccessModal visible={showSuccess} title={t('common.success')} message={t('planner.planReady')} onClose={() => setShowSuccess(false)} />
     </SafeAreaView>
+    </View>
   );
 }
 

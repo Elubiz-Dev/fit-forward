@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 import { ArrowLeft, UserPlus, Check, Trophy, Heart, MessageSquare, Users } from 'lucide-react-native';
+import * as LucideIcons from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
 import { useAuthStore, useSocialStore } from '../../store';
@@ -11,6 +12,9 @@ import { GlassCard } from '../../components/GlassCard';
 import { useTheme } from '../../hooks/useTheme';
 import { useAchievements, ALL_BADGES } from '../../hooks/useAchievements';
 import { Radius } from '../../constants';
+// TEMPORARILY DISABLED FOR EXPO GO COMPATIBILITY
+// import LottieView from 'lottie-react-native';
+// import { LottieRegistry } from '../../hooks/LottieRegistry';
 
 export default function UserProfileModal() {
   const params = useLocalSearchParams();
@@ -292,7 +296,20 @@ export default function UserProfileModal() {
                   if (!achievement.unlocked) return null;
                   return (
                     <GlassCard key={`me-${achievement.id}`} style={{ padding: 12, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 32, marginBottom: 6 }}>{achievement.icon}</Text>
+                      <View style={{ marginBottom: 6 }}>
+                        {achievement.iconType === 'lucide' && achievement.lucideIcon ? (
+                          // @ts-ignore
+                          React.createElement(LucideIcons[achievement.lucideIcon] || LucideIcons.Star, {
+                            size: 32,
+                            color: colors.primary,
+                            strokeWidth: 2
+                          })
+                        ) : false && achievement.iconType === 'lottie' && achievement.lottieFile ? (
+                          null as any
+                        ) : (
+                          <Text style={{ fontSize: 32 }}>{achievement.icon}</Text>
+                        )}
+                      </View>
                       <Text style={{ color: colors.textPrimary, fontWeight: 'bold', fontSize: 13, textAlign: 'center' }} numberOfLines={2}>{achievement.title}</Text>
                     </GlassCard>
                   );
@@ -312,7 +329,20 @@ export default function UserProfileModal() {
                     if (!theirUnlockedIds.includes(achievement.id)) return null;
                     return (
                       <GlassCard key={`them-${achievement.id}`} style={{ padding: 12, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 32, marginBottom: 6 }}>{achievement.icon}</Text>
+                        <View style={{ marginBottom: 6 }}>
+                          {achievement.iconType === 'lucide' && achievement.lucideIcon ? (
+                            // @ts-ignore
+                            React.createElement(LucideIcons[achievement.lucideIcon] || LucideIcons.Star, {
+                              size: 32,
+                              color: colors.primary,
+                              strokeWidth: 2
+                            })
+                          ) : false && achievement.iconType === 'lottie' && achievement.lottieFile ? (
+                            null as any
+                          ) : (
+                            <Text style={{ fontSize: 32 }}>{achievement.icon}</Text>
+                          )}
+                        </View>
                         <Text style={{ color: colors.textPrimary, fontWeight: 'bold', fontSize: 13, textAlign: 'center' }} numberOfLines={2}>{achievement.title}</Text>
                       </GlassCard>
                     );

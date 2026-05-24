@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, TextInput, Alert, RefreshControl,
+  KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,8 +96,12 @@ function MemberRow({ member, rank }: { member: SquadMember; rank: number }) {
   return (
     <View style={[styles.memberRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
       <Text style={[styles.rankText, { color: rankColor }]}>#{rank}</Text>
-      <View style={[styles.avatarCircle, { backgroundColor: colors.primary + '30' }]}>
-        <Text style={{ fontSize: 18 }}>{member.name?.[0]?.toUpperCase() ?? '?'}</Text>
+      <View style={[styles.avatarCircle, { backgroundColor: colors.primary + '30', overflow: 'hidden' }]}>
+        {member.avatar_url ? (
+          <Image source={{ uri: member.avatar_url }} style={{ width: '100%', height: '100%' }} />
+        ) : (
+          <Text style={{ fontSize: 18, color: colors.textPrimary }}>{member.name?.[0]?.toUpperCase() ?? '?'}</Text>
+        )}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.memberName, { color: colors.textPrimary }]} numberOfLines={1}>{member.name}</Text>
@@ -181,7 +186,11 @@ export default function LeaguesScreen() {
   const handleCreate = async () => {
     if (!squadName.trim() || !profile?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    await createSquad(squadName.trim(), profile.id);
+    const result = await createSquad(squadName.trim(), profile.id);
+    if (!result) {
+      Alert.alert('Error', useLeagueStore.getState().error || 'Error al crear el squad.');
+      return;
+    }
     setShowCreate(false);
     setSquadName('');
   };
@@ -190,7 +199,12 @@ export default function LeaguesScreen() {
     if (!joinCode.trim() || !profile?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const ok = await joinSquadByCode(joinCode.trim(), profile.id);
-    if (ok) { setShowJoin(false); setJoinCode(''); }
+    if (ok) { 
+      setShowJoin(false); 
+      setJoinCode(''); 
+    } else {
+      Alert.alert('Error', useLeagueStore.getState().error || 'Error al unirse al squad.');
+    }
   };
 
   const handleLeave = () => {
@@ -210,7 +224,14 @@ export default function LeaguesScreen() {
   const leagueCfg = squad ? LEAGUE_CONFIG[squad.league_tier] : LEAGUE_CONFIG.carbono;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient
+        colors={['rgba(251, 191, 36, 0.35)', 'rgba(236, 72, 153, 0.15)', 'transparent']}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 500 }}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+    <SafeAreaView style={[styles.safe, { backgroundColor: 'transparent' }]} edges={['top']}>
       <MacroRewardAnimation visible={rewardVisible} points={rewardPoints} onHide={hideReward} />
 
       <ScrollView
@@ -399,6 +420,7 @@ export default function LeaguesScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 

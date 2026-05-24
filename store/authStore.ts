@@ -70,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
                 badges:         data.badges          ?? [],
                 selectedBadge:  data.selected_badge  ?? null,
                 unlockedAchievements: data.unlocked_achievements ?? [],
+                pinnedAchievements: data.pinned_achievements ?? [],
               }
             });
           } else {

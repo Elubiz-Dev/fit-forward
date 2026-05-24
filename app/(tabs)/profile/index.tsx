@@ -32,6 +32,7 @@ import {
   Camera, ExternalLink, Award, Thermometer, Droplets, Hammer, Building2, Mars, Venus, Plus, Minus, Bike,
   Utensils, Sparkles, Leaf, Clock, Trophy, Check, Briefcase, Coffee, PersonStanding, X
 } from 'lucide-react-native';
+import * as LucideIcons from 'lucide-react-native';
 import * as XLSX from 'xlsx';
 import { cacheDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -43,6 +44,9 @@ import { WeightProgressPath } from '../../../components/WeightProgressPath';
 import { UnitSelectionModal } from '../../../components/UnitSelectionModal';
 import { PhotoSourceModal } from '../../../components/PhotoSourceModal';
 import { getLocalDateString } from '../../../utils/date';
+// TEMPORARILY DISABLED FOR EXPO GO COMPATIBILITY
+// import LottieView from 'lottie-react-native';
+// import { LottieRegistry } from '../../../hooks/LottieRegistry';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { GoalWizardModal, ACTIVITY_TO_EXERCISE } from '../../../components/GoalWizardModal';
@@ -333,7 +337,7 @@ const em = StyleSheet.create({
 });
 
 
-import { ALL_BADGES } from '../../../hooks/useAchievements';
+import { ALL_BADGES, useAchievements, Achievement } from '../../../hooks/useAchievements';
 
 function BadgeSelectionModal({
   visible, onClose, onSelect, availableBadges, selectedBadge
@@ -624,6 +628,7 @@ export default function ProfileScreen() {
   const { setNeat, setExerciseLevel }      = useNutritionStore();
   const { latest: latestMeasurement, addMeasurement } = useBodyStore();
   const lastMeasure = latestMeasurement();
+  const { achievements } = useAchievements();
 
   // Edit modal state
   const [editModal, setEditModal] = useState<{
@@ -1417,7 +1422,14 @@ export default function ProfileScreen() {
     : '⚖️ ' + t('profile.maintain', 'Mantener');
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient
+        colors={['rgba(251, 191, 36, 0.45)', 'rgba(234, 179, 8, 0.15)', 'transparent']}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 500 }}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      <SafeAreaView style={[s.safe, { backgroundColor: 'transparent' }]}>
       <EditModal
         visible={editModal.visible}
         field={editModal.field}
@@ -1526,6 +1538,55 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
         </LinearGradient>
+
+        {/* ── Vitrina de Trofeos (Showcase) ── */}
+        {profile?.pinnedAchievements && profile.pinnedAchievements.length > 0 && (
+          <View style={{ marginHorizontal: Spacing.base, marginTop: Spacing.md, marginBottom: Spacing.sm }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.textPrimary }}>🏆 Vitrina de Trofeos</Text>
+              <TouchableOpacity onPress={() => router.push('/modals/achievements')}>
+                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '700' }}>Editar ›</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              {profile.pinnedAchievements.map(id => {
+                const ach = achievements.find(a => a.id === id);
+                if (!ach) return null;
+                const isHolo = ach.tier === 'oro' || ach.tier === 'diamante';
+                const tierColor = ach.tier === 'diamante' ? '#38BDF8' : 
+                                  ach.tier === 'oro' ? '#FBBF24' : 
+                                  ach.tier === 'plata' ? '#9CA3AF' : '#D97706';
+                return (
+                  <View key={id} style={{
+                    flex: 1, backgroundColor: colors.surface, padding: Spacing.sm, borderRadius: 16, alignItems: 'center',
+                    borderWidth: 1, borderColor: isHolo ? tierColor + '50' : colors.border,
+                    ...(isHolo ? { shadowColor: tierColor, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 } : {})
+                  }}>
+                    <LinearGradient
+                      colors={(isHolo ? [tierColor, tierColor === '#FBBF24' ? '#EA580C' : '#4F46E5'] : ['transparent', 'transparent']) as [string, string, ...string[]]}
+                      style={{ width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: isHolo ? 'transparent' : colors.surfaceAlt, marginBottom: 8 }}
+                    >
+                      {ach.iconType === 'lucide' && ach.lucideIcon ? (
+                        // @ts-ignore
+                        React.createElement(LucideIcons[ach.lucideIcon] || LucideIcons.Star, {
+                          size: 24,
+                          color: isHolo ? '#FFF' : tierColor,
+                          strokeWidth: 2.5
+                        })
+                      ) : false && ach.iconType === 'lottie' && ach.lottieFile ? (
+                        null as any
+                      ) : (
+                        <Text style={{ fontSize: 24 }}>{ach.icon}</Text>
+                      )}
+                    </LinearGradient>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' }} numberOfLines={1}>{ach.title}</Text>
+                    <Text style={{ fontSize: 9, color: tierColor, fontWeight: '800', textTransform: 'uppercase', marginTop: 2 }}>{ach.tier}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* ── Progress Chart ── Gamified Weight Journey */}
         <GlassCard
@@ -1787,6 +1848,7 @@ export default function ProfileScreen() {
         <View style={{ height: 48 }} />
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
